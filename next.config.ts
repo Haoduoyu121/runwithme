@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* 保留你原有的配置 */
+  /* ★ 新增：Turbopack 空配置，让 Next.js 16 不再报错 */
+  turbopack: {},
+
+  /* 你原有的配置 */
   reactStrictMode: true,
-  // ...
 };
 
 const withPWA = require("@ducanh2912/next-pwa").default({
