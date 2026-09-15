@@ -374,7 +374,7 @@ export default function ChatSettingsPanel({
                   ＋ 添加表情
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="*/*"
                     style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
                     onChange={(event) => {
                       const file =
@@ -508,7 +508,7 @@ export default function ChatSettingsPanel({
                   上传背景
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="*/*"
                     style={{
   position: "absolute",
   width: 1,
@@ -573,7 +573,7 @@ export default function ChatSettingsPanel({
                         上传
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="*/*"
                          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
                           onChange={(event) => {
                             const file =

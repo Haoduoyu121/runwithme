@@ -475,7 +475,7 @@ export default function HomeStudioPage() {
                   <span>上传</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="*/*"
                     className="hs-hidden-input"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
@@ -534,7 +534,7 @@ export default function HomeStudioPage() {
                   <span>上传</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="*/*"
                     className="hs-hidden-input"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
@@ -593,7 +593,7 @@ export default function HomeStudioPage() {
                         {preview ? "更换" : "上传"}
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="*/*"
                           className="hs-hidden-input"
                           onChange={(e) => {
                             const file =
@@ -675,7 +675,7 @@ export default function HomeStudioPage() {
                         {preview ? "更换" : "上传"}
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="*/*"
                           className="hs-hidden-input"
                           onChange={(e) => {
                             const file =

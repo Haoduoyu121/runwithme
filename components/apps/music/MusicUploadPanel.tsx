@@ -213,7 +213,7 @@ export default function MusicUploadPanel({
                 MP3 文件
                 <input
                   type="file"
-                  accept="audio/*,.mp3,audio/mpeg"
+                  accept="*/*"
                   onChange={(e) =>
                     setFile(e.target.files?.[0] ?? null)
                   }

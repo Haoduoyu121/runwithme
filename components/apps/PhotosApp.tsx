@@ -553,7 +553,7 @@ export default function PhotosApp({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="*/*"
         multiple
         style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
         onChange={(e) => {

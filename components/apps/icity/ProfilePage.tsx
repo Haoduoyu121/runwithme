@@ -164,7 +164,7 @@ export default function ProfilePage({
           <input
             ref={bgInputRef}
             type="file"
-            accept="image/*"
+            accept="*/*"
             style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -200,7 +200,7 @@ export default function ProfilePage({
           <input
             ref={avatarInputRef}
             type="file"
-            accept="image/*"
+            accept="*/*"
            style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
             onChange={(e) => {
               const file = e.target.files?.[0];

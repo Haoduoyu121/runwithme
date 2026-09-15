@@ -175,7 +175,7 @@ export default function AddWidgetModal({
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/*"
+                accept="*/*"
                 style={{
   position: "absolute",
   width: 1,

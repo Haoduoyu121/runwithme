@@ -18997,3 +18997,106 @@ html[data-runwithme-theme="dark"] body {
   opacity: 0;
   overflow: hidden;
 }
+/* =========================================================================
+   修复 · App 内容被压缩 + 全屏覆盖状态栏（终版）
+   =========================================================================
+   原理：
+   - .app-screen 不主动加 padding
+   - 只在各个"页面顶栏"上处理安全区
+   - 背景色靠 html/body 铺满，视觉上覆盖状态栏
+   ========================================================================= */
+
+/* ---------- 1. 强制重置 App 外壳（清掉上一次加的 padding） ---------- */
+
+.app-screen,
+.home-screen,
+.lock-screen,
+.chat-page,
+.studio-page,
+.studio-home,
+.studio-settings-page,
+.hs-page {
+  padding-top: 0 !important;
+  box-sizing: border-box;
+}
+
+/* ---------- 2. 顶栏分别处理安全区 ---------- */
+
+/* Chat 顶栏 */
+.chat-page .telegram-header {
+  padding-top: max(8px, env(safe-area-inset-top)) !important;
+}
+
+/* iCity 顶栏 */
+.icity-header {
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+  height: auto !important;
+  min-height: 64px;
+}
+
+/* Calendar 顶栏 */
+.calendar-header {
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+}
+
+/* Notes 顶栏 */
+.notes-header,
+.notes-editor-header {
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+}
+
+/* Check-in 顶栏 */
+.checkin-header {
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+}
+
+/* Questionnaire 顶栏 */
+.q-header {
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+}
+
+/* Music 顶栏 */
+.music-v2-header {
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+  height: auto !important;
+  min-height: 64px;
+}
+
+/* Photos 顶栏 */
+.photos-app-header {
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+  height: auto !important;
+  min-height: 64px;
+}
+
+/* Studio 页面 */
+.studio-header {
+  padding-top: max(12px, env(safe-area-inset-top)) !important;
+}
+
+/* Studio Settings */
+.studio-page.studio-settings-page {
+  padding-top: 0 !important;
+}
+.studio-settings-page .studio-header {
+  padding-top: calc(env(safe-area-inset-top) + 20px) !important;
+}
+
+/* Home Studio */
+.hs-page {
+  padding-top: calc(env(safe-area-inset-top) + 34px) !important;
+}
+
+/* ---------- 3. 锁屏 / 主屏内容避开状态栏，但背景仍然延伸 ---------- */
+
+.lock-screen .lock-content {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* 主屏内容整体下移，避开状态栏 */
+.home-screen-v2 .home-v2-grid-wrap {
+  padding-top: calc(env(safe-area-inset-top) + 8px);
+}
+.home-v2-top {
+  display: none !important;
+}

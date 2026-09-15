@@ -560,7 +560,7 @@ export default function VoiceStudio() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="audio/*,.mp3,audio/mpeg"
+                accept="*/*"
                 onChange={(event) => {
                   const file =
                     event.target

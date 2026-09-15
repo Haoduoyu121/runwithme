@@ -266,7 +266,7 @@ export default function NewPostModal({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="*/*"
           multiple
           style={{
   position: "absolute",
