@@ -19100,3 +19100,600 @@ html[data-runwithme-theme="dark"] body {
 .home-v2-top {
   display: none !important;
 }
+/* =========================================================================
+   全部 Dock 统一放大 + 悬浮效果（终版覆盖）
+   - .dock           主屏
+   - .icity-dock     iCity
+   - .calendar-dock  Calendar
+   - .checkin-dock   Check-in
+   ========================================================================= */
+
+/* =========================================================================
+   1. 主屏 dock
+   ========================================================================= */
+
+.dock {
+  position: absolute !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+  transform: translateX(-50%) !important;
+
+  width: min(92%, 420px) !important;
+  height: auto !important;
+  min-height: 84px;
+
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: clamp(14px, 4vw, 26px) !important;
+
+  padding: 14px 22px !important;
+  border-radius: 30px !important;
+
+  background: rgba(255, 255, 255, 0.38) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+
+  box-shadow:
+    0 18px 40px rgba(80, 50, 60, 0.18),
+    0 4px 12px rgba(80, 50, 60, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+
+  backdrop-filter: blur(28px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8) !important;
+}
+
+html[data-runwithme-theme="dark"] .dock {
+  background: rgba(45, 40, 44, 0.55) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.dock-icon {
+  width: 58px !important;
+  height: 58px !important;
+  flex-shrink: 0;
+
+  border: none !important;
+  border-radius: 18px !important;
+
+  background: rgba(255, 255, 255, 0.55) !important;
+  color: var(--dark) !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 4px 10px rgba(80, 50, 60, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+html[data-runwithme-theme="dark"] .dock-icon {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff2e9 !important;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.dock-icon:hover {
+  transform: translateY(-3px) scale(1.05);
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+html[data-runwithme-theme="dark"] .dock-icon:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+.dock-icon:active {
+  transform: scale(0.94);
+}
+
+.dock-icon > svg {
+  width: 26px !important;
+  height: 26px !important;
+  display: block;
+}
+
+.dock-icon > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 26px !important;
+  line-height: 1;
+}
+
+.dock-icon:not(:has(> svg)):not(:has(> img)):not(:has(> span)) {
+  font-size: 26px !important;
+}
+
+.dock-icon > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+}
+
+/* =========================================================================
+   2. iCity dock
+   ========================================================================= */
+
+.icity-dock {
+  padding:
+    0 16px
+    calc(18px + env(safe-area-inset-bottom)) !important;
+}
+
+.icity-dock-inner {
+  height: 84px !important;
+  padding: 0 14px !important;
+  border-radius: 30px !important;
+
+  background: rgba(255, 248, 243, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+
+  box-shadow:
+    0 18px 40px rgba(80, 50, 60, 0.16),
+    0 4px 12px rgba(80, 50, 60, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+
+  backdrop-filter: blur(28px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8) !important;
+}
+
+html[data-runwithme-theme="dark"] .icity-dock-inner {
+  background: rgba(33, 28, 32, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.icity-dock-tab > svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.icity-dock-tab > span {
+  font-size: 11px !important;
+  margin-top: 3px;
+}
+
+/* 中间加号按钮 */
+.icity-dock-post-slot {
+  width: 64px !important;
+  height: 64px !important;
+}
+
+.icity-dock-post {
+  width: 58px !important;
+  height: 58px !important;
+
+  box-shadow:
+    0 12px 26px rgba(142, 101, 111, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18) !important;
+}
+
+.icity-dock-post > svg {
+  width: 26px !important;
+  height: 26px !important;
+}
+
+/* =========================================================================
+   3. Calendar dock
+   ========================================================================= */
+
+.calendar-dock {
+  padding:
+    0 16px
+    calc(18px + env(safe-area-inset-bottom)) !important;
+}
+
+.calendar-dock-inner {
+  height: 84px !important;
+  padding: 0 14px !important;
+  border-radius: 30px !important;
+
+  background: rgba(255, 248, 243, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+
+  box-shadow:
+    0 18px 40px rgba(80, 50, 60, 0.16),
+    0 4px 12px rgba(80, 50, 60, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+
+  backdrop-filter: blur(28px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8) !important;
+}
+
+html[data-runwithme-theme="dark"] .calendar-dock-inner {
+  background: rgba(33, 28, 32, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.calendar-dock-tab > svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.calendar-dock-tab > span {
+  font-size: 11px !important;
+  margin-top: 3px;
+}
+
+/* =========================================================================
+   4. Check-in dock
+   ========================================================================= */
+
+.checkin-dock {
+  padding:
+    0 16px
+    calc(18px + env(safe-area-inset-bottom)) !important;
+}
+
+.checkin-dock-inner {
+  height: 84px !important;
+  padding: 0 14px !important;
+  border-radius: 30px !important;
+
+  background: rgba(255, 248, 243, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+
+  box-shadow:
+    0 18px 40px rgba(80, 50, 60, 0.16),
+    0 4px 12px rgba(80, 50, 60, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+
+  backdrop-filter: blur(28px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8) !important;
+}
+
+html[data-runwithme-theme="dark"] .checkin-dock-inner {
+  background: rgba(33, 28, 32, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.45),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.checkin-dock-tab > svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.checkin-dock-tab > span {
+  font-size: 11px !important;
+  margin-top: 3px;
+}
+
+/* =========================================================================
+   5. 各 App 内容底部留白（避免被 dock 遮住）
+   ========================================================================= */
+
+.home-screen-v2 .home-v2-grid-wrap {
+  padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+}
+
+.icity-feed {
+  padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+}
+
+.calendar-scroll {
+  padding-bottom: calc(130px + env(safe-area-inset-bottom)) !important;
+}
+
+.checkin-scroll {
+  padding-bottom: calc(130px + env(safe-area-inset-bottom)) !important;
+}
+
+.icity-profile.is-embedded .icity-profile-scroll {
+  padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+}
+
+/* =========================================================================
+   6. 手机竖屏适配
+   ========================================================================= */
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .dock {
+    width: calc(100% - 28px) !important;
+    bottom: max(16px, env(safe-area-inset-bottom)) !important;
+    padding: 12px 16px !important;
+    border-radius: 28px !important;
+    min-height: 80px;
+    gap: clamp(10px, 3vw, 18px) !important;
+  }
+
+  .dock-icon {
+    width: 54px !important;
+    height: 54px !important;
+    border-radius: 16px !important;
+  }
+
+  .dock-icon > svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .dock-icon > span,
+  .dock-icon:not(:has(> svg)):not(:has(> img)):not(:has(> span)) {
+    font-size: 24px !important;
+  }
+
+  .icity-dock-inner,
+  .calendar-dock-inner,
+  .checkin-dock-inner {
+    height: 80px !important;
+    border-radius: 28px !important;
+  }
+
+  .icity-dock-tab > svg,
+  .calendar-dock-tab > svg,
+  .checkin-dock-tab > svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .icity-dock-post-slot {
+    width: 60px !important;
+    height: 60px !important;
+  }
+
+  .icity-dock-post {
+    width: 54px !important;
+    height: 54px !important;
+  }
+
+  .icity-dock-post > svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+}
+
+/* 小屏手机（iPhone SE 等） */
+@media (max-width: 380px) {
+  .dock {
+    padding: 10px 14px !important;
+    min-height: 74px;
+  }
+
+  .dock-icon {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 15px !important;
+  }
+
+  .dock-icon > svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .dock-icon > span,
+  .dock-icon:not(:has(> svg)):not(:has(> img)):not(:has(> span)) {
+    font-size: 22px !important;
+  }
+
+  .icity-dock-inner,
+  .calendar-dock-inner,
+  .checkin-dock-inner {
+    height: 74px !important;
+  }
+}
+/* =========================================================================
+   Music App · 头像放大 + 控制按钮美化（终版覆盖）
+   ========================================================================= */
+
+/* ---------- 1. 顶栏头像放大 ---------- */
+
+.music-v2-listeners {
+  padding: 6px 14px !important;
+  min-height: 52px;
+}
+
+.music-v2-listener-avatar,
+.music-v2-listener-add {
+  width: 46px !important;
+  height: 46px !important;
+  margin-left: -12px !important;
+  border-width: 2.5px !important;
+  border-color: rgba(255, 255, 255, 0.92) !important;
+  font-size: 17px !important;
+  box-shadow:
+    0 4px 12px rgba(80, 50, 60, 0.12),
+    0 1px 3px rgba(80, 50, 60, 0.08) !important;
+}
+
+.music-v2-listener-avatar:first-child {
+  margin-left: 0 !important;
+}
+
+.music-v2-listener-add {
+  font-size: 22px !important;
+  font-weight: 600 !important;
+  background: rgba(142, 101, 111, 0.14) !important;
+  color: #8e656f !important;
+}
+
+html[data-runwithme-theme="dark"] .music-v2-listener-add {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f3dfe4 !important;
+}
+
+/* 深色模式下头像边框更深一点 */
+html[data-runwithme-theme="dark"] .music-v2-listener-avatar,
+html[data-runwithme-theme="dark"] .music-v2-listener-add {
+  border-color: rgba(33, 28, 32, 0.9) !important;
+}
+
+/* ---------- 2. 播放控制区美化 ---------- */
+
+.music-v2-controls {
+  gap: 36px !important;
+  margin: 22px 0 24px !important;
+}
+
+/* 上一首 / 下一首 按钮 */
+.music-v2-btn {
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 50% !important;
+
+  background: rgba(255, 255, 255, 0.55) !important;
+  color: #8e656f !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  box-shadow:
+    0 6px 14px rgba(142, 101, 111, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease !important;
+}
+
+html[data-runwithme-theme="dark"] .music-v2-btn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #f3dfe4 !important;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+.music-v2-btn > svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.music-v2-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  background: rgba(255, 255, 255, 0.78) !important;
+  box-shadow:
+    0 10px 22px rgba(142, 101, 111, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
+}
+
+html[data-runwithme-theme="dark"] .music-v2-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.music-v2-btn:active {
+  transform: scale(0.94);
+}
+
+/* 中间播放 / 暂停 大按钮 */
+.music-v2-play-btn {
+  width: 76px !important;
+  height: 76px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  border: 0 !important;
+  border-radius: 50% !important;
+
+  background: linear-gradient(
+    145deg,
+    #8e656f 0%,
+    #a67b85 100%
+  ) !important;
+
+  color: #fff2e9 !important;
+
+  box-shadow:
+    0 14px 30px rgba(142, 101, 111, 0.32),
+    0 4px 10px rgba(142, 101, 111, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease !important;
+}
+
+.music-v2-play-btn > svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* 播放三角形稍微右移一点（视觉重心修正） */
+.music-v2-play-btn > svg[viewBox="0 0 24 24"]:has(path) {
+  transform: translateX(1px);
+}
+
+.music-v2-play-btn:hover {
+  transform: scale(1.06);
+  box-shadow:
+    0 18px 38px rgba(142, 101, 111, 0.38),
+    0 6px 14px rgba(142, 101, 111, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.music-v2-play-btn:active {
+  transform: scale(0.96);
+}
+
+/* loading 状态的小点 */
+.music-v2-play-dots {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  opacity: 0.9;
+}
+
+/* ---------- 3. 手机小屏适配 ---------- */
+
+@media (max-width: 400px) {
+  .music-v2-controls {
+    gap: 28px !important;
+  }
+
+  .music-v2-btn {
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  .music-v2-btn > svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .music-v2-play-btn {
+    width: 68px !important;
+    height: 68px !important;
+  }
+
+  .music-v2-play-btn > svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .music-v2-listener-avatar,
+  .music-v2-listener-add {
+    width: 42px !important;
+    height: 42px !important;
+  }
+}

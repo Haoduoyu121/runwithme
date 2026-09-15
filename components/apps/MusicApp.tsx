@@ -233,31 +233,75 @@ export default function MusicApp({ onBack }: MusicAppProps) {
       </section>
 
       {/* 控制 */}
-      <section className="music-v2-controls">
-        <button
-          className="music-v2-btn"
-          onClick={() => void previousTrack()}
-          aria-label="上一首"
-        >
-          ⏮
-        </button>
+<section className="music-v2-controls">
+  <button
+    className="music-v2-btn"
+    onClick={() => void previousTrack()}
+    aria-label="上一首"
+    type="button"
+  >
+    <svg
+      width="26"
+      height="26"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M6 5h2.2v14H6z" />
+      <path d="M20 5v14L9.5 12z" />
+    </svg>
+  </button>
 
-        <button
-          className="music-v2-play-btn"
-          onClick={() => void togglePlay()}
-          aria-label={isPlaying ? "暂停" : "播放"}
-        >
-          {loading ? "…" : isPlaying ? "Ⅱ" : "▶"}
-        </button>
+  <button
+    className="music-v2-play-btn"
+    onClick={() => void togglePlay()}
+    aria-label={isPlaying ? "暂停" : "播放"}
+    type="button"
+  >
+    {loading ? (
+      <span className="music-v2-play-dots">•••</span>
+    ) : isPlaying ? (
+      <svg
+        width="26"
+        height="26"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <rect x="6" y="5" width="4.2" height="14" rx="1" />
+        <rect x="13.8" y="5" width="4.2" height="14" rx="1" />
+      </svg>
+    ) : (
+      <svg
+        width="26"
+        height="26"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M8 5.5v13a1 1 0 0 0 1.55.83l10-6.5a1 1 0 0 0 0-1.66l-10-6.5A1 1 0 0 0 8 5.5z" />
+      </svg>
+    )}
+  </button>
 
-        <button
-          className="music-v2-btn"
-          onClick={() => void nextTrack()}
-          aria-label="下一首"
-        >
-          ⏭
-        </button>
-      </section>
+  <button
+    className="music-v2-btn"
+    onClick={() => void nextTrack()}
+    aria-label="下一首"
+    type="button"
+  >
+    <svg
+      width="26"
+      height="26"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M15.8 5H18v14h-2.2z" />
+      <path d="M4 5v14l10.5-7z" />
+    </svg>
+  </button>
+</section>
 
       {/* 右下角列表按钮 */}
       <button
