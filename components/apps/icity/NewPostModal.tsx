@@ -268,7 +268,13 @@ export default function NewPostModal({
           type="file"
           accept="image/*"
           multiple
-          hidden
+          style={{
+  position: "absolute",
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: "hidden",
+}}
           onChange={(e) => {
             const files = e.target.files;
             if (files && files.length > 0) {

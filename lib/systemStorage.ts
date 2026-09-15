@@ -13,11 +13,6 @@ export type AppId =
   | "questionnaire"
   | "checkin";
 
-/**
- * 自定义图标标记：
- * - null      → 使用默认图标
- * - "custom"  → IndexedDB 中有一张自定义图
- */
 export type AppIconState = "custom" | null;
 
 /* ---------- Dock ---------- */
@@ -43,6 +38,9 @@ export type SystemSettings = {
   dockIcons: Record<DockSlotId, AppIconState>;
   chatName: string;
   chatBackground: string | null;
+
+  /* ★ 新增：字体缩放（0.85 ~ 1.3） */
+  fontScale: number;
 };
 
 const SETTINGS_KEY = "runwithme_system_settings";
@@ -75,6 +73,7 @@ const defaultSettings: SystemSettings = {
   },
   chatName: "Levi & Erwin",
   chatBackground: null,
+  fontScale: 1,
 };
 
 export function loadSystemSettings(): SystemSettings {
@@ -89,7 +88,6 @@ export function loadSystemSettings(): SystemSettings {
       SETTINGS_KEY,
       JSON.stringify(defaultSettings)
     );
-
     return defaultSettings;
   }
 
@@ -111,6 +109,14 @@ export function loadSystemSettings(): SystemSettings {
         ...defaultSettings.dockIcons,
         ...(parsed.dockIcons ?? {}),
       },
+      /* ★ 兼容旧数据 + 范围限制 */
+      fontScale:
+        typeof parsed.fontScale === "number"
+          ? Math.min(
+              1.3,
+              Math.max(0.85, parsed.fontScale)
+            )
+          : 1,
     };
   } catch {
     return defaultSettings;
@@ -121,7 +127,6 @@ export function saveSystemSettings(
   settings: SystemSettings
 ): void {
   if (typeof window === "undefined") return;
-
   window.localStorage.setItem(
     SETTINGS_KEY,
     JSON.stringify(settings)
@@ -151,12 +156,10 @@ export function updateSystemSettings(
   };
 
   saveSystemSettings(next);
-
   return next;
 }
 
 export function clearSystemSettings(): void {
   if (typeof window === "undefined") return;
-
   window.localStorage.removeItem(SETTINGS_KEY);
 }

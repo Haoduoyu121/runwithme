@@ -989,7 +989,7 @@ export default function CardStudioApp({
                 MP3 文件
                 <input
                   type="file"
-                  accept=".mp3,audio/mpeg"
+                  accept="audio/*,.mp3,audio/mpeg"
                   onChange={handleAddFile}
                 />
               </label>
@@ -1020,7 +1020,7 @@ export default function CardStudioApp({
                 贴纸图片
                 <input
                   type="file"
-                  accept="image/jpeg,image/png"
+                  accept="image/*"
                   onChange={handleAddFile}
                 />
               </label>

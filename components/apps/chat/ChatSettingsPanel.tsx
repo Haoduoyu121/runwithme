@@ -375,7 +375,7 @@ export default function ChatSettingsPanel({
                   <input
                     type="file"
                     accept="image/*"
-                    hidden
+                    style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
                     onChange={(event) => {
                       const file =
                         event.target.files?.[0];
@@ -508,8 +508,14 @@ export default function ChatSettingsPanel({
                   上传背景
                   <input
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    hidden
+                    accept="image/*"
+                    style={{
+  position: "absolute",
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: "hidden",
+}}
                     onChange={(event) => {
                       const file =
                         event.target.files?.[0];
@@ -567,8 +573,8 @@ export default function ChatSettingsPanel({
                         上传
                         <input
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          hidden
+                          accept="image/*"
+                         style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
                           onChange={(event) => {
                             const file =
                               event.target.files?.[0];

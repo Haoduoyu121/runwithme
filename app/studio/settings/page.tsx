@@ -69,12 +69,7 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024 * 1024) {
     return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
   }
-  return `${(
-    bytes /
-    1024 /
-    1024 /
-    1024
-  ).toFixed(2)} GB`;
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
 async function getDBSize(
@@ -111,8 +106,7 @@ async function getDBSize(
 
         const v = cursor.value;
         if (v instanceof Blob) size += v.size;
-        else if (typeof v === "string")
-          size += v.length * 2;
+        else if (typeof v === "string") size += v.length * 2;
         else size += 100;
 
         cursor.continue();
@@ -129,7 +123,14 @@ async function getDBSize(
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { theme, setTheme } = useSystem();
+
+  /* ★ 新增 settings / updateSettings */
+  const {
+    theme,
+    setTheme,
+    settings,
+    updateSettings,
+  } = useSystem();
 
   const [cardCount, setCardCount] = useState(0);
   const [message, setMessage] = useState("");
@@ -419,6 +420,27 @@ export default function SettingsPage() {
     }, 900);
   };
 
+  /* ---------- 字体缩放 ---------- */
+  const fontScale = settings?.fontScale ?? 1;
+
+  function handleDecFontScale() {
+    const next =
+      Math.round((fontScale - 0.05) * 100) / 100;
+    if (next < 0.85) return;
+    updateSettings({ fontScale: next });
+  }
+
+  function handleIncFontScale() {
+    const next =
+      Math.round((fontScale + 0.05) * 100) / 100;
+    if (next > 1.3) return;
+    updateSettings({ fontScale: next });
+  }
+
+  function handleResetFontScale() {
+    updateSettings({ fontScale: 1 });
+  }
+
   const usedPercent =
     storageInfo && storageInfo.quota > 0
       ? Math.min(
@@ -468,6 +490,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="settings-card">
+            {/* 主题 */}
             <div className="settings-row">
               <div>
                 <strong>RunWithme Theme</strong>
@@ -492,6 +515,48 @@ export default function SettingsPage() {
                   onClick={() => handleSetTheme("dark")}
                 >
                   ☾ Dark
+                </button>
+              </div>
+            </div>
+
+            <div className="settings-divider" />
+
+            {/* ★ 字体大小 */}
+            <div className="settings-row">
+              <div>
+                <strong>字体大小</strong>
+                <span>
+                  调整整个 RunWithme 的显示比例
+                </span>
+              </div>
+
+              <div className="settings-font-scale">
+                <button
+                  onClick={handleDecFontScale}
+                  disabled={fontScale <= 0.85}
+                  aria-label="缩小"
+                >
+                  A−
+                </button>
+
+                <span className="settings-font-scale-value">
+                  {Math.round(fontScale * 100)}%
+                </span>
+
+                <button
+                  onClick={handleIncFontScale}
+                  disabled={fontScale >= 1.3}
+                  aria-label="放大"
+                >
+                  A+
+                </button>
+
+                <button
+                  className="settings-font-scale-reset"
+                  onClick={handleResetFontScale}
+                  disabled={fontScale === 1}
+                >
+                  重置
                 </button>
               </div>
             </div>
@@ -673,7 +738,14 @@ export default function SettingsPage() {
                   type="file"
                   accept=".json,application/json"
                   onChange={importEverything}
-                  hidden
+                  style={{
+                    position: "absolute",
+                    width: 1,
+                    height: 1,
+                    opacity: 0,
+                    pointerEvents: "none",
+                    overflow: "hidden",
+                  }}
                 />
               </label>
             </div>
@@ -729,7 +801,14 @@ export default function SettingsPage() {
                   type="file"
                   accept=".json,application/json"
                   onChange={importCards}
-                  hidden
+                  style={{
+                    position: "absolute",
+                    width: 1,
+                    height: 1,
+                    opacity: 0,
+                    pointerEvents: "none",
+                    overflow: "hidden",
+                  }}
                 />
               </label>
             </div>

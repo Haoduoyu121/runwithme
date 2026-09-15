@@ -9,15 +9,15 @@ import { ICityProvider } from "@/lib/ICityContext";
 import { PomodoroProvider } from "@/lib/PomodoroContext";
 
 import CallUI from "@/components/call/CallUI";
+import FontScaleApplier from "@/components/FontScaleApplier";
 
 export const metadata: Metadata = {
   title: "RunWithme",
-  description:
-    "a little world beyond the walls",
+  description: "a little world beyond the walls",
   applicationName: "RunWithme",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "RunWithme",
   },
   formatDetection: {
@@ -37,8 +37,14 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fff2e9" },
-    { media: "(prefers-color-scheme: dark)", color: "#17131a" },
+    {
+      media: "(prefers-color-scheme: light)",
+      color: "#fff2e9",
+    },
+    {
+      media: "(prefers-color-scheme: dark)",
+      color: "#17131a",
+    },
   ],
 };
 
@@ -58,6 +64,7 @@ export default function RootLayout({
                   <PomodoroProvider>
                     {children}
                     <CallUI />
+                    <FontScaleApplier />
                   </PomodoroProvider>
                 </ICityProvider>
               </ChatProvider>

@@ -18844,3 +18844,156 @@ html[data-runwithme-theme="dark"]
   gap: 4px;
   margin-bottom: 5px;
 }
+/* =========================================================================
+   全屏覆盖状态栏
+   ========================================================================= */
+
+/* 让背景延伸到状态栏下面 */
+html,
+body {
+  background-color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"],
+html[data-runwithme-theme="dark"] body {
+  background-color: #17131a;
+}
+
+/* 锁屏 / 主屏：壁纸延伸到状态栏，但内容避开 */
+.lock-screen,
+.home-screen {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* App 页面：背景色延伸到状态栏 */
+.app-screen {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Chat 顶栏：状态栏位置用页面背景填充，但 header 自身避开状态栏 */
+.chat-page .telegram-header {
+  padding-top: env(safe-area-inset-top);
+}
+/* =========================================================================
+   字体缩放控制（Settings）
+   ========================================================================= */
+
+.settings-font-scale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.settings-font-scale > button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(142, 101, 111, 0.1);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.settings-font-scale > button:hover:not(:disabled) {
+  background: rgba(142, 101, 111, 0.2);
+  transform: translateY(-1px);
+}
+
+.settings-font-scale > button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.settings-font-scale-value {
+  min-width: 48px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.settings-font-scale-reset {
+  width: auto !important;
+  padding: 0 12px;
+  font-size: 11px !important;
+}
+
+@media (max-width: 600px) {
+  .settings-font-scale {
+    flex-wrap: wrap;
+  }
+}
+
+/* =========================================================================
+   全屏状态栏覆盖（iOS PWA）
+   ========================================================================= */
+
+html,
+body {
+  background-color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"],
+html[data-runwithme-theme="dark"] body {
+  background-color: #17131a;
+}
+
+/* 锁屏 / 主屏：壁纸延伸到状态栏 */
+.lock-screen,
+.home-screen {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* App 页面：背景色延伸到状态栏 */
+.app-screen {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Chat 顶栏：状态栏位置用页面背景填充 */
+.chat-page .telegram-header {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Calendar / Notes / Check-in 等自带 header 的 App */
+.calendar-header,
+.notes-header,
+.checkin-header,
+.q-header,
+.icity-header {
+  padding-top: calc(
+    env(safe-area-inset-top) + 12px
+  );
+}
+/* =========================================================================
+   iOS 上传修复 · File input 隐藏样式（追加覆盖）
+   =========================================================================
+   原因：iOS Safari 不允许对 display: none 的 <input type="file"> 触发
+   解决：用 position: absolute + opacity: 0 替代 display: none
+   ========================================================================= */
+
+/* HomeStudio 里的隐藏 file input */
+.hs-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  /* 注意：不要加 pointer-events: none，
+     否则点击外层 <label> 无法触发 */
+}
+
+/* Studio 表情包上传的隐藏 file input */
+.studio-sticker-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}

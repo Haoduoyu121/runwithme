@@ -176,7 +176,13 @@ export default function AddWidgetModal({
                 ref={fileRef}
                 type="file"
                 accept="image/*"
-                hidden
+                style={{
+  position: "absolute",
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: "hidden",
+}}
                 onChange={(e) => {
                   const f = e.target.files?.[0] ?? null;
                   setImageFile(f);

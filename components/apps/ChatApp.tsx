@@ -1149,7 +1149,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
             id="chat-image-input"
             type="file"
             accept="image/*"
-            hidden
+            style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
             onChange={(event) => {
               const file = event.target.files?.[0];
               if (!file) return;
