@@ -19697,3 +19697,69 @@ html[data-runwithme-theme="dark"] .music-v2-btn:hover {
     height: 42px !important;
   }
 }
+/* =========================================================================
+   Dock · 贴底修复
+   ========================================================================= */
+
+.dock {
+  bottom: env(safe-area-inset-bottom) !important;
+}
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .dock {
+    bottom: env(safe-area-inset-bottom) !important;
+  }
+}
+/* =========================================================================
+   所有 App 底栏 · 贴底修复
+   ========================================================================= */
+
+/* ---------- 1. 主屏 Dock ---------- */
+
+.dock {
+  bottom: env(safe-area-inset-bottom) !important;
+}
+
+/* ---------- 2. iCity Dock ---------- */
+
+.icity-dock {
+  padding: 0 16px env(safe-area-inset-bottom) !important;
+}
+
+.icity-dock-inner {
+  margin-bottom: 0 !important;
+}
+
+/* ---------- 3. Calendar Dock ---------- */
+
+.calendar-dock {
+  padding: 0 16px env(safe-area-inset-bottom) !important;
+}
+
+.calendar-dock-inner {
+  margin-bottom: 0 !important;
+}
+
+/* ---------- 4. Check-in Dock ---------- */
+
+.checkin-dock {
+  padding: 0 16px env(safe-area-inset-bottom) !important;
+}
+
+.checkin-dock-inner {
+  margin-bottom: 0 !important;
+}
+
+/* ---------- 5. 手机竖屏兜底 ---------- */
+
+@media (orientation: portrait) and (max-width: 600px) {
+  .dock {
+    bottom: env(safe-area-inset-bottom) !important;
+  }
+
+  .icity-dock,
+  .calendar-dock,
+  .checkin-dock {
+    padding: 0 14px env(safe-area-inset-bottom) !important;
+  }
+}
