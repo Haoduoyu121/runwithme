@@ -8,6 +8,8 @@ export type MusicItem = {
   enabled: boolean;
   source: MusicSource;
   fileName?: string;
+  /* ★ 封面在 IndexedDB 中的 id */
+  coverId?: string;
 };
 
 export const defaultMusic: MusicItem[] = [

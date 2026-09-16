@@ -141,11 +141,20 @@ export function MusicProvider({
           );
         }
 
-        audio.src = source;
+                audio.src = source;
         audio.load();
 
         setCurrentTime(0);
         setDuration(0);
+
+        /* ★ 派发"切歌"事件 */
+        try {
+          window.dispatchEvent(
+            new CustomEvent("runwithme:music-track-change", {
+              detail: { index, item },
+            })
+          );
+        } catch {}
 
         if (shouldPlay) {
           await audio.play();
@@ -264,8 +273,22 @@ export function MusicProvider({
           : 0
       );
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+        const handlePlay = () => {
+      setIsPlaying(true);
+      try {
+        window.dispatchEvent(
+          new Event("runwithme:music-play")
+        );
+      } catch {}
+    };
+        const handlePause = () => {
+      setIsPlaying(false);
+      try {
+        window.dispatchEvent(
+          new Event("runwithme:music-pause")
+        );
+      } catch {}
+    };
 
     const handleEnded = () => {
       const list = musicRef.current;

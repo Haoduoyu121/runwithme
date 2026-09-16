@@ -20156,3 +20156,786 @@ html[data-runwithme-theme="dark"]
 .chat-call-bubble {
   min-width: 160px;
 }
+/* =========================================================================
+   Music · 邀请状态提示
+   ========================================================================= */
+
+.music-v2-invite-banner {
+  flex-shrink: 0;
+  margin: 0 14px 10px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: musicInviteIn 0.28s ease;
+}
+
+@keyframes musicInviteIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.music-v2-invite-pending {
+  background: rgba(252, 190, 195, 0.35);
+  color: #8e656f;
+}
+
+.music-v2-invite-accepted {
+  background: rgba(126, 209, 126, 0.22);
+  color: #2d6f2d;
+}
+
+.music-v2-invite-rejected {
+  background: rgba(142, 101, 111, 0.14);
+  color: #8e656f;
+}
+
+.music-v2-invite-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: musicInviteDot 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes musicInviteDot {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+html[data-runwithme-theme="dark"]
+  .music-v2-invite-pending {
+  background: rgba(252, 190, 195, 0.15);
+  color: #f3dfe4;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-v2-invite-accepted {
+  background: rgba(126, 209, 126, 0.15);
+  color: #8fdc8f;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-v2-invite-rejected {
+  background: rgba(255, 255, 255, 0.06);
+  color: #d9bcc4;
+}
+/* =========================================================================
+   Music · 顶栏空间修复 + 邀请 banner
+   ========================================================================= */
+
+/* ---------- 顶栏：加高、加间距、头像缩小到 42px ---------- */
+
+.music-v2-header {
+  min-height: 72px !important;
+  padding: 10px 16px !important;
+  gap: 12px !important;
+}
+
+.music-v2-listeners {
+  padding: 4px 10px !important;
+  min-height: 0 !important;
+}
+
+.music-v2-listener-avatar,
+.music-v2-listener-add {
+  width: 42px !important;
+  height: 42px !important;
+  margin-left: -10px !important;
+  border-width: 2px !important;
+  border-color: rgba(255, 255, 255, 0.92) !important;
+  font-size: 15px !important;
+  box-shadow:
+    0 3px 10px rgba(80, 50, 60, 0.1),
+    0 1px 2px rgba(80, 50, 60, 0.06) !important;
+}
+
+.music-v2-listener-avatar:first-child {
+  margin-left: 0 !important;
+}
+
+.music-v2-listener-add {
+  font-size: 20px !important;
+  background: rgba(142, 101, 111, 0.14) !important;
+  color: #8e656f !important;
+}
+
+html[data-runwithme-theme="dark"] .music-v2-listener-add {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f3dfe4 !important;
+}
+
+html[data-runwithme-theme="dark"] .music-v2-listener-avatar,
+html[data-runwithme-theme="dark"] .music-v2-listener-add {
+  border-color: rgba(33, 28, 32, 0.9) !important;
+}
+
+/* ---------- 邀请 banner ---------- */
+
+.music-v2-invite-banner {
+  flex-shrink: 0;
+  margin: 0 16px 10px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: musicInviteIn 0.28s ease;
+}
+
+@keyframes musicInviteIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.music-v2-invite-pending {
+  background: rgba(252, 190, 195, 0.35);
+  color: #8e656f;
+}
+
+.music-v2-invite-accepted {
+  background: rgba(126, 209, 126, 0.22);
+  color: #2d6f2d;
+}
+
+.music-v2-invite-rejected {
+  background: rgba(142, 101, 111, 0.14);
+  color: #8e656f;
+}
+
+.music-v2-invite-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: musicInviteDot 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes musicInviteDot {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+
+html[data-runwithme-theme="dark"] .music-v2-invite-pending {
+  background: rgba(252, 190, 195, 0.15);
+  color: #f3dfe4;
+}
+
+html[data-runwithme-theme="dark"] .music-v2-invite-accepted {
+  background: rgba(126, 209, 126, 0.15);
+  color: #8fdc8f;
+}
+
+html[data-runwithme-theme="dark"] .music-v2-invite-rejected {
+  background: rgba(255, 255, 255, 0.06);
+  color: #d9bcc4;
+}
+/* =========================================================================
+   Music · 一起听聊天
+   ========================================================================= */
+
+.music-chat-fab {
+  position: absolute;
+  right: 76px;
+  bottom: 32px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.12);
+  color: inherit;
+  font-size: 18px;
+  cursor: pointer;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.music-chat-fab:hover {
+  background: rgba(142, 101, 111, 0.22);
+}
+
+.music-chat-fab:active {
+  transform: scale(0.94);
+}
+
+/* ---------- 聊天面板 ---------- */
+
+.music-chat-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 150;
+  max-height: 70%;
+  display: flex;
+  flex-direction: column;
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+  background: rgba(255, 248, 245, 0.98);
+  border: 1px solid rgba(142, 101, 111, 0.1);
+  border-bottom: 0;
+  box-shadow: 0 -20px 50px rgba(60, 40, 45, 0.18);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: musicChatIn 0.22s ease;
+  overflow: hidden;
+}
+
+@keyframes musicChatIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+html[data-runwithme-theme="dark"] .music-chat-panel {
+  background: rgba(33, 28, 32, 0.98);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.music-chat-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.08);
+}
+
+.music-chat-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.music-chat-icon-btn {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.08);
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.music-chat-icon-btn:hover {
+  background: rgba(142, 101, 111, 0.18);
+}
+
+.music-chat-disabled,
+.music-chat-empty {
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+.music-chat-messages {
+  flex: 1;
+  min-height: 180px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.music-chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+}
+
+.music-chat-msg-you {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.music-chat-msg-other {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.music-chat-msg-name {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.55;
+  margin-bottom: 2px;
+  padding: 0 6px;
+}
+
+.music-chat-msg-bubble {
+  padding: 8px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.music-chat-msg-you .music-chat-msg-bubble {
+  background: #fcbec3;
+  color: #4f3940;
+  border-bottom-right-radius: 5px;
+}
+
+.music-chat-msg-other .music-chat-msg-bubble {
+  background: rgba(142, 101, 111, 0.1);
+  color: inherit;
+  border-bottom-left-radius: 5px;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-chat-msg-other
+  .music-chat-msg-bubble {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.music-chat-msg-typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+}
+
+.music-chat-msg-typing span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+  animation: musicChatTyping 1.2s infinite ease-in-out;
+}
+
+.music-chat-msg-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.music-chat-msg-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes musicChatTyping {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+.music-chat-input-row {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(142, 101, 111, 0.08);
+}
+
+.music-chat-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"] .music-chat-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.music-chat-input:focus {
+  border-color: rgba(142, 101, 111, 0.4);
+}
+
+.music-chat-send {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.music-chat-send:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.music-chat-send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.music-chat-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* =========================================================================
+   Music · 卡片设置
+   ========================================================================= */
+
+.music-chat-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: musicDrawerFade 0.2s ease;
+}
+
+.music-chat-settings {
+  width: min(560px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  background: #fff8f3;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+html[data-runwithme-theme="dark"] .music-chat-settings {
+  background: #211c20;
+  color: #fff2e9;
+}
+
+.music-chat-settings-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.08);
+}
+
+.music-chat-settings-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.music-chat-settings-header button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.music-chat-settings-add {
+  padding: 14px 20px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.music-chat-settings-add-row {
+  display: flex;
+  gap: 8px;
+}
+
+.music-chat-settings-add-row select {
+  padding: 8px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.75);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-chat-settings-add-row
+  select {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.music-chat-settings-add-row button {
+  flex: 1;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.music-chat-settings-add-row button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.music-chat-settings-add textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-chat-settings-add
+  textarea {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.music-chat-settings-hint {
+  padding: 0 20px 12px;
+  font-size: 10px;
+  opacity: 0.55;
+  line-height: 1.5;
+}
+
+.music-chat-settings-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.music-chat-settings-empty {
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.music-chat-settings-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(142, 101, 111, 0.06);
+}
+
+.music-chat-settings-item.is-disabled {
+  opacity: 0.45;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-chat-settings-item {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.music-chat-settings-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff2e9;
+}
+
+.music-chat-settings-badge.badge-levi {
+  background: #8e656f;
+}
+
+.music-chat-settings-badge.badge-erwin {
+  background: #9b7f86;
+}
+
+.music-chat-settings-item input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(142, 101, 111, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-chat-settings-item
+  input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.music-chat-settings-item button {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(142, 101, 111, 0.12);
+  color: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.music-chat-settings-item button.danger {
+  background: rgba(224, 93, 93, 0.14);
+  color: #e05d5d;
+}
+
+/* 小屏适配 */
+@media (max-width: 500px) {
+  .music-chat-panel {
+    max-height: 80%;
+  }
+}
+/* =========================================================================
+   Music · 专辑封面
+   ========================================================================= */
+
+/* ---------- 唱片：从 div 改成 button 需要重置默认样式 ---------- */
+
+.music-v2-disc {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  outline: none;
+}
+
+/* 点击态微缩 */
+.music-v2-disc:active {
+  transform: scale(0.98);
+}
+
+/* ---------- 唱片封面图 ---------- */
+
+.music-v2-disc-cover.has-image {
+  padding: 0;
+  background: none;
+  overflow: hidden;
+}
+
+.music-v2-disc-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+/* ---------- 列表抽屉的封面缩略图 ---------- */
+
+.music-v2-drawer-item-cover-img {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---------- 管理面板的封面缩略图 ---------- */
+
+.music-v2-panel-item-cover {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+  background: rgba(142, 101, 111, 0.06);
+}
+
+.music-v2-panel-item-cover-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8e656f;
+  font-size: 18px;
+}
+
+.music-v2-panel-item-cover-btn {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(252, 190, 195, 0.32);
+  color: #8e656f;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.music-v2-panel-item-cover-btn:hover {
+  background: rgba(252, 190, 195, 0.55);
+}
+
+html[data-runwithme-theme="dark"]
+  .music-v2-panel-item-cover-btn {
+  background: rgba(252, 190, 195, 0.15);
+  color: #f3dfe4;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-v2-panel-item-cover-btn:hover {
+  background: rgba(252, 190, 195, 0.28);
+}

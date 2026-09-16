@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   defaultMusic,
@@ -8,18 +8,32 @@ import {
   type MusicSource,
 } from "@/data/music";
 
-import {
-  loadMusic,
-  saveMusic,
-} from "@/lib/musicStorage";
+import { loadMusic, saveMusic } from "@/lib/musicStorage";
 
 import {
   saveMusicFile,
   deleteMusicFile,
 } from "@/lib/musicFiles";
 
+import {
+  saveMusicCover,
+  getMusicCover,
+  deleteMusicCover,
+} from "@/lib/musicCoverFiles";
+
 type MusicUploadPanelProps = {
   onClose: () => void;
+};
+
+const IOS_SAFE_FILE_STYLE: React.CSSProperties = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: "hidden",
+  zIndex: -1,
 };
 
 export default function MusicUploadPanel({
@@ -34,9 +48,46 @@ export default function MusicUploadPanel({
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
+  /* ★ 管理面板封面 */
+  const [coverUrls, setCoverUrls] = useState<
+    Record<string, string>
+  >({});
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const coverTargetRef = useRef<string | null>(null);
+
   useEffect(() => {
     setMusic(loadMusic(defaultMusic));
   }, []);
+
+  /* 加载所有封面缩略图 */
+  useEffect(() => {
+    let cancelled = false;
+    const created: string[] = [];
+
+    async function load() {
+      const next: Record<string, string> = {};
+      for (const item of music) {
+        if (!item.coverId) continue;
+        try {
+          const blob = await getMusicCover(item.coverId);
+          if (!blob || cancelled) continue;
+          const u = URL.createObjectURL(blob);
+          created.push(u);
+          next[item.id] = u;
+        } catch (e) {
+          console.error("加载封面失败:", e);
+        }
+      }
+      if (!cancelled) setCoverUrls(next);
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      created.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [music]);
 
   function updateList(next: MusicItem[]) {
     setMusic(next);
@@ -62,8 +113,21 @@ export default function MusicUploadPanel({
         alert("请选择 MP3 文件。");
         return;
       }
-      if (!file.name.toLowerCase().endsWith(".mp3")) {
-        alert("目前只接受 MP3 文件。");
+
+      const nameLower = file.name.toLowerCase();
+      const isAudioByName =
+        nameLower.endsWith(".mp3") ||
+        nameLower.endsWith(".m4a") ||
+        nameLower.endsWith(".wav") ||
+        nameLower.endsWith(".aac") ||
+        nameLower.endsWith(".ogg") ||
+        nameLower.endsWith(".opus");
+      const isAudioByType = file.type
+        .toLowerCase()
+        .startsWith("audio/");
+
+      if (!isAudioByName && !isAudioByType) {
+        alert("目前只接受音频文件。");
         return;
       }
 
@@ -129,6 +193,15 @@ export default function MusicUploadPanel({
       }
     }
 
+    /* ★ 同时删除封面 */
+    if (item.coverId) {
+      try {
+        await deleteMusicCover(item.coverId);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     updateList(music.filter((m) => m.id !== item.id));
   }
 
@@ -140,6 +213,69 @@ export default function MusicUploadPanel({
           : m
       )
     );
+  }
+
+  /* ★ 封面管理 */
+  function handleCoverClick(itemId: string) {
+    coverTargetRef.current = itemId;
+    coverInputRef.current?.click();
+  }
+
+  async function handleCoverFile(file: File) {
+    const targetId = coverTargetRef.current;
+    coverTargetRef.current = null;
+    if (!targetId) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("请选择图片文件。");
+      return;
+    }
+
+    const coverId = `cover-${targetId}`;
+
+    try {
+      await saveMusicCover(coverId, file);
+
+      const next = music.map((m) =>
+        m.id === targetId
+          ? { ...m, coverId }
+          : m
+      );
+      updateList(next);
+
+      const u = URL.createObjectURL(file);
+      setCoverUrls((prev) => ({
+        ...prev,
+        [targetId]: u,
+      }));
+    } catch (e) {
+      console.error("保存封面失败:", e);
+      alert("封面保存失败。");
+    }
+  }
+
+  async function handleCoverRemove(item: MusicItem) {
+    if (!item.coverId) return;
+    if (!window.confirm("移除这张封面？")) return;
+
+    try {
+      await deleteMusicCover(item.coverId);
+    } catch (e) {
+      console.error(e);
+    }
+
+    const next = music.map((m) =>
+      m.id === item.id ? { ...m, coverId: undefined } : m
+    );
+    updateList(next);
+
+    setCoverUrls((prev) => {
+      const copy = { ...prev };
+      const u = copy[item.id];
+      if (u) URL.revokeObjectURL(u);
+      delete copy[item.id];
+      return copy;
+    });
   }
 
   return (
@@ -183,7 +319,7 @@ export default function MusicUploadPanel({
                   setSource(e.target.value as MusicSource)
                 }
               >
-                <option value="file">本地 MP3</option>
+                <option value="file">本地音频</option>
                 <option value="url">网络 URL</option>
               </select>
             </label>
@@ -210,10 +346,10 @@ export default function MusicUploadPanel({
 
             {source === "file" ? (
               <label>
-                MP3 文件
+                音频文件
                 <input
                   type="file"
-                  accept="*/*"
+                  accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus"
                   onChange={(e) =>
                     setFile(e.target.files?.[0] ?? null)
                   }
@@ -247,39 +383,92 @@ export default function MusicUploadPanel({
                 还没有音乐
               </div>
             ) : (
-              music.map((item) => (
-                <div
-                  key={item.id}
-                  className="music-v2-panel-item"
-                >
-                  <div className="music-v2-panel-item-info">
-                    <strong>{item.title}</strong>
-                    <small>
-                      {item.artist || "RunWithme"}
-                      {item.fileName
-                        ? ` · ${item.fileName}`
-                        : ""}
-                    </small>
+              music.map((item) => {
+                const coverUrl = coverUrls[item.id];
+
+                return (
+                  <div
+                    key={item.id}
+                    className="music-v2-panel-item"
+                  >
+                    {coverUrl ? (
+                      <img
+                        src={coverUrl}
+                        alt=""
+                        className="music-v2-panel-item-cover"
+                      />
+                    ) : (
+                      <div className="music-v2-panel-item-cover music-v2-panel-item-cover-empty">
+                        ♪
+                      </div>
+                    )}
+
+                    <div className="music-v2-panel-item-info">
+                      <strong>{item.title}</strong>
+                      <small>
+                        {item.artist || "RunWithme"}
+                        {item.fileName
+                          ? ` · ${item.fileName}`
+                          : ""}
+                      </small>
+                    </div>
+
+                    <button
+                      className="music-v2-panel-item-cover-btn"
+                      onClick={() =>
+                        handleCoverClick(item.id)
+                      }
+                      title="设置封面"
+                    >
+                      {item.coverId ? "换封面" : "设封面"}
+                    </button>
+
+                    {item.coverId && (
+                      <button
+                        className="music-v2-panel-item-cover-btn"
+                        onClick={() =>
+                          void handleCoverRemove(item)
+                        }
+                        title="移除封面"
+                      >
+                        移除
+                      </button>
+                    )}
+
+                    <button
+                      className="music-v2-panel-item-toggle"
+                      onClick={() => handleToggle(item)}
+                    >
+                      {item.enabled ? "启用" : "停用"}
+                    </button>
+
+                    <button
+                      className="music-v2-panel-item-delete"
+                      onClick={() =>
+                        void handleDelete(item)
+                      }
+                    >
+                      删除
+                    </button>
                   </div>
-
-                  <button
-                    className="music-v2-panel-item-toggle"
-                    onClick={() => handleToggle(item)}
-                  >
-                    {item.enabled ? "启用" : "停用"}
-                  </button>
-
-                  <button
-                    className="music-v2-panel-item-delete"
-                    onClick={() => void handleDelete(item)}
-                  >
-                    删除
-                  </button>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
+
+        {/* ★ 隐藏的封面 file input */}
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          style={IOS_SAFE_FILE_STYLE}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleCoverFile(file);
+            e.target.value = "";
+          }}
+        />
       </div>
     </div>
   );

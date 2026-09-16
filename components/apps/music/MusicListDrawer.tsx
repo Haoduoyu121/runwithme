@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { useMusic } from "@/lib/MusicContext";
+import { getMusicCover } from "@/lib/musicCoverFiles";
 
 type MusicListDrawerProps = {
   onClose: () => void;
@@ -12,6 +15,39 @@ export default function MusicListDrawer({
   onSelect,
 }: MusicListDrawerProps) {
   const { music, currentIndex, isPlaying } = useMusic();
+
+  const [coverUrls, setCoverUrls] = useState<
+    Record<string, string>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const created: string[] = [];
+
+    async function load() {
+      const next: Record<string, string> = {};
+      for (const item of music) {
+        if (!item.coverId) continue;
+        try {
+          const blob = await getMusicCover(item.coverId);
+          if (!blob || cancelled) continue;
+          const url = URL.createObjectURL(blob);
+          created.push(url);
+          next[item.id] = url;
+        } catch (e) {
+          console.error("加载封面失败:", e);
+        }
+      }
+      if (!cancelled) setCoverUrls(next);
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      created.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [music]);
 
   return (
     <div
@@ -38,34 +74,46 @@ export default function MusicListDrawer({
               还没有音乐
             </div>
           ) : (
-            music.map((item, index) => (
-              <button
-                key={item.id}
-                className={
-                  index === currentIndex
-                    ? "music-v2-drawer-item active"
-                    : "music-v2-drawer-item"
-                }
-                onClick={() => onSelect(index)}
-              >
-                <div className="music-v2-drawer-item-cover">
-                  {index === currentIndex && isPlaying
-                    ? "♫"
-                    : "♪"}
-                </div>
+            music.map((item, index) => {
+              const coverUrl = coverUrls[item.id];
 
-                <div className="music-v2-drawer-item-info">
-                  <strong>{item.title}</strong>
-                  <small>
-                    {item.artist || "RunWithme"}
-                  </small>
-                </div>
+              return (
+                <button
+                  key={item.id}
+                  className={
+                    index === currentIndex
+                      ? "music-v2-drawer-item active"
+                      : "music-v2-drawer-item"
+                  }
+                  onClick={() => onSelect(index)}
+                >
+                  {coverUrl ? (
+                    <img
+                      src={coverUrl}
+                      alt=""
+                      className="music-v2-drawer-item-cover-img"
+                    />
+                  ) : (
+                    <div className="music-v2-drawer-item-cover">
+                      {index === currentIndex && isPlaying
+                        ? "♫"
+                        : "♪"}
+                    </div>
+                  )}
 
-                <div className="music-v2-drawer-item-source">
-                  {item.source === "file" ? "MP3" : "URL"}
-                </div>
-              </button>
-            ))
+                  <div className="music-v2-drawer-item-info">
+                    <strong>{item.title}</strong>
+                    <small>
+                      {item.artist || "RunWithme"}
+                    </small>
+                  </div>
+
+                  <div className="music-v2-drawer-item-source">
+                    {item.source === "file" ? "MP3" : "URL"}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </aside>
