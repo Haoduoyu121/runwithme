@@ -451,7 +451,7 @@ export default function Home() {
         const file = await getWallpaperFile(
           CUSTOM_LOCK_WALLPAPER
         );
-          /* ★ 把当前壁纸同步到 html/body，覆盖 iOS PWA 安全区 */
+          /* ★ 把当前壁纸通过 CSS 变量同步到 html，覆盖 iOS PWA 安全区 */
   useEffect(() => {
     if (!systemSettings) return;
 
@@ -477,15 +477,10 @@ export default function Home() {
 
     const current = !unlocked ? lockWp : homeWp;
 
-    const setBg = (el: HTMLElement) => {
-      el.style.background = current;
-      el.style.backgroundSize = "cover";
-      el.style.backgroundPosition = "center";
-      el.style.backgroundRepeat = "no-repeat";
-    };
-
-    setBg(document.documentElement);
-    setBg(document.body);
+    document.documentElement.style.setProperty(
+      "--rw-bg",
+      current
+    );
   }, [
     unlocked,
     systemSettings,

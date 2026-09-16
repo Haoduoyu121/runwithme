@@ -23180,16 +23180,6 @@ html body .home-screen-v2 .dock {
    - body 和 site 变透明，即使有空隙也不会露出白色
    ========================================================================= */
 
-html {
-  height: -webkit-fill-available !important;
-  background: #fcbec3 !important;
-}
-
-body {
-  min-height: 100vh !important;
-  min-height: -webkit-fill-available !important;
-  background: #fcbec3 !important;
-}
 
 /* 壁纸伪元素：铺满整个视口 */
 .home-screen::before,
@@ -23275,5 +23265,50 @@ body {
 }
 
 .letter-fab {
+  bottom: 20px !important;
+}
+/* =========================================================================
+   最终修复 · html 背景用 CSS 变量（绕开 !important）
+   ========================================================================= */
+
+html {
+  background: var(--rw-bg, #fcbec3) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+body {
+  background: transparent !important;
+}
+
+/* Dock 贴底 */
+.dock {
+  bottom: 0 !important;
+  padding-bottom: 12px !important;
+}
+
+.icity-dock,
+.calendar-dock,
+.checkin-dock {
+  padding-bottom: 0 !important;
+}
+
+.icity-dock-inner,
+.calendar-dock-inner,
+.checkin-dock-inner {
+  margin-bottom: 10px !important;
+}
+
+.chat-page .chat-composer {
+  padding-bottom: 10px !important;
+}
+
+.music-v2-list-btn,
+.letter-fab {
+  bottom: 20px !important;
+}
+
+.music-chat-fab {
   bottom: 20px !important;
 }
