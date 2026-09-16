@@ -23174,3 +23174,54 @@ html body .home-screen-v2 .dock {
   border-bottom: 0 !important;
   z-index: 100 !important;
 }
+/* =========================================================================
+   最终修复 · 壁纸铺满整个视口
+   - 用 position: fixed 的伪元素铺满屏幕，不受任何高度限制
+   - body 和 site 变透明，即使有空隙也不会露出白色
+   ========================================================================= */
+
+html {
+  height: -webkit-fill-available !important;
+  background: #fcbec3 !important;
+}
+
+body {
+  min-height: 100vh !important;
+  min-height: -webkit-fill-available !important;
+  background: #fcbec3 !important;
+}
+
+/* 壁纸伪元素：铺满整个视口 */
+.home-screen::before,
+.home-screen-v2::before,
+.lock-screen::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  background: inherit;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* site / runwithme-app 透明，让伪元素显示出来 */
+.site,
+.runwithme-app {
+  background: transparent !important;
+}
+
+/* 强制壁纸铺满 home-screen 自身 */
+.home-screen,
+.home-screen-v2,
+.lock-screen {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
