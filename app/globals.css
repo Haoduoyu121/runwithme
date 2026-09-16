@@ -22927,3 +22927,104 @@ html[data-runwithme-theme="dark"]
 .home-screen-v2 .home-v2-grid-wrap {
   padding-bottom: calc(130px + env(safe-area-inset-bottom)) !important;
 }
+/* =========================================================================
+   阶段 1 · 底部空白暴力修复
+   - Dock 改用 position: fixed 直接贴视口底部
+   - 不受任何父容器高度影响
+   - 只保留必要的 safe-area 间距
+   ========================================================================= */
+
+/* ---------- 主屏 Dock ---------- */
+.dock {
+  position: fixed !important;
+  left: 50% !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: 0 !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+  padding: 12px 22px calc(12px + env(safe-area-inset-bottom)) !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-bottom: 0 !important;
+  z-index: 9000 !important;
+}
+
+/* ---------- iCity Dock ---------- */
+.icity-dock {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: auto !important;
+  bottom: 0 !important;
+  margin: 0 !important;
+  padding: 0 16px env(safe-area-inset-bottom) !important;
+  z-index: 9000 !important;
+}
+
+.icity-dock-inner {
+  margin-bottom: 8px !important;
+}
+
+/* ---------- Calendar Dock ---------- */
+.calendar-dock {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: auto !important;
+  bottom: 0 !important;
+  margin: 0 !important;
+  padding: 0 16px env(safe-area-inset-bottom) !important;
+  z-index: 9000 !important;
+}
+
+.calendar-dock-inner {
+  margin-bottom: 8px !important;
+}
+
+/* ---------- Check-in Dock ---------- */
+.checkin-dock {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: auto !important;
+  bottom: 0 !important;
+  margin: 0 !important;
+  padding: 0 16px env(safe-area-inset-bottom) !important;
+  z-index: 9000 !important;
+}
+
+.checkin-dock-inner {
+  margin-bottom: 8px !important;
+}
+
+/* ---------- Music 右下角按钮也要贴底 ---------- */
+.music-v2-list-btn {
+  position: fixed !important;
+  right: 20px !important;
+  bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  z-index: 9000 !important;
+}
+
+.music-chat-fab {
+  position: fixed !important;
+  right: 76px !important;
+  bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  z-index: 9000 !important;
+}
+
+/* ---------- Letter 悬浮按钮 ---------- */
+.letter-fab {
+  position: fixed !important;
+  right: 20px !important;
+  bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  z-index: 9000 !important;
+}
+
+/* ---------- 同时清掉所有可能撑大底部的 padding ---------- */
+html, body, .site, .runwithme-app,
+.phone-shell, .phone-screen, .app-screen,
+.home-screen, .home-screen-v2 {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
