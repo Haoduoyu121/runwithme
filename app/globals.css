@@ -23272,7 +23272,6 @@ body {
    ========================================================================= */
 
 html {
-  background: var(--rw-bg, #fcbec3) !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
