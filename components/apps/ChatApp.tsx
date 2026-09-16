@@ -158,6 +158,7 @@ function TextMessage({
   );
 }
 
+/* ★ 新版语音气泡 */
 function VoiceMessage({
   message,
   names,
@@ -165,6 +166,47 @@ function VoiceMessage({
   message: ChatMessage;
   names: CharacterNames;
 }) {
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [showText, setShowText] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const loadedUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      loadedUrlRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!message.mediaUrl) return;
+
+    const url = message.mediaUrl;
+    const audio = new Audio(url);
+    audio.preload = "metadata";
+
+    const onLoaded = () => {
+      if (Number.isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      }
+    };
+
+    audio.addEventListener("loadedmetadata", onLoaded);
+    audio.load();
+
+    return () => {
+      audio.pause();
+      audio.removeEventListener(
+        "loadedmetadata",
+        onLoaded
+      );
+    };
+  }, [message.mediaUrl]);
+
   if (message.deleted) {
     return (
       <div className="message-deleted">此消息已删除</div>
@@ -184,23 +226,110 @@ function VoiceMessage({
     );
   }
 
+  function togglePlay() {
+    const url = message.mediaUrl;
+    if (!url) return;
+
+    let audio = audioRef.current;
+
+    if (!audio || loadedUrlRef.current !== url) {
+      audio?.pause();
+
+      audio = new Audio(url);
+      audioRef.current = audio;
+      loadedUrlRef.current = url;
+
+      audio.addEventListener("ended", () => {
+        setPlaying(false);
+        setCurrentTime(0);
+      });
+      audio.addEventListener("timeupdate", () => {
+        if (audio) setCurrentTime(audio.currentTime);
+      });
+      audio.addEventListener(
+        "loadedmetadata",
+        () => {
+          if (
+            audio &&
+            Number.isFinite(audio.duration)
+          ) {
+            setDuration(audio.duration);
+          }
+        }
+      );
+    }
+
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+    } else {
+      audio
+        .play()
+        .then(() => setPlaying(true))
+        .catch((err) => {
+          console.error("播放语音失败:", err);
+        });
+    }
+  }
+
+  const total = Math.round(duration);
+  const current = Math.round(currentTime);
+  const displayTime = formatDuration(
+    playing ? Math.max(0, total - current) : total
+  );
+
+  const progress =
+    duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  const WAVE = [
+    8, 14, 10, 18, 12, 16, 9, 15, 11, 17, 13, 9, 14, 10,
+  ];
+
   return (
-    <div className="chat-voice-message">
-      {message.mediaUrl ? (
-        <audio
-          className="chat-voice-player"
-          src={message.mediaUrl}
-          controls
-          preload="metadata"
-        />
-      ) : (
-        <div className="chat-voice-loading">
-          语音加载中…
-        </div>
-      )}
+    <div className="chat-voice-v2">
+      <button
+        className="chat-voice-bubble"
+        onClick={togglePlay}
+        type="button"
+        disabled={!message.mediaUrl}
+      >
+        <span className="chat-voice-play">
+          {playing ? "❚❚" : "▶"}
+        </span>
+
+        <span className="chat-voice-wave">
+          {WAVE.map((h, i) => (
+            <span
+              key={i}
+              className="chat-voice-bar"
+              style={{
+                height: `${h}px`,
+                opacity:
+                  progress > (i / WAVE.length) * 100
+                    ? 1
+                    : 0.35,
+              }}
+            />
+          ))}
+        </span>
+
+        <span className="chat-voice-time">
+          {message.mediaUrl ? displayTime : "…"}
+        </span>
+      </button>
 
       {message.text && (
-        <div className="chat-voice-transcript">
+        <button
+          className="chat-voice-transcribe"
+          onClick={() => setShowText((s) => !s)}
+          type="button"
+        >
+          {showText ? "收起文字" : "转文字"}
+        </button>
+      )}
+
+      {showText && message.text && (
+        <div className="chat-voice-text">
           {message.text}
         </div>
       )}
@@ -375,7 +504,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
 
   const chatName = settings.chatName;
 
-    /* ---------------- 注入自定义 CSS ---------------- */
+  /* ---------------- 注入自定义 CSS ---------------- */
 
   useEffect(() => {
     const STYLE_ID = "runwithme-chat-custom-css";
@@ -390,10 +519,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     }
 
     el.textContent = settings.chatCustomCSS ?? "";
-
-    return () => {
-      /* 卸载时保留（因为 ChatApp 每次进都会重建） */
-    };
   }, [settings.chatCustomCSS]);
 
   /* ---------------- 双击头像 = 拍一拍 ---------------- */
@@ -1072,7 +1197,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
         }
       }}
     >
-      className
       <header className="telegram-header">
         <button
           className="telegram-back"

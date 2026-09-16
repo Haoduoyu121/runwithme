@@ -10,9 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-import {
-  cards as defaultCards,
-} from "@/data/cards";
+import { cards as defaultCards } from "@/data/cards";
 
 import { loadCards } from "@/lib/storage";
 
@@ -24,6 +22,7 @@ import {
 import {
   createMessageId,
   type ChatMessage,
+  type ChatSender,
 } from "@/data/chat";
 
 import { createReplyMessage } from "@/lib/chatReply";
@@ -55,11 +54,15 @@ const DEFAULT_MESSAGES: ChatMessage[] = [
 ];
 
 function randomInteger(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return (
+    Math.floor(Math.random() * (max - min + 1)) + min
+  );
 }
 
 function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
 }
 
 type ChatContextValue = {
@@ -76,21 +79,29 @@ type ChatContextValue = {
   scheduleAutoReplyAfterUserMessage: () => void;
 };
 
-const ChatContext = createContext<ChatContextValue | null>(
-  null
-);
+const ChatContext =
+  createContext<ChatContextValue | null>(null);
 
 export function ChatProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const { activeCall, triggerIncomingCall } = useCall();
+  const {
+    activeCall,
+    triggerIncomingCall,
+    registerCallEndListener,
+  } = useCall();
+
   const { settings } = useSystem();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [generatingCount, setGeneratingCount] = useState(0);
-  const [autoReplyEnabled, setAutoReplyEnabled] = useState(true);
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    []
+  );
+  const [generatingCount, setGeneratingCount] =
+    useState(0);
+  const [autoReplyEnabled, setAutoReplyEnabled] =
+    useState(true);
 
   const restoredImageUrlsRef = useRef<
     Record<string, string>
@@ -102,10 +113,9 @@ export function ChatProvider({
     Record<string, string>
   >({});
 
-  /* 最近一条用户消息，用于引用 */
-  const lastUserMessageRef = useRef<ChatMessage | null>(null);
+  const lastUserMessageRef =
+    useRef<ChatMessage | null>(null);
 
-  /* settings ref，避免闭包过期 */
   const settingsRef = useRef(settings);
   useEffect(() => {
     settingsRef.current = settings;
@@ -143,15 +153,15 @@ export function ChatProvider({
 
   useEffect(() => {
     return () => {
-      Object.values(restoredImageUrlsRef.current).forEach(
-        (url) => URL.revokeObjectURL(url)
-      );
+      Object.values(
+        restoredImageUrlsRef.current
+      ).forEach((url) => URL.revokeObjectURL(url));
       Object.values(
         restoredStickerUrlsRef.current
       ).forEach((url) => URL.revokeObjectURL(url));
-      Object.values(createdMediaUrlsRef.current).forEach(
-        (url) => URL.revokeObjectURL(url)
-      );
+      Object.values(
+        createdMediaUrlsRef.current
+      ).forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
 
@@ -199,13 +209,17 @@ export function ChatProvider({
           }
 
           if (message.type === "image") {
-            restoredImageUrlsRef.current[message.id] = url;
+            restoredImageUrlsRef.current[message.id] =
+              url;
           }
           if (message.type === "sticker") {
-            restoredStickerUrlsRef.current[message.id] = url;
+            restoredStickerUrlsRef.current[
+              message.id
+            ] = url;
           }
           if (message.type === "voice") {
-            createdMediaUrlsRef.current[message.id] = url;
+            createdMediaUrlsRef.current[message.id] =
+              url;
           }
 
           setMessages((previous) =>
@@ -266,6 +280,37 @@ export function ChatProvider({
   }, []);
 
   /* -------------------------------------------------------
+     ★ 通话结束 → 生成气泡
+     ------------------------------------------------------- */
+
+  useEffect(() => {
+    const unsubscribe = registerCallEndListener(
+      (record) => {
+        /* 主叫（你打出去）放右侧；被叫（对方打进来）放左侧 */
+        const sender: ChatSender =
+          record.direction === "outgoing"
+            ? "You"
+            : record.target === "Both"
+              ? "Levi"
+              : record.target;
+
+        addMessage({
+          id: createMessageId(),
+          sender,
+          type: "call",
+          callDirection: record.direction,
+          callStatus: record.status,
+          callDuration: record.durationSec,
+          callCharacter: record.target,
+          timestamp: Date.now(),
+        });
+      }
+    );
+
+    return unsubscribe;
+  }, [registerCallEndListener, addMessage]);
+
+  /* -------------------------------------------------------
      生成单条回复
      ------------------------------------------------------- */
 
@@ -283,7 +328,6 @@ export function ChatProvider({
         standaloneEmoji,
       } = picked;
 
-      /* 主消息：附加 emoji 到文本 */
       let textOverride: string | undefined;
 
       if (card.type === "text") {
@@ -300,9 +344,9 @@ export function ChatProvider({
       );
 
       if (result.message) {
-        /* ★ 一定概率引用最近一条用户消息 */
         const quoteChance =
-          settingsRef.current.chatReply?.quoteChance ?? 0.15;
+          settingsRef.current.chatReply?.quoteChance ??
+          0.25;
 
         const lastUser = lastUserMessageRef.current;
 
@@ -327,7 +371,6 @@ export function ChatProvider({
         addMessage(result.message);
       }
 
-      /* 单独发 emoji */
       if (standaloneEmoji) {
         await sleep(600);
 
@@ -403,7 +446,6 @@ export function ChatProvider({
     try {
       await sleep(randomInteger(1000, 4000));
 
-      /* 有概率改打电话 */
       if (Math.random() < 0.15) {
         triggerIncomingCall();
         return;
@@ -451,17 +493,20 @@ export function ChatProvider({
     settings.chatReply,
   ]);
 
-  const scheduleAutoReplyAfterUserMessage = useCallback(() => {
-    const cfg = settingsRef.current.chatReply;
-    const minMs = (cfg?.userReplyDelayMin ?? 2) * 1000;
-    const maxMs = (cfg?.userReplyDelayMax ?? 8) * 1000;
+  const scheduleAutoReplyAfterUserMessage =
+    useCallback(() => {
+      const cfg = settingsRef.current.chatReply;
+      const minMs =
+        (cfg?.userReplyDelayMin ?? 2) * 1000;
+      const maxMs =
+        (cfg?.userReplyDelayMax ?? 8) * 1000;
 
-    const delay = randomInteger(minMs, maxMs);
+      const delay = randomInteger(minMs, maxMs);
 
-    window.setTimeout(() => {
-      void generateAutoReply();
-    }, delay);
-  }, [generateAutoReply]);
+      window.setTimeout(() => {
+        void generateAutoReply();
+      }, delay);
+    }, [generateAutoReply]);
 
   return (
     <ChatContext.Provider

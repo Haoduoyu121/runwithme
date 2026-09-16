@@ -1,7 +1,11 @@
-/* 换了个新 DB 名，避开历史遗留的坏库 */
 const DB_NAME = "runwithme_voice_db_v2";
 const STORE_NAME = "voice_files";
 const DB_VERSION = 1;
+
+type VoiceRecord = {
+  buffer: ArrayBuffer;
+  mime: string;
+};
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -12,19 +16,13 @@ function openDatabase(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = () => {
       const db = request.result;
-
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME);
       }
     };
 
-    request.onsuccess = () => {
-      resolve(request.result);
-    };
-
-    request.onerror = () => {
-      reject(request.error);
-    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
   });
 }
 
@@ -32,29 +30,30 @@ export async function saveVoiceFile(
   id: string,
   file: Blob
 ): Promise<void> {
+  /* ★ 关键：同时保存 mimeType，避免 m4a/wav 被当成 mp3 解码 */
   const buffer = await file.arrayBuffer();
+  const mime = file.type || "audio/mpeg";
+
+  const record: VoiceRecord = { buffer, mime };
 
   const db = await openDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(
+    const tx = db.transaction(
       STORE_NAME,
       "readwrite"
     );
+    const store = tx.objectStore(STORE_NAME);
 
-    const store =
-      transaction.objectStore(STORE_NAME);
+    store.put(record, id);
 
-    store.put(buffer, id);
-
-    transaction.oncomplete = () => {
+    tx.oncomplete = () => {
       db.close();
       resolve();
     };
-
-    transaction.onerror = () => {
+    tx.onerror = () => {
       db.close();
-      reject(transaction.error);
+      reject(tx.error);
     };
   });
 }
@@ -65,31 +64,35 @@ export async function getVoiceFile(
   const db = await openDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(
+    const tx = db.transaction(
       STORE_NAME,
       "readonly"
     );
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(id);
 
-    const store =
-      transaction.objectStore(STORE_NAME);
-
-    const request = store.get(id);
-
-    request.onsuccess = () => {
+    req.onsuccess = () => {
       db.close();
-
-      const result = request.result;
+      const result = req.result;
 
       if (!result) {
         resolve(null);
         return;
       }
 
-      if (result instanceof Blob) {
-        resolve(result);
+      /* 新格式：{ buffer, mime } */
+      if (
+        result.buffer instanceof ArrayBuffer
+      ) {
+        resolve(
+          new Blob([result.buffer], {
+            type: result.mime || "audio/mpeg",
+          })
+        );
         return;
       }
 
+      /* 兼容旧的 ArrayBuffer */
       if (result instanceof ArrayBuffer) {
         resolve(
           new Blob([result], {
@@ -99,12 +102,18 @@ export async function getVoiceFile(
         return;
       }
 
+      /* 兼容更早的 Blob */
+      if (result instanceof Blob) {
+        resolve(result);
+        return;
+      }
+
       resolve(null);
     };
 
-    request.onerror = () => {
+    req.onerror = () => {
       db.close();
-      reject(request.error);
+      reject(req.error);
     };
   });
 }
@@ -115,24 +124,21 @@ export async function deleteVoiceFile(
   const db = await openDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(
+    const tx = db.transaction(
       STORE_NAME,
       "readwrite"
     );
-
-    const store =
-      transaction.objectStore(STORE_NAME);
+    const store = tx.objectStore(STORE_NAME);
 
     store.delete(id);
 
-    transaction.oncomplete = () => {
+    tx.oncomplete = () => {
       db.close();
       resolve();
     };
-
-    transaction.onerror = () => {
+    tx.onerror = () => {
       db.close();
-      reject(transaction.error);
+      reject(tx.error);
     };
   });
 }
@@ -141,24 +147,21 @@ export async function clearVoiceFiles(): Promise<void> {
   const db = await openDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(
+    const tx = db.transaction(
       STORE_NAME,
       "readwrite"
     );
-
-    const store =
-      transaction.objectStore(STORE_NAME);
+    const store = tx.objectStore(STORE_NAME);
 
     store.clear();
 
-    transaction.oncomplete = () => {
+    tx.oncomplete = () => {
       db.close();
       resolve();
     };
-
-    transaction.onerror = () => {
+    tx.onerror = () => {
       db.close();
-      reject(transaction.error);
+      reject(tx.error);
     };
   });
 }
