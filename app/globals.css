@@ -23084,60 +23084,93 @@ html body .icity-dock-inner,
 html body .calendar-dock-inner,
 html body .checkin-dock-inner {
   margin-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
-}/* =========================================================================
-   Dock 终极修复 v2
-   - 去掉 transform（避免 containing block 被锁）
-   - 用 left/right 拉伸贴底
-   - 用 html body 提高优先级
+}
+/* =========================================================================
+   最终补丁 · 主屏撑满 + Dock 贴底（链式绝对定位）
+   - 不依赖任何 height / 100dvh
+   - 每一层用 position: absolute; inset: 0 层层撑满
    ========================================================================= */
 
-html body .dock {
+html, body {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
   position: fixed !important;
-  top: auto !important;
+  inset: 0 !important;
+}
+
+.site {
+  position: fixed !important;
+  top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  width: 100% !important;
-  max-width: none !important;
+  width: auto !important;
   height: auto !important;
-  transform: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.runwithme-app {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.home-screen,
+.home-screen-v2 {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.home-v2-grid-wrap {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding-top: calc(env(safe-area-inset-top) + 16px) !important;
+  padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+  padding-left: 18px !important;
+  padding-right: 18px !important;
+}
+
+/* Dock 相对 home-screen 贴底 */
+html body .home-screen .dock,
+html body .home-screen-v2 .dock {
+  position: absolute !important;
+  top: auto !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  right: auto !important;
+  width: min(92%, 520px) !important;
+  height: auto !important;
+  transform: translateX(-50%) !important;
   translate: none !important;
   margin: 0 !important;
-  padding: 12px 22px calc(14px + env(safe-area-inset-bottom)) !important;
+  padding: 14px 22px calc(14px + env(safe-area-inset-bottom)) !important;
   border-radius: 28px 28px 0 0 !important;
   border-bottom: 0 !important;
-  z-index: 9500 !important;
-}
-
-/* home-screen 撑满全屏，别让壁纸断在半路 */
-html body .home-screen,
-html body .home-screen-v2 {
-  height: 100dvh !important;
-  min-height: 100dvh !important;
-  max-height: 100dvh !important;
-}
-
-/* runwithme-app 也撑满 */
-html body .runwithme-app {
-  height: 100dvh !important;
-  min-height: 100dvh !important;
-  max-height: 100dvh !important;
-}
-
-/* iCity / Calendar / Check-in Dock 也贴底 */
-html body .icity-dock,
-html body .calendar-dock,
-html body .checkin-dock {
-  position: fixed !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  transform: none !important;
-  z-index: 9500 !important;
-}
-
-html body .icity-dock-inner,
-html body .calendar-dock-inner,
-html body .checkin-dock-inner {
-  margin-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+  z-index: 100 !important;
 }
