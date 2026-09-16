@@ -633,22 +633,25 @@ export default function ChatApp({ onBack }: ChatAppProps) {
   }
 
   function handlePlusAction(
-    action: "sticker" | "image"
-  ) {
-    if (action === "sticker") {
-      setShowPlusMenu(false);
-      setShowStickerPanel(true);
-      return;
-    }
-
-    if (action === "image") {
-      setShowPlusMenu(false);
-      document
-        .getElementById("chat-image-input")
-        ?.click();
-      return;
-    }
+  action: "sticker" | "image"
+) {
+  if (action === "sticker") {
+    setShowPlusMenu(false);
+    setShowStickerPanel(true);
+    return;
   }
+
+  if (action === "image") {
+    setShowPlusMenu(false);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(
+        "chat-image-input"
+      ) as HTMLInputElement | null;
+      el?.click();
+    });
+    return;
+  }
+}
 
   function handleStartCall(
     target: "Levi" | "Erwin" | "Both"
@@ -1146,19 +1149,27 @@ export default function ChatApp({ onBack }: ChatAppProps) {
           />
 
           <input
-            id="chat-image-input"
-            type="file"
-            accept="*/*"
-            style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (!file) return;
+  id="chat-image-input"
+  type="file"
+  accept="image/*"
+  style={{
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: 1,
+    height: 1,
+    opacity: 0,
+    overflow: "hidden",
+    zIndex: -1,
+  }}
+  onChange={(event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-              void sendImage(file);
-              event.target.value = "";
-            }}
-          />
-
+    void sendImage(file);
+    event.target.value = "";
+  }}
+/>
           <button
             className={
               showStickerPanel
