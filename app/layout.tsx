@@ -7,9 +7,12 @@ import { MusicProvider } from "@/lib/MusicContext";
 import { ChatProvider } from "@/lib/ChatContext";
 import { ICityProvider } from "@/lib/ICityContext";
 import { PomodoroProvider } from "@/lib/PomodoroContext";
+import { MusicInviteProvider } from "@/lib/MusicInviteContext";
+import { LetterProvider } from "@/lib/LetterContext";
 
 import CallUI from "@/components/call/CallUI";
 import FontScaleApplier from "@/components/FontScaleApplier";
+import MusicInviteOverlay from "@/components/music/MusicInviteOverlay";
 
 export const metadata: Metadata = {
   title: "RunWithme",
@@ -60,13 +63,18 @@ export default function RootLayout({
           <CallProvider>
             <MusicProvider>
               <ChatProvider>
-                <ICityProvider>
-                  <PomodoroProvider>
-                    {children}
-                    <CallUI />
-                    <FontScaleApplier />
-                  </PomodoroProvider>
-                </ICityProvider>
+                <MusicInviteProvider>
+                  <LetterProvider>
+                    <ICityProvider>
+                      <PomodoroProvider>
+                        {children}
+                        <CallUI />
+                        <FontScaleApplier />
+                        <MusicInviteOverlay />
+                      </PomodoroProvider>
+                    </ICityProvider>
+                  </LetterProvider>
+                </MusicInviteProvider>
               </ChatProvider>
             </MusicProvider>
           </CallProvider>

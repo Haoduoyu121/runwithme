@@ -88,3 +88,33 @@ export function buildDefaultLayout(
     content: { kind: "app", appId },
   }));
 }
+/* =========================================================
+   布局合并
+   - 保留用户已有的所有 item（顺序、位置、小组件都保留）
+   - 只把 saved 里缺失的 App 追加到末尾
+   - Widget 不主动补，由用户手动添加
+   ========================================================= */
+
+export function mergeHomeLayout(
+  saved: HomeItem[],
+  defaultItems: HomeItem[]
+): HomeItem[] {
+  const savedAppIds = new Set<string>();
+
+  for (const item of saved) {
+    if (item.content.kind === "app") {
+      savedAppIds.add(item.content.appId);
+    }
+  }
+
+  const missing: HomeItem[] = [];
+
+  for (const def of defaultItems) {
+    if (def.content.kind !== "app") continue;
+    if (savedAppIds.has(def.content.appId)) continue;
+    missing.push(def);
+  }
+
+  if (missing.length === 0) return saved;
+  return [...saved, ...missing];
+}

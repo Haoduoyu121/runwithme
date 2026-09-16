@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { useSystem } from "@/lib/SystemContext";
+import { useChat } from "@/lib/ChatContext";
 
 import {
   saveChatFile,
@@ -29,8 +30,6 @@ import {
   type NotificationPermissionState,
 } from "@/lib/notifications";
 
-import type { ChatReplySettings } from "@/lib/systemStorage";
-
 type ChatSettingsPanelProps = {
   onClose: () => void;
 };
@@ -52,55 +51,11 @@ const IOS_SAFE_FILE_STYLE: React.CSSProperties = {
   zIndex: -1,
 };
 
+const COMPRESS_KEEP = 100;
+
 function notifyStickersUpdated() {
   window.dispatchEvent(
     new Event("runwithme:stickers-updated")
-  );
-}
-
-/* 数字输入框 */
-function NumberField({
-  label,
-  value,
-  min,
-  max,
-  step = 1,
-  suffix,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  suffix?: string;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label className="chat-settings-num">
-      <span className="chat-settings-num-label">
-        {label}
-        {suffix && (
-          <small className="chat-settings-num-suffix">
-            {suffix}
-          </small>
-        )}
-      </span>
-      <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          if (Number.isNaN(v)) return;
-          onChange(
-            Math.min(max, Math.max(min, v))
-          );
-        }}
-      />
-    </label>
   );
 }
 
@@ -108,13 +63,10 @@ export default function ChatSettingsPanel({
   onClose,
 }: ChatSettingsPanelProps) {
   const { settings, updateSettings } = useSystem();
+  const { messages, updateMessages } = useChat();
 
   const [nameDraft, setNameDraft] = useState(
     settings.chatName
-  );
-
-    const [cssDraft, setCssDraft] = useState(
-    settings.chatCustomCSS ?? ""
   );
 
   const [nameYouDraft, setNameYouDraft] = useState(
@@ -132,6 +84,10 @@ export default function ChatSettingsPanel({
   );
   const [patErwinDraft, setPatErwinDraft] = useState(
     settings.patMessages.erwin.join("\n")
+  );
+
+  const [cssDraft, setCssDraft] = useState(
+    settings.chatCustomCSS ?? ""
   );
 
   const [bgPreview, setBgPreview] = useState<string | null>(
@@ -154,10 +110,6 @@ export default function ChatSettingsPanel({
     setNameDraft(settings.chatName);
   }, [settings.chatName]);
 
-    useEffect(() => {
-    setCssDraft(settings.chatCustomCSS ?? "");
-  }, [settings.chatCustomCSS]);
-
   useEffect(() => {
     setNameYouDraft(settings.characterNames.you);
     setNameLeviDraft(settings.characterNames.levi);
@@ -168,6 +120,10 @@ export default function ChatSettingsPanel({
     setPatLeviDraft(settings.patMessages.levi.join("\n"));
     setPatErwinDraft(settings.patMessages.erwin.join("\n"));
   }, [settings.patMessages]);
+
+  useEffect(() => {
+    setCssDraft(settings.chatCustomCSS ?? "");
+  }, [settings.chatCustomCSS]);
 
   useEffect(() => {
     setNotifState(getNotificationPermission());
@@ -181,7 +137,6 @@ export default function ChatSettingsPanel({
     async function load() {
       if (settings.chatBackground === "custom") {
         const file = await getChatFile("chat-bg");
-
         if (file && !cancelled) {
           const url = URL.createObjectURL(file);
           created.push(url);
@@ -198,11 +153,9 @@ export default function ChatSettingsPanel({
 
       for (const avatar of AVATAR_KEYS) {
         if (!settings.avatars[avatar.key]) continue;
-
         const file = await getChatFile(
           `avatar-${avatar.key}`
         );
-
         if (file) {
           const url = URL.createObjectURL(file);
           created.push(url);
@@ -231,12 +184,10 @@ export default function ChatSettingsPanel({
       setStickers(list);
 
       const urls: Record<string, string> = {};
-
       for (const s of list) {
         try {
           const file = await getStickerFile(s.id);
           if (!file) continue;
-
           const url = URL.createObjectURL(file);
           created.push(url);
           urls[s.id] = url;
@@ -244,7 +195,6 @@ export default function ChatSettingsPanel({
           console.error("加载表情失败:", s.id, e);
         }
       }
-
       if (!cancelled) setStickerUrls(urls);
     }
 
@@ -277,9 +227,7 @@ export default function ChatSettingsPanel({
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
-
     if (list.length === 0) return;
-
     updateSettings({
       patMessages: {
         ...settings.patMessages,
@@ -293,9 +241,7 @@ export default function ChatSettingsPanel({
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
-
     if (list.length === 0) return;
-
     updateSettings({
       patMessages: {
         ...settings.patMessages,
@@ -304,11 +250,9 @@ export default function ChatSettingsPanel({
     });
   }
 
-  /* 回复配置 */
-  function updateReply<K extends keyof ChatReplySettings>(
-    key: K,
-    value: ChatReplySettings[K]
-  ) {
+  function updateReply<
+    K extends keyof typeof settings.chatReply,
+  >(key: K, value: (typeof settings.chatReply)[K]) {
     updateSettings({
       chatReply: {
         ...settings.chatReply,
@@ -317,21 +261,60 @@ export default function ChatSettingsPanel({
     });
   }
 
+  /* -------------------------------------------------------
+     ★ 数据管理
+     ------------------------------------------------------- */
+
+  function handleClearAll() {
+    if (messages.length === 0) {
+      alert("当前没有聊天记录。");
+      return;
+    }
+    if (
+      !window.confirm(
+        `确定清空全部 ${messages.length} 条聊天记录？此操作不可恢复。`
+      )
+    ) {
+      return;
+    }
+    updateMessages(() => []);
+  }
+
+  function handleCompress() {
+    if (messages.length <= COMPRESS_KEEP) {
+      alert(
+        `当前只有 ${messages.length} 条，未超过 ${COMPRESS_KEEP} 条，无需压缩。`
+      );
+      return;
+    }
+    const removeCount = messages.length - COMPRESS_KEEP;
+    if (
+      !window.confirm(
+        `将保留最新 ${COMPRESS_KEEP} 条，删除较早的 ${removeCount} 条。继续？`
+      )
+    ) {
+      return;
+    }
+    updateMessages((prev) =>
+      prev.slice(-COMPRESS_KEEP)
+    );
+  }
+
+  /* -------------------------------------------------------
+     上传 / 表情
+     ------------------------------------------------------- */
+
   async function uploadBg(file: File) {
     await saveChatFile("chat-bg", file);
-
     const url = URL.createObjectURL(file);
     setBgPreview(url);
-
     updateSettings({ chatBackground: "custom" });
   }
 
   async function removeBg() {
     await deleteChatFile("chat-bg");
-
     if (bgPreview) URL.revokeObjectURL(bgPreview);
     setBgPreview(null);
-
     updateSettings({ chatBackground: null });
   }
 
@@ -340,14 +323,11 @@ export default function ChatSettingsPanel({
     file: File
   ) {
     await saveChatFile(`avatar-${key}`, file);
-
     const url = URL.createObjectURL(file);
-
     setAvatarPreviews((prev) => ({
       ...prev,
       [key]: url,
     }));
-
     updateSettings({
       avatars: {
         ...settings.avatars,
@@ -360,12 +340,10 @@ export default function ChatSettingsPanel({
     key: "you" | "levi" | "erwin"
   ) {
     await deleteChatFile(`avatar-${key}`);
-
     setAvatarPreviews((prev) => ({
       ...prev,
       [key]: null,
     }));
-
     updateSettings({
       avatars: {
         ...settings.avatars,
@@ -379,14 +357,11 @@ export default function ChatSettingsPanel({
       alert("请选择图片文件。");
       return;
     }
-
     const id = `sticker-${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 7)}`;
-
     try {
       await saveStickerFile(id, file);
-
       const next: StickerItem[] = [
         ...stickers,
         {
@@ -396,16 +371,10 @@ export default function ChatSettingsPanel({
           enabled: true,
         },
       ];
-
       saveStickers(next);
       setStickers(next);
-
       const url = URL.createObjectURL(file);
-      setStickerUrls((prev) => ({
-        ...prev,
-        [id]: url,
-      }));
-
+      setStickerUrls((prev) => ({ ...prev, [id]: url }));
       notifyStickersUpdated();
     } catch (e) {
       console.error("保存表情失败:", e);
@@ -415,17 +384,14 @@ export default function ChatSettingsPanel({
 
   async function removeSticker(id: string) {
     if (!window.confirm("删除这个表情？")) return;
-
     try {
       await deleteStickerFile(id);
     } catch (e) {
       console.error(e);
     }
-
     const next = stickers.filter((s) => s.id !== id);
     saveStickers(next);
     setStickers(next);
-
     setStickerUrls((prev) => {
       const copy = { ...prev };
       const url = copy[id];
@@ -433,7 +399,6 @@ export default function ChatSettingsPanel({
       delete copy[id];
       return copy;
     });
-
     notifyStickersUpdated();
   }
 
@@ -450,7 +415,6 @@ export default function ChatSettingsPanel({
     const granted =
       await requestNotificationPermission();
     setNotifState(getNotificationPermission());
-
     if (!granted) {
       alert(
         "浏览器未授权通知。\n\n" +
@@ -473,7 +437,6 @@ export default function ChatSettingsPanel({
       >
         <div className="chat-settings-header">
           <h2>Chat Settings</h2>
-
           <button
             className="chat-settings-close"
             onClick={onClose}
@@ -484,12 +447,51 @@ export default function ChatSettingsPanel({
         </div>
 
         <div className="chat-settings-body">
+          {/* ★ 聊天数据管理 */}
+          <section className="chat-settings-section">
+            <div className="chat-settings-section-title">
+              聊天数据
+            </div>
+
+            <div className="chat-settings-storage">
+              <div className="chat-settings-storage-info">
+                <strong>当前聊天记录</strong>
+                <small>
+                  共 {messages.length} 条消息
+                </small>
+              </div>
+
+              <div className="chat-settings-storage-actions">
+                <button
+                  className="chat-settings-btn small"
+                  onClick={handleCompress}
+                  disabled={
+                    messages.length <= COMPRESS_KEEP
+                  }
+                >
+                  压缩（保留 {COMPRESS_KEEP} 条）
+                </button>
+
+                <button
+                  className="chat-settings-btn small danger"
+                  onClick={handleClearAll}
+                  disabled={messages.length === 0}
+                >
+                  清空全部
+                </button>
+              </div>
+            </div>
+
+            <div className="chat-settings-hint">
+              提示：长按任意聊天气泡也能进入多选模式批量删除。
+            </div>
+          </section>
+
           {/* 群聊名称 */}
           <section className="chat-settings-section">
             <div className="chat-settings-section-title">
               群聊名称
             </div>
-
             <div className="chat-settings-name-row">
               <input
                 type="text"
@@ -512,12 +514,11 @@ export default function ChatSettingsPanel({
             </div>
           </section>
 
-          {/* ★ 角色名字 */}
+          {/* 角色名字 */}
           <section className="chat-settings-section">
             <div className="chat-settings-section-title">
               角色名字
             </div>
-
             <div className="chat-settings-names-grid">
               <label className="chat-settings-name-item">
                 <span>你（You）</span>
@@ -531,7 +532,6 @@ export default function ChatSettingsPanel({
                   maxLength={12}
                 />
               </label>
-
               <label className="chat-settings-name-item">
                 <span>角色 1</span>
                 <input
@@ -544,7 +544,6 @@ export default function ChatSettingsPanel({
                   maxLength={12}
                 />
               </label>
-
               <label className="chat-settings-name-item">
                 <span>角色 2</span>
                 <input
@@ -558,7 +557,6 @@ export default function ChatSettingsPanel({
                 />
               </label>
             </div>
-
             <div className="chat-settings-hint">
               只改显示，卡片里的归属还是 Levi / Erwin。
             </div>
@@ -569,7 +567,6 @@ export default function ChatSettingsPanel({
             <div className="chat-settings-section-title">
               拍一拍
             </div>
-
             <div className="chat-settings-pat-group">
               <label className="chat-settings-pat-label">
                 <strong>对 {cn.levi}</strong>
@@ -583,12 +580,9 @@ export default function ChatSettingsPanel({
                   }
                   onBlur={savePatLevi}
                   rows={4}
-                  placeholder={
-                    `拍了拍 ${cn.levi} 的头像\n揉了揉 ${cn.levi} 的头发`
-                  }
+                  placeholder={`拍了拍 ${cn.levi} 的头像`}
                 />
               </label>
-
               <label className="chat-settings-pat-label">
                 <strong>对 {cn.erwin}</strong>
                 <small>
@@ -601,137 +595,200 @@ export default function ChatSettingsPanel({
                   }
                   onBlur={savePatErwin}
                   rows={4}
-                  placeholder={
-                    `拍了拍 ${cn.erwin} 的头像\n拉了拉 ${cn.erwin} 的衣角`
-                  }
+                  placeholder={`拍了拍 ${cn.erwin} 的头像`}
                 />
               </label>
             </div>
           </section>
 
-          {/* ★ 回复频率 */}
+          {/* 回复频率 */}
           <section className="chat-settings-section">
             <div className="chat-settings-section-title">
               回复频率
             </div>
-
             <div className="chat-settings-reply-group">
               <div className="chat-settings-reply-row">
                 <span className="chat-settings-reply-label">
                   一次回复条数
                 </span>
-                <NumberField
-                  label="最少"
-                  value={cfg.replyCountMin}
-                  min={1}
-                  max={10}
-                  onChange={(v) =>
-                    updateReply("replyCountMin", v)
-                  }
-                />
-                <NumberField
-                  label="最多"
-                  value={cfg.replyCountMax}
-                  min={1}
-                  max={10}
-                  onChange={(v) =>
-                    updateReply("replyCountMax", v)
-                  }
-                />
-              </div>
-
-              <div className="chat-settings-reply-row">
-                <span className="chat-settings-reply-label">
-                  多条间隔
-                </span>
-                <NumberField
-                  label="最短"
-                  value={cfg.replyIntervalMin}
-                  min={0}
-                  max={120}
-                  suffix="秒"
-                  onChange={(v) =>
-                    updateReply("replyIntervalMin", v)
-                  }
-                />
-                <NumberField
-                  label="最长"
-                  value={cfg.replyIntervalMax}
-                  min={0}
-                  max={120}
-                  suffix="秒"
-                  onChange={(v) =>
-                    updateReply("replyIntervalMax", v)
-                  }
-                />
+                <label className="chat-settings-num">
+                  <span className="chat-settings-num-label">
+                    最少
+                  </span>
+                  <input
+                    type="number"
+                    value={cfg.replyCountMin}
+                    min={1}
+                    max={10}
+                    onChange={(e) =>
+                      updateReply(
+                        "replyCountMin",
+                        Math.max(
+                          1,
+                          Number(e.target.value) || 1
+                        )
+                      )
+                    }
+                  />
+                </label>
+                <label className="chat-settings-num">
+                  <span className="chat-settings-num-label">
+                    最多
+                  </span>
+                  <input
+                    type="number"
+                    value={cfg.replyCountMax}
+                    min={1}
+                    max={10}
+                    onChange={(e) =>
+                      updateReply(
+                        "replyCountMax",
+                        Math.max(
+                          1,
+                          Number(e.target.value) || 1
+                        )
+                      )
+                    }
+                  />
+                </label>
               </div>
 
               <div className="chat-settings-reply-row">
                 <span className="chat-settings-reply-label">
                   你发言后开始回复
                 </span>
-                <NumberField
-                  label="最短"
-                  value={cfg.userReplyDelayMin}
-                  min={0}
-                  max={300}
-                  suffix="秒"
-                  onChange={(v) =>
-                    updateReply("userReplyDelayMin", v)
-                  }
-                />
-                <NumberField
-                  label="最长"
-                  value={cfg.userReplyDelayMax}
-                  min={0}
-                  max={300}
-                  suffix="秒"
-                  onChange={(v) =>
-                    updateReply("userReplyDelayMax", v)
-                  }
-                />
+                <label className="chat-settings-num">
+                  <span className="chat-settings-num-label">
+                    最短
+                    <small className="chat-settings-num-suffix">
+                      秒
+                    </small>
+                  </span>
+                  <input
+                    type="number"
+                    value={cfg.userReplyDelayMin}
+                    min={0}
+                    max={300}
+                    onChange={(e) =>
+                      updateReply(
+                        "userReplyDelayMin",
+                        Math.max(
+                          0,
+                          Number(e.target.value) || 0
+                        )
+                      )
+                    }
+                  />
+                </label>
+                <label className="chat-settings-num">
+                  <span className="chat-settings-num-label">
+                    最长
+                    <small className="chat-settings-num-suffix">
+                      秒
+                    </small>
+                  </span>
+                  <input
+                    type="number"
+                    value={cfg.userReplyDelayMax}
+                    min={0}
+                    max={300}
+                    onChange={(e) =>
+                      updateReply(
+                        "userReplyDelayMax",
+                        Math.max(
+                          0,
+                          Number(e.target.value) || 0
+                        )
+                      )
+                    }
+                  />
+                </label>
               </div>
 
               <div className="chat-settings-reply-row">
                 <span className="chat-settings-reply-label">
                   后台自动发消息
                 </span>
-                <NumberField
-                  label="最短"
-                  value={cfg.autoReplyMin}
-                  min={1}
-                  max={720}
-                  suffix="分"
-                  onChange={(v) =>
-                    updateReply("autoReplyMin", v)
-                  }
-                />
-                <NumberField
-                  label="最长"
-                  value={cfg.autoReplyMax}
-                  min={1}
-                  max={720}
-                  suffix="分"
-                  onChange={(v) =>
-                    updateReply("autoReplyMax", v)
-                  }
-                />
+                <label className="chat-settings-num">
+                  <span className="chat-settings-num-label">
+                    最短
+                    <small className="chat-settings-num-suffix">
+                      分
+                    </small>
+                  </span>
+                  <input
+                    type="number"
+                    value={cfg.autoReplyMin}
+                    min={1}
+                    max={720}
+                    onChange={(e) =>
+                      updateReply(
+                        "autoReplyMin",
+                        Math.max(
+                          1,
+                          Number(e.target.value) || 1
+                        )
+                      )
+                    }
+                  />
+                </label>
+                <label className="chat-settings-num">
+                  <span className="chat-settings-num-label">
+                    最长
+                    <small className="chat-settings-num-suffix">
+                      分
+                    </small>
+                  </span>
+                  <input
+                    type="number"
+                    value={cfg.autoReplyMax}
+                    min={1}
+                    max={720}
+                    onChange={(e) =>
+                      updateReply(
+                        "autoReplyMax",
+                        Math.max(
+                          1,
+                          Number(e.target.value) || 1
+                        )
+                      )
+                    }
+                  />
+                </label>
               </div>
 
               <div className="chat-settings-reply-row">
                 <span className="chat-settings-reply-label">
                   引用你消息的概率
                 </span>
-                <NumberField
-                  label="0~100"
-                  value={Math.round(cfg.quoteChance * 100)}
-                  min={0}
-                  max={100}
-                  suffix="%"
-                  onChange={(v) =>
-                    updateReply("quoteChance", v / 100)
-                  }
-                />
+                <label className="chat-settings-num">
+                  <span className="chat-settings-num-label">
+                    0~100
+                    <small className="chat-settings-num-suffix">
+                      %
+                    </small>
+                  </span>
+                  <input
+                    type="number"
+                    value={Math.round(
+                      cfg.quoteChance * 100
+                    )}
+                    min={0}
+                    max={100}
+                    onChange={(e) =>
+                      updateReply(
+                        "quoteChance",
+                        Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            Number(e.target.value) || 0
+                          )
+                        ) / 100
+                      )
+                    }
+                  />
+                </label>
               </div>
 
               <div className="chat-settings-hint">
@@ -745,7 +802,6 @@ export default function ChatSettingsPanel({
             <div className="chat-settings-section-title">
               我的表情包
             </div>
-
             <div className="chat-settings-stickers">
               <div className="chat-settings-stickers-actions">
                 <label className="chat-settings-btn">
@@ -762,7 +818,6 @@ export default function ChatSettingsPanel({
                     }}
                   />
                 </label>
-
                 <span className="chat-settings-stickers-count">
                   共 {stickers.length} 个
                 </span>
@@ -776,7 +831,6 @@ export default function ChatSettingsPanel({
                 <div className="chat-settings-stickers-grid">
                   {stickers.map((s) => {
                     const url = stickerUrls[s.id];
-
                     return (
                       <div
                         key={s.id}
@@ -791,7 +845,6 @@ export default function ChatSettingsPanel({
                             <span>…</span>
                           )}
                         </div>
-
                         <div className="chat-settings-sticker-btns">
                           <button
                             onClick={() =>
@@ -800,7 +853,6 @@ export default function ChatSettingsPanel({
                           >
                             {s.enabled ? "停用" : "启用"}
                           </button>
-
                           <button
                             className="danger"
                             onClick={() =>
@@ -823,7 +875,6 @@ export default function ChatSettingsPanel({
             <div className="chat-settings-section-title">
               消息通知
             </div>
-
             <div className="chat-settings-notif">
               <div className="chat-settings-notif-info">
                 <strong>后台消息推送</strong>
@@ -837,7 +888,6 @@ export default function ChatSettingsPanel({
                         : "允许通知后，即使离开聊天页面也能收到新消息提醒。"}
                 </small>
               </div>
-
               {notifState === "default" && (
                 <button
                   className="chat-settings-btn"
@@ -848,7 +898,6 @@ export default function ChatSettingsPanel({
                   开启通知
                 </button>
               )}
-
               {notifState === "granted" && (
                 <div className="chat-settings-notif-badge">
                   ✓ 已开启
@@ -862,7 +911,6 @@ export default function ChatSettingsPanel({
             <div className="chat-settings-section-title">
               聊天背景
             </div>
-
             <div className="chat-settings-bg-row">
               <div
                 className="chat-settings-bg-preview"
@@ -876,7 +924,6 @@ export default function ChatSettingsPanel({
               >
                 {!bgPreview && <span>默认</span>}
               </div>
-
               <div className="chat-settings-bg-actions">
                 <label className="chat-settings-btn">
                   上传背景
@@ -892,7 +939,6 @@ export default function ChatSettingsPanel({
                     }}
                   />
                 </label>
-
                 {bgPreview && (
                   <button
                     className="chat-settings-btn ghost"
@@ -905,12 +951,11 @@ export default function ChatSettingsPanel({
             </div>
           </section>
 
-                    {/* ★ 自定义 CSS */}
+          {/* 自定义 CSS */}
           <section className="chat-settings-section">
             <div className="chat-settings-section-title">
               自定义 CSS
             </div>
-
             <div className="chat-settings-css">
               <textarea
                 className="chat-settings-css-textarea"
@@ -926,10 +971,9 @@ export default function ChatSettingsPanel({
                 rows={10}
                 spellCheck={false}
                 placeholder={
-                  `/* 改聊天气泡，示例： */\n.message-bubble {\n  border-radius: 20px;\n  background: #fcbec3;\n}\n\n/* 深色模式下用 .chat-dark .message-bubble */`
+                  "/* 改聊天气泡，示例： */\n.message-bubble {\n  border-radius: 20px;\n}"
                 }
               />
-
               <div className="chat-settings-css-actions">
                 <button
                   className="chat-settings-btn small ghost"
@@ -942,7 +986,6 @@ export default function ChatSettingsPanel({
                 >
                   清空
                 </button>
-
                 <button
                   className="chat-settings-btn small"
                   onClick={() =>
@@ -954,14 +997,6 @@ export default function ChatSettingsPanel({
                   立即应用
                 </button>
               </div>
-
-              <div className="chat-settings-hint">
-                生效方式：失焦保存 / 点「立即应用」。
-                常用选择器：`.message-bubble`（气泡）、
-                `.message-you .message-bubble`（自己的气泡）、
-                `.message-other .message-bubble`（对方气泡）、
-                `.chat-page`（整页）、`.chat-dark`（深色）。
-              </div>
             </div>
           </section>
 
@@ -970,19 +1005,15 @@ export default function ChatSettingsPanel({
             <div className="chat-settings-section-title">
               头像
             </div>
-
             <div className="chat-settings-avatar-grid">
               {AVATAR_KEYS.map((avatar) => {
-                const preview =
-                  avatarPreviews[avatar.key];
-
+                const preview = avatarPreviews[avatar.key];
                 const displayLabel =
                   avatar.key === "you"
                     ? cn.you
                     : avatar.key === "levi"
                       ? cn.levi
                       : cn.erwin;
-
                 return (
                   <div
                     key={avatar.key}
@@ -1003,11 +1034,9 @@ export default function ChatSettingsPanel({
                         </span>
                       )}
                     </div>
-
                     <div className="chat-settings-avatar-name">
                       {displayLabel}
                     </div>
-
                     <div className="chat-settings-avatar-actions">
                       <label className="chat-settings-btn small">
                         上传
@@ -1027,14 +1056,11 @@ export default function ChatSettingsPanel({
                           }}
                         />
                       </label>
-
                       {preview && (
                         <button
                           className="chat-settings-btn small ghost"
                           onClick={() =>
-                            void removeAvatar(
-                              avatar.key
-                            )
+                            void removeAvatar(avatar.key)
                           }
                         >
                           移除

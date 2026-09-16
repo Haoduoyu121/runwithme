@@ -1,15 +1,12 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useMusic, formatTime } from "@/lib/MusicContext";
 import { useSystem } from "@/lib/SystemContext";
 import { useChat } from "@/lib/ChatContext";
 import { getChatFile } from "@/lib/chatFiles";
+import { useMusicInvite } from "@/lib/MusicInviteContext";
 
 import {
   loadListenPartner,
@@ -18,15 +15,9 @@ import {
 } from "@/lib/listenTogetherStorage";
 
 import { createMessageId } from "@/data/chat";
+import { defaultMusic } from "@/data/music";
 
-import {
-  defaultMusic,
-} from "@/data/music";
-
-import {
-  loadMusic,
-  saveMusic,
-} from "@/lib/musicStorage";
+import { loadMusic, saveMusic } from "@/lib/musicStorage";
 
 import {
   saveMusicCover,
@@ -73,10 +64,8 @@ const REJECT_LINES = [
 
 const TRACK_CHANGE_MIN_MS = 3 * 1000;
 const TRACK_CHANGE_MAX_MS = 10 * 1000;
-
 const PLAY_STATE_MIN_MS = 5 * 1000;
 const PLAY_STATE_MAX_MS = 12 * 1000;
-
 const SYSTEM_COOLDOWN_MS = 30 * 1000;
 
 const IOS_SAFE_FILE_STYLE: React.CSSProperties = {
@@ -96,6 +85,7 @@ function pickLine(list: string[]) {
 
 export default function MusicApp({ onBack }: MusicAppProps) {
   const {
+    music,
     currentTime,
     duration,
     loading,
@@ -112,6 +102,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
 
   const { settings } = useSystem();
   const { addMessage } = useChat();
+  const { triggerNow } = useMusicInvite();
 
   const [partner, setPartner] = useState<ListenPartner>("Solo");
   const [showPartnerPicker, setShowPartnerPicker] =
@@ -132,13 +123,8 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     Record<AvatarKey, string | null>
   >({ you: null, levi: null, erwin: null });
 
-  /* ★ 封面 */
-  const [coverUrl, setCoverUrl] = useState<string | null>(
-    null
-  );
-  const coverInputRef = useRef<HTMLInputElement | null>(
-    null
-  );
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
 
   const systemCooldownRef = useRef(0);
   const systemTimerRef = useRef<number | null>(null);
@@ -150,6 +136,23 @@ export default function MusicApp({ onBack }: MusicAppProps) {
   useEffect(() => {
     setPartner(loadListenPartner());
     setChatMessages(loadMusicChatMessages());
+  }, []);
+
+  /* partner 变更同步 */
+  useEffect(() => {
+    function onChange() {
+      setPartner(loadListenPartner());
+    }
+    window.addEventListener(
+      "runwithme:listen-partner-change",
+      onChange
+    );
+    return () => {
+      window.removeEventListener(
+        "runwithme:listen-partner-change",
+        onChange
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -185,7 +188,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     };
   }, [settings.avatars]);
 
-  /* ★ 加载当前歌曲封面 */
+  /* 当前歌曲封面 */
   useEffect(() => {
     if (!currentTrack) {
       setCoverUrl(null);
@@ -216,7 +219,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
   }, [currentTrack?.id, currentTrack?.coverId]);
 
   /* -------------------------------------------------------
-     系统主动发消息
+     系统主动发消息（切歌 / 播放 / 暂停）
      ------------------------------------------------------- */
 
   useEffect(() => {
@@ -234,7 +237,9 @@ export default function MusicApp({ onBack }: MusicAppProps) {
 
       const delay = minMs + Math.random() * (maxMs - minMs);
       console.log(
-        `[MusicChat] ${reason} · ${(delay / 1000).toFixed(1)}s 后回复`
+        `[MusicChat] ${reason} · ${(delay / 1000).toFixed(
+          1
+        )}s 后回复`
       );
 
       if (systemTimerRef.current) {
@@ -336,24 +341,16 @@ export default function MusicApp({ onBack }: MusicAppProps) {
 
   async function handleCoverUpload(file: File) {
     if (!currentTrack) return;
-
     const coverId = `cover-${currentTrack.id}`;
-
     try {
       await saveMusicCover(coverId, file);
-
-      /* 更新 localStorage */
       const list = loadMusic(defaultMusic);
       const next = list.map((m) =>
         m.id === currentTrack.id ? { ...m, coverId } : m
       );
       saveMusic(next);
-
-      /* 立即显示 */
       const url = URL.createObjectURL(file);
       setCoverUrl(url);
-
-      /* 同步刷新 MusicContext */
       reload();
     } catch (e) {
       console.error("保存封面失败:", e);
@@ -362,7 +359,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
   }
 
   /* -------------------------------------------------------
-     邀请流程
+     用户主动邀请
      ------------------------------------------------------- */
 
   function handleSelectPartner(p: ListenPartner) {
@@ -376,7 +373,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     }
 
     const target = p as "Levi" | "Erwin" | "Both";
-
     const inviteText =
       target === "Both"
         ? "你们两个要不要一起听歌？"
@@ -537,7 +533,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
         </div>
       )}
 
-      {/* 唱片（点击上传封面） */}
       <section className="music-v2-disc-area">
         <button
           type="button"
@@ -824,6 +819,16 @@ export default function MusicApp({ onBack }: MusicAppProps) {
                 <small>邀请两个</small>
               </button>
             </div>
+
+            <button
+              className="music-v2-picker-test"
+              onClick={() => {
+                setShowPartnerPicker(false);
+                triggerNow();
+              }}
+            >
+              [测试] 立即触发系统邀约
+            </button>
 
             <button
               className="music-v2-picker-cancel"

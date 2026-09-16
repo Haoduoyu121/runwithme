@@ -20939,3 +20939,1991 @@ html[data-runwithme-theme="dark"]
   .music-v2-panel-item-cover-btn:hover {
   background: rgba(252, 190, 195, 0.28);
 }
+/* =========================================================================
+   Music · 系统主动邀约
+   ========================================================================= */
+
+.music-sys-invite {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 14px 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(252, 190, 195, 0.42),
+    rgba(207, 222, 227, 0.42)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 8px 22px rgba(142, 101, 111, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  animation: musicSysInviteIn 0.3s ease;
+}
+
+@keyframes musicSysInviteIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html[data-runwithme-theme="dark"] .music-sys-invite {
+  background: linear-gradient(
+    135deg,
+    rgba(142, 101, 111, 0.42),
+    rgba(70, 60, 70, 0.42)
+  );
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.music-sys-invite-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #4f3940;
+  line-height: 1.4;
+}
+
+html[data-runwithme-theme="dark"] .music-sys-invite-text {
+  color: #fff2e9;
+}
+
+.music-sys-invite-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  color: #8e656f;
+  font-size: 13px;
+  animation: musicSysInvitePulse 1.6s ease-in-out infinite;
+}
+
+@keyframes musicSysInvitePulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+.music-sys-invite-text strong {
+  font-weight: 700;
+  color: #8e656f;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-sys-invite-text
+  strong {
+  color: #fcbec3;
+}
+
+.music-sys-invite-countdown {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #8e656f;
+  opacity: 0.75;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-sys-invite-countdown {
+  background: rgba(0, 0, 0, 0.25);
+  color: #d9bcc4;
+}
+
+.music-sys-invite-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.music-sys-invite-accept,
+.music-sys-invite-decline {
+  flex: 1;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.music-sys-invite-accept {
+  background: #8e656f;
+  color: #fff2e9;
+  box-shadow: 0 6px 14px rgba(142, 101, 111, 0.24);
+}
+
+.music-sys-invite-accept:hover {
+  transform: translateY(-1px);
+}
+
+.music-sys-invite-accept:active {
+  transform: scale(0.96);
+}
+
+.music-sys-invite-decline {
+  background: rgba(255, 255, 255, 0.6);
+  color: #8e656f;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-sys-invite-decline {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9bcc4;
+}
+
+.music-sys-invite-decline:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+html[data-runwithme-theme="dark"]
+  .music-sys-invite-decline:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.music-sys-invite-decline:active {
+  transform: scale(0.96);
+}
+
+/* 测试按钮 */
+.music-v2-picker-test {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px dashed rgba(142, 101, 111, 0.28);
+  border-radius: 12px;
+  background: transparent;
+  color: #8e656f;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.music-v2-picker-test:hover {
+  opacity: 1;
+  background: rgba(252, 190, 195, 0.2);
+}
+
+html[data-runwithme-theme="dark"]
+  .music-v2-picker-test {
+  color: #f3dfe4;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+html[data-runwithme-theme="dark"]
+  .music-v2-picker-test:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+/* =========================================================================
+   Music · 全局邀约浮层
+   ========================================================================= */
+
+.music-invite-overlay {
+  position: fixed;
+  left: 50%;
+  top: calc(env(safe-area-inset-top) + 14px);
+  transform: translateX(-50%);
+  z-index: 20000;
+  width: min(92%, 420px);
+  pointer-events: none;
+}
+
+.music-invite-overlay > * {
+  pointer-events: auto;
+}
+
+/* 覆盖 Music 里 .music-sys-invite 的 margin，浮层里不需要 */
+.music-invite-overlay .music-sys-invite {
+  margin: 0;
+  box-shadow:
+    0 18px 44px rgba(80, 50, 60, 0.24),
+    0 4px 12px rgba(80, 50, 60, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+html[data-runwithme-theme="dark"]
+  .music-invite-overlay
+  .music-sys-invite {
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+/* =========================================================================
+   Chat · 数据管理区块
+   ========================================================================= */
+
+.chat-settings-storage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(142, 101, 111, 0.06);
+}
+
+html[data-runwithme-theme="dark"] .chat-settings-storage {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.chat-settings-storage-info strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chat-settings-storage-info small {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.chat-settings-storage-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chat-settings-btn.small.danger {
+  background: rgba(224, 93, 93, 0.15);
+  color: #e05d5d;
+}
+
+.chat-settings-btn.small.danger:hover:not(:disabled) {
+  background: rgba(224, 93, 93, 0.28);
+}
+
+.chat-settings-btn.small:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* =========================================================================
+   Chat · 多选模式
+   ========================================================================= */
+
+/* 顶部"全选"按钮 */
+.telegram-select-all {
+  width: auto !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  font-weight: 700;
+  background: rgba(142, 101, 111, 0.1) !important;
+  color: inherit !important;
+}
+
+html[data-runwithme-theme="dark"] .telegram-select-all {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 多选模式下：消息不能反选已删的 */
+.message-row.is-selection-mode {
+  cursor: pointer;
+}
+
+.message-row.is-selection-mode .message-avatar {
+  cursor: pointer;
+}
+
+/* 选中态：加边框 */
+.message-row.is-picked .message-bubble,
+.message-row.is-picked .chat-call-bubble,
+.message-row.is-picked .chat-voice-bubble {
+  box-shadow:
+    0 0 0 2px #fcbec3,
+    0 4px 12px rgba(252, 190, 195, 0.35);
+}
+
+html[data-runwithme-theme="dark"]
+  .message-row.is-picked
+  .message-bubble,
+html[data-runwithme-theme="dark"]
+  .message-row.is-picked
+  .chat-call-bubble,
+html[data-runwithme-theme="dark"]
+  .message-row.is-picked
+  .chat-voice-bubble {
+  box-shadow:
+    0 0 0 2px #fcbec3,
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* 图片 / 贴纸选中态 */
+.message-row.is-picked .chat-image-message,
+.message-row.is-picked .chat-sticker-message,
+.message-row.is-picked .chat-voice-v2 {
+  outline: 2px solid #fcbec3;
+  outline-offset: 2px;
+  border-radius: 14px;
+}
+
+/* 拍一拍选中态 */
+.chat-pat-row.is-picked .chat-pat-message {
+  background: rgba(252, 190, 195, 0.4);
+  box-shadow: 0 0 0 2px #fcbec3;
+}
+
+html[data-runwithme-theme="dark"]
+  .chat-pat-row.is-picked
+  .chat-pat-message {
+  background: rgba(252, 190, 195, 0.18);
+}
+
+/* 选择勾 */
+.chat-pick-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid #8e656f;
+  background: #fff;
+  color: #8e656f;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+html[data-runwithme-theme="dark"]
+  .chat-pick-indicator {
+  border-color: #fcbec3;
+  background: #2d282c;
+  color: #fcbec3;
+}
+
+.message-row.is-picked .chat-pick-indicator,
+.chat-pat-row.is-picked .chat-pick-indicator {
+  background: #8e656f;
+  color: #fff2e9;
+  border-color: #8e656f;
+}
+
+/* 让 .message-content 相对定位，让勾固定在气泡右上角 */
+.message-row .message-content {
+  position: relative;
+}
+
+.chat-pat-wrapper {
+  position: relative;
+}
+
+/* ---------- 底部操作条 ---------- */
+
+.chat-selection-bar {
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  padding: 12px clamp(12px, 3vw, 24px)
+    max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(142, 101, 111, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+html[data-runwithme-theme="dark"] .chat-selection-bar {
+  background: rgba(48, 41, 48, 0.92);
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.chat-selection-btn {
+  flex: 1;
+  height: 46px;
+  border: 0;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.chat-selection-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.chat-selection-cancel {
+  background: rgba(142, 101, 111, 0.1);
+  color: inherit;
+}
+
+html[data-runwithme-theme="dark"]
+  .chat-selection-cancel {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chat-selection-delete {
+  background: #e05d5d;
+  color: #fff2e9;
+}
+
+.chat-selection-delete:hover:not(:disabled) {
+  background: #c94d4d;
+}
+
+.chat-selection-delete:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* =========================================================================
+   Music Library Drawer v2 · 歌单
+   ========================================================================= */
+
+/* ---------- Tabs ---------- */
+
+.music-v2-drawer-tabs {
+  flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+  padding: 4px 14px 10px;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.06);
+}
+
+html[data-runwithme-theme="dark"] .music-v2-drawer-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.music-v2-drawer-tabs button {
+  flex: 1;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.music-v2-drawer-tabs button.active {
+  background: rgba(252, 190, 195, 0.35);
+  color: #8e656f;
+  opacity: 1;
+  font-weight: 700;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-v2-drawer-tabs
+  button.active {
+  background: rgba(252, 190, 195, 0.15);
+  color: #f3dfe4;
+}
+
+/* ---------- 列表项：结构升级（外层 div + main + menu） ---------- */
+
+.music-v2-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.music-v2-drawer-item:hover {
+  background: rgba(142, 101, 111, 0.06);
+}
+
+.music-v2-drawer-item.active {
+  background: rgba(252, 190, 195, 0.28);
+}
+
+html[data-runwithme-theme="dark"]
+  .music-v2-drawer-item.active {
+  background: rgba(252, 190, 195, 0.15);
+}
+
+.music-v2-drawer-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.music-v2-drawer-item-menu {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.music-v2-drawer-item-menu:hover {
+  opacity: 1;
+  background: rgba(142, 101, 111, 0.12);
+}
+
+/* ---------- 歌单列表 ---------- */
+
+.music-playlist-create-btn {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px dashed rgba(142, 101, 111, 0.28);
+  border-radius: 12px;
+  background: transparent;
+  color: #8e656f;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background 0.15s ease;
+}
+
+.music-playlist-create-btn:hover {
+  background: rgba(252, 190, 195, 0.15);
+}
+
+html[data-runwithme-theme="dark"]
+  .music-playlist-create-btn {
+  color: #f3dfe4;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.music-playlist-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.music-playlist-item:hover {
+  background: rgba(142, 101, 111, 0.06);
+}
+
+.music-playlist-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.music-playlist-item-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(252, 190, 195, 0.28);
+  font-size: 18px;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-playlist-item-icon {
+  background: rgba(252, 190, 195, 0.15);
+}
+
+.music-playlist-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.music-playlist-item-info strong {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-playlist-item-info small {
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+/* ---------- 歌单详情 ---------- */
+
+.music-playlist-back {
+  align-self: flex-start;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(142, 101, 111, 0.08);
+  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-playlist-back {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.music-playlist-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.music-playlist-name-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-playlist-name-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.music-playlist-name-input:focus {
+  border-color: rgba(142, 101, 111, 0.4);
+}
+
+.music-playlist-detail-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+.music-playlist-delete-btn {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(224, 93, 93, 0.25);
+  border-radius: 10px;
+  background: transparent;
+  color: #e05d5d;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.music-playlist-delete-btn:hover {
+  background: rgba(224, 93, 93, 0.1);
+}
+
+/* ---------- 添加到歌单菜单 ---------- */
+
+.music-add-to-playlist-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px;
+  animation: musicDrawerFade 0.2s ease;
+}
+
+.music-add-to-playlist {
+  width: min(380px, 100%);
+  max-height: 70vh;
+  overflow-y: auto;
+  border-radius: 20px;
+  background: #fff8f3;
+  padding: 18px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.28);
+  animation: musicAddToPlaylistIn 0.22s ease;
+}
+
+@keyframes musicAddToPlaylistIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+html[data-runwithme-theme="dark"]
+  .music-add-to-playlist {
+  background: #211c20;
+  color: #fff2e9;
+}
+
+.music-add-to-playlist-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.music-add-to-playlist-empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+.music-add-to-playlist-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.music-add-to-playlist-option:hover {
+  background: rgba(142, 101, 111, 0.08);
+}
+
+.music-add-to-playlist-check {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1.5px solid rgba(142, 101, 111, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff2e9;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.music-add-to-playlist-check.checked {
+  background: #8e656f;
+  border-color: #8e656f;
+}
+
+.music-add-to-playlist-new {
+  width: 100%;
+  margin-top: 8px;
+  padding: 11px 14px;
+  border: 1px dashed rgba(142, 101, 111, 0.28);
+  border-radius: 12px;
+  background: transparent;
+  color: #8e656f;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.music-add-to-playlist-new:hover {
+  background: rgba(252, 190, 195, 0.15);
+}
+
+html[data-runwithme-theme="dark"]
+  .music-add-to-playlist-new {
+  color: #f3dfe4;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.music-add-to-playlist-close {
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(142, 101, 111, 0.1);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+html[data-runwithme-theme="dark"]
+  .music-add-to-playlist-close {
+  background: rgba(255, 255, 255, 0.06);
+}
+/* =========================================================================
+   Letter App
+   ========================================================================= */
+
+.letter-app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #f7f1e8;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"] .letter-app {
+  background: #1a1518;
+  color: #f3dfe4;
+}
+
+/* ---------- Header ---------- */
+
+.letter-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 6px;
+}
+
+.letter-back {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.letter-back:hover {
+  background: rgba(142, 101, 111, 0.08);
+}
+
+.letter-header-center {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.letter-header-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.letter-header-sub {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  margin-top: 3px;
+}
+
+.letter-write-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.letter-write-btn:hover {
+  background: #7a545e;
+}
+
+/* ---------- Tabs ---------- */
+
+.letter-tabs {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 4px 16px 10px;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.08);
+}
+
+html[data-runwithme-theme="dark"] .letter-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.letter-tab {
+  flex: 1;
+  position: relative;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.letter-tab.active {
+  background: rgba(252, 190, 195, 0.35);
+  color: #8e656f;
+  opacity: 1;
+  font-weight: 700;
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-tab.active {
+  background: rgba(252, 190, 195, 0.15);
+  color: #f3dfe4;
+}
+
+.letter-tab-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e05d5d;
+  color: #fff2e9;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* ---------- 列表 ---------- */
+
+.letter-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 14px calc(96px + env(safe-area-inset-bottom));
+}
+
+.letter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.letter-empty {
+  padding: 70px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.letter-empty-icon {
+  font-size: 42px;
+  opacity: 0.35;
+  margin-bottom: 6px;
+}
+
+.letter-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.letter-empty-desc {
+  font-size: 12px;
+  opacity: 0.6;
+  max-width: 240px;
+  line-height: 1.6;
+}
+
+/* ---------- Card ---------- */
+
+.letter-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 14px rgba(90, 60, 65, 0.05);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.letter-card:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+html[data-runwithme-theme="dark"] .letter-card {
+  background: rgba(48, 42, 47, 0.55);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-card:hover {
+  background: rgba(60, 53, 59, 0.75);
+}
+
+.letter-card.is-unread {
+  background: rgba(252, 190, 195, 0.22);
+  border-color: rgba(252, 190, 195, 0.4);
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-card.is-unread {
+  background: rgba(252, 190, 195, 0.1);
+  border-color: rgba(252, 190, 195, 0.2);
+}
+
+.letter-avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff2e9;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.letter-avatar-you {
+  background: linear-gradient(135deg, #ffd4d8, #fcbec3);
+  color: #8e656f;
+}
+
+.letter-avatar-levi {
+  background: linear-gradient(135deg, #a37b84, #8e656f);
+}
+
+.letter-avatar-erwin {
+  background: linear-gradient(135deg, #ad8f95, #9b7f86);
+}
+
+.letter-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.letter-card-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.letter-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-card-name {
+  color: #f3dfe4;
+}
+
+.letter-card-time {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.letter-card-subject {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5e4650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-card-subject {
+  color: #fff2e9;
+}
+
+.letter-card-preview {
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.55;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.letter-card-dot {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e05d5d;
+  box-shadow: 0 0 0 3px rgba(224, 93, 93, 0.15);
+}
+
+/* ---------- FAB ---------- */
+
+.letter-fab {
+  position: absolute;
+  right: 20px;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  width: 54px;
+  height: 54px;
+  border: 0;
+  border-radius: 50%;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 26px rgba(142, 101, 111, 0.32);
+  transition: transform 0.15s ease;
+}
+
+.letter-fab:hover {
+  transform: translateY(-2px) scale(1.04);
+}
+
+.letter-fab:active {
+  transform: scale(0.94);
+}
+
+/* ---------- 详情 ---------- */
+
+.letter-detail,
+.letter-compose {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #f7f1e8;
+  color: #4f3940;
+  animation: letterSlideIn 0.22s ease;
+}
+
+html[data-runwithme-theme="dark"] .letter-detail,
+html[data-runwithme-theme="dark"] .letter-compose {
+  background: #1a1518;
+  color: #f3dfe4;
+}
+
+@keyframes letterSlideIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.letter-detail-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 6px;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.08);
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-detail-header {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.letter-detail-back {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 26px;
+  cursor: pointer;
+}
+
+.letter-detail-back:hover {
+  background: rgba(142, 101, 111, 0.08);
+}
+
+.letter-detail-title {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.65;
+  letter-spacing: 0.06em;
+}
+
+.letter-detail-delete {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.letter-detail-delete:hover {
+  opacity: 1;
+  background: rgba(224, 93, 93, 0.15);
+}
+
+.letter-detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+/* ---------- 信纸 ---------- */
+
+.letter-paper {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 22px 22px 30px;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(
+      transparent,
+      transparent 31px,
+      rgba(142, 101, 111, 0.06) 31px,
+      rgba(142, 101, 111, 0.06) 32px
+    ),
+    #fffaf2;
+  border: 1px solid rgba(142, 101, 111, 0.12);
+  box-shadow: 0 8px 26px rgba(90, 60, 65, 0.08);
+  font-family: "Noto Sans SC", -apple-system, sans-serif;
+}
+
+html[data-runwithme-theme="dark"] .letter-paper {
+  background:
+    repeating-linear-gradient(
+      transparent,
+      transparent 31px,
+      rgba(255, 255, 255, 0.04) 31px,
+      rgba(255, 255, 255, 0.04) 32px
+    ),
+    #2a2428;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.25);
+}
+
+.letter-paper-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.letter-paper-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.letter-paper-label {
+  flex-shrink: 0;
+  min-width: 62px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8e656f;
+  opacity: 0.75;
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-paper-label {
+  color: #fcbec3;
+  opacity: 0.85;
+}
+
+.letter-paper-value {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  opacity: 0.85;
+}
+
+.letter-paper-divider {
+  height: 1px;
+  margin: 16px 0;
+  background: rgba(142, 101, 111, 0.15);
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-paper-divider {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.letter-paper-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 15px;
+  line-height: 2;
+  letter-spacing: 0.01em;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-family: "Noto Serif SC", "Cormorant Garamond",
+    Georgia, serif;
+}
+
+.letter-paper-body p {
+  margin: 0;
+}
+
+.letter-paper-sign {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 14px;
+  color: #5e4650;
+  opacity: 0.85;
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-paper-sign {
+  color: #f3dfe4;
+}
+
+.letter-paper-sign-name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.letter-paper-sign-date {
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+/* ---------- 写信 ---------- */
+
+.letter-compose-send {
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.letter-compose-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.letter-compose-send:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.letter-compose-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+.letter-compose-paper {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 22px 22px 26px;
+  border-radius: 8px;
+  background: #fffaf2;
+  border: 1px solid rgba(142, 101, 111, 0.12);
+  box-shadow: 0 8px 26px rgba(90, 60, 65, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-compose-paper {
+  background: #2a2428;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.letter-compose-to {
+  display: flex;
+  gap: 6px;
+}
+
+.letter-compose-to button {
+  padding: 4px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.2);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.letter-compose-to button.active {
+  background: #8e656f;
+  border-color: #8e656f;
+  color: #fff2e9;
+}
+
+.letter-compose-subject {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-compose-subject {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.letter-compose-subject:focus {
+  border-color: rgba(142, 101, 111, 0.4);
+}
+
+.letter-compose-body {
+  width: 100%;
+  min-height: 280px;
+  padding: 10px 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  outline: none;
+  resize: vertical;
+  font: inherit;
+  font-size: 15px;
+  line-height: 2;
+  letter-spacing: 0.01em;
+  font-family: "Noto Serif SC", "Cormorant Garamond",
+    Georgia, serif;
+  box-sizing: border-box;
+}
+
+.letter-compose-body::placeholder {
+  color: rgba(142, 101, 111, 0.4);
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-compose-body::placeholder {
+  color: rgba(255, 244, 239, 0.3);
+}
+
+.letter-compose-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #8e656f;
+  opacity: 0.65;
+  text-align: right;
+}
+
+html[data-runwithme-theme="dark"]
+  .letter-compose-hint {
+  color: #d9bcc4;
+}
+/* =========================================================================
+   iCity · 通知
+   ========================================================================= */
+
+.icity-notif-btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.icity-notif-btn:hover {
+  background: rgba(142, 101, 111, 0.08);
+}
+
+.icity-notif-bell {
+  font-size: 19px;
+  opacity: 0.75;
+}
+
+.icity-notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e05d5d;
+  color: #fff2e9;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(224, 93, 93, 0.35);
+  transition: background 0.15s ease;
+}
+
+.icity-notif-badge.is-zero {
+  background: rgba(142, 101, 111, 0.28);
+  box-shadow: none;
+  color: rgba(255, 242, 233, 0.9);
+}
+
+html[data-runwithme-theme="dark"]
+  .icity-notif-badge.is-zero {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- 面板 ---------- */
+
+.icity-notif-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 60px 16px 16px;
+  animation: icityFadeIn 0.2s ease;
+}
+
+.icity-notif-panel {
+  width: min(400px, 100%);
+  max-height: calc(100vh - 90px);
+  border-radius: 22px;
+  background: #fff8f3;
+  color: #4f3940;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: icityNotifPanelIn 0.22s ease;
+}
+
+html[data-runwithme-theme="dark"] .icity-notif-panel {
+  background: #211c20;
+  color: #fff2e9;
+}
+
+@keyframes icityNotifPanelIn {
+  from { transform: translateY(-8px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.icity-notif-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.08);
+}
+
+html[data-runwithme-theme="dark"] .icity-notif-header {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.icity-notif-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.icity-notif-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icity-notif-clear {
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(142, 101, 111, 0.08);
+  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.icity-notif-clear:hover {
+  opacity: 1;
+}
+
+html[data-runwithme-theme="dark"] .icity-notif-clear {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.icity-notif-close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+html[data-runwithme-theme="dark"] .icity-notif-close {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.icity-notif-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.icity-notif-empty {
+  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.icity-notif-empty-icon {
+  font-size: 38px;
+  opacity: 0.35;
+  margin-bottom: 6px;
+}
+
+.icity-notif-empty-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.icity-notif-empty-desc {
+  font-size: 11px;
+  opacity: 0.6;
+  max-width: 240px;
+  line-height: 1.6;
+}
+
+.icity-notif-item {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.icity-notif-item:hover {
+  background: rgba(142, 101, 111, 0.06);
+}
+
+html[data-runwithme-theme="dark"] .icity-notif-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.icity-notif-item.is-unread {
+  background: rgba(252, 190, 195, 0.12);
+}
+
+.icity-notif-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.icity-notif-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.icity-notif-item-head strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.icity-notif-item-action {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.icity-notif-item-time {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.icity-notif-item-preview {
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.75;
+  word-break: break-word;
+}
+
+.icity-notif-item-text {
+  display: block;
+  font-style: italic;
+  color: #5e4650;
+  margin-bottom: 2px;
+}
+
+html[data-runwithme-theme="dark"]
+  .icity-notif-item-text {
+  color: #f3dfe4;
+}
+
+.icity-notif-item-post {
+  display: block;
+  font-size: 11px;
+  opacity: 0.65;
+}
+
+.icity-notif-item-dot {
+  position: absolute;
+  top: 14px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e05d5d;
+  box-shadow: 0 0 0 3px rgba(224, 93, 93, 0.15);
+}
+
+@media (max-width: 500px) {
+  .icity-notif-backdrop {
+    padding: 40px 12px 12px;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .icity-notif-panel {
+    width: 100%;
+    max-height: calc(100vh - 60px);
+  }
+}
+/* =========================================================================
+   修复：icity 通知按钮 hover 闪屏
+   - badge 是 absolute 定位，超出 button 边界
+   - 鼠标滑到 badge 上会脱离 hover 检测，产生抖动
+   - 让所有子元素不接收指针事件，hover 只作用于 button 本身
+   ========================================================================= */
+
+.icity-notif-btn > * {
+  pointer-events: none;
+}
+/* =========================================================================
+   修复：icity 通知面板打开时的闪屏
+   - backdrop 动画从"淡入"改为"瞬时"，避免视觉闪烁
+   - 只在 panel 上保留微妙的入场动画
+   - 按钮在面板打开时保持激活态，避免 hover 状态跳变
+   ========================================================================= */
+
+.icity-notif-backdrop {
+  animation: none !important;
+}
+
+.icity-notif-panel {
+  animation: icityNotifPanelIn 0.18s ease;
+}
+
+/* 面板打开时按钮的激活态 */
+.icity-notif-btn.is-active {
+  background: rgba(142, 101, 111, 0.12);
+}
+
+html[data-runwithme-theme="dark"]
+  .icity-notif-btn.is-active {
+  background: rgba(255, 255, 255, 0.1);
+}
+/* =========================================================================
+   阶段 1 · 底部空白修复（终版覆盖）
+   - 移除外壳的 safe-area padding
+   - 每个 App 自己处理 safe-area
+   - 避免双重占用
+   ========================================================================= */
+
+.runwithme-app {
+  padding-top: 0 !important;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* 各 App 的顶部 header 处理 safe-area-top */
+.chat-page .telegram-header,
+.icity-header,
+.calendar-header,
+.notes-header,
+.notes-editor-header,
+.checkin-header,
+.q-header,
+.music-v2-header,
+.photos-app-header,
+.letter-header,
+.letter-detail-header {
+  padding-top: calc(env(safe-area-inset-top) + 12px) !important;
+}
+
+/* 主屏内容避开顶部 */
+.home-screen-v2 .home-v2-grid-wrap {
+  padding-top: calc(env(safe-area-inset-top) + 12px) !important;
+}
+
+/* 锁屏内容避开顶部 */
+.lock-screen .lock-content {
+  padding-top: calc(env(safe-area-inset-top) + 80px) !important;
+}
+
+/* 底部安全区只在各 dock 上生效 */
+.dock {
+  bottom: 0 !important;
+  padding-bottom: env(safe-area-inset-bottom) !important;
+}
+
+.icity-dock {
+  padding-bottom: env(safe-area-inset-bottom) !important;
+}
+
+.calendar-dock {
+  padding-bottom: env(safe-area-inset-bottom) !important;
+}
+
+.checkin-dock {
+  padding-bottom: env(safe-area-inset-bottom) !important;
+}
+
+/* Chat 输入栏 */
+.chat-page .chat-composer {
+  padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+}
+
+/* 各 App 内容区给 dock 留出足够空间（但不叠加 safe-area） */
+.icity-feed {
+  padding-bottom: calc(110px + env(safe-area-inset-bottom)) !important;
+}
+
+.calendar-scroll,
+.checkin-scroll {
+  padding-bottom: calc(110px + env(safe-area-inset-bottom)) !important;
+}
+
+.home-screen-v2 .home-v2-grid-wrap {
+  padding-bottom: calc(130px + env(safe-area-inset-bottom)) !important;
+}

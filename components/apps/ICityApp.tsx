@@ -15,6 +15,7 @@ import NewPostModal from "@/components/apps/icity/NewPostModal";
 import PostDetail from "@/components/apps/icity/PostDetail";
 import ProfilePage from "@/components/apps/icity/ProfilePage";
 import ImageLightbox from "@/components/apps/icity/ImageLightbox";
+import ICityNotificationPanel from "@/components/apps/icity/ICityNotificationPanel";
 
 type ICityAppProps = {
   onBack: () => void;
@@ -139,6 +140,7 @@ export default function ICityApp({
     toggleLike,
     addUserPost,
     forceInteraction,
+    unreadCount,
   } = useICity();
 
   const [tab, setTab] = useState<Tab>("world");
@@ -154,6 +156,9 @@ export default function ICityApp({
     images: string[];
     index: number;
   } | null>(null);
+
+  const [showNotifications, setShowNotifications] =
+  useState(false);
 
   const dockMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -243,7 +248,25 @@ export default function ICityApp({
           </div>
         </div>
 
-        <button
+                <button
+          className={`icity-notif-btn${
+            showNotifications ? " is-active" : ""
+          }`}
+          onClick={() => setShowNotifications(true)}
+          aria-label="互动消息"
+          title=""
+        >
+          <span className="icity-notif-bell">♡</span>
+          <span
+            className={`icity-notif-badge${
+              unreadCount === 0 ? " is-zero" : ""
+            }`}
+          >
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        </button>
+
+                <button
           className={`icity-my-avatar ${
             myAvatarUrl ? " has-image" : ""
           }`}
@@ -410,6 +433,15 @@ export default function ICityApp({
           images={lightbox.images}
           initialIndex={lightbox.index}
           onClose={() => setLightbox(null)}
+        />
+      )}
+      
+      {showNotifications && (
+        <ICityNotificationPanel
+          onClose={() => setShowNotifications(false)}
+          onOpenPost={(postId) => {
+            setDetailPostId(postId);
+          }}
         />
       )}
     </main>

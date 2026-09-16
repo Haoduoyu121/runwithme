@@ -107,3 +107,19 @@ export function getAuthorDisplay(
 
   return { name, handle, initial, colorClass };
 }
+/* =========================================================
+   iCity 通知
+   ========================================================= */
+
+export type ICityNotificationType = "like" | "comment";
+
+export type ICityNotification = {
+  id: string;
+  type: ICityNotificationType;
+  from: "Levi" | "Erwin";
+  postId: string;
+  postPreview: string;
+  commentText?: string;
+  createdAt: number;
+  read: boolean;
+};

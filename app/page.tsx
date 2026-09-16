@@ -12,6 +12,7 @@ import CalendarApp from "@/components/apps/CalendarApp";
 import NotesApp from "@/components/apps/NotesApp";
 import QuestionnaireApp from "@/components/apps/QuestionnaireApp";
 import CheckInApp from "@/components/apps/CheckInApp";
+import LetterApp from "@/components/apps/LetterApp";
 
 import {
   loadSystemSettings,
@@ -23,6 +24,7 @@ import { wallpapers } from "@/data/wallpapers";
 
 import {
   buildDefaultLayout,
+  mergeHomeLayout,
   type HomeItem,
 } from "@/data/home";
 
@@ -83,6 +85,12 @@ const apps = [
     name: "Check-in",
     icon: "☑",
     color: "pink",
+  },
+  {
+    id: "letter" as AppId,
+    name: "Letter",
+    icon: "✉",
+    color: "cream",
   },
 ];
 
@@ -174,13 +182,14 @@ const [hydrated, setHydrated] = useState(false);
 const [editing, setEditing] = useState(false);
 const [showAddWidget, setShowAddWidget] = useState(false);
 
-/* 首次挂载：从 localStorage 恢复 */
+/* 首次挂载：从 localStorage 恢复 + 补全新增 App */
 useEffect(() => {
   const defaultItems = buildDefaultLayout(
     APP_IDS_FOR_LAYOUT
   );
   const saved = loadHomeLayout(defaultItems);
-  setItems(saved);
+  const merged = mergeHomeLayout(saved, defaultItems);
+  setItems(merged);
   setHydrated(true);
 }, []);
 
@@ -373,9 +382,11 @@ function AppWindow({
       {app === "calendar" && <CalendarApp onBack={onBack} />}
       {app === "notes" && <NotesApp onBack={onBack} />}
       {app === "questionnaire" && (
+        
         <QuestionnaireApp onBack={onBack} />
       )}
       {app === "checkin" && <CheckInApp onBack={onBack} />}
+      {app === "letter" && <LetterApp onBack={onBack} />}
     </div>
   );
 }

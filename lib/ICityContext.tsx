@@ -45,7 +45,17 @@ import {
   type ICityAuthor,
   type ICityProfile,
   type ICityProfiles,
+  type ICityNotification,
 } from "@/data/icity";
+
+import {
+  loadNotifications,
+  saveNotifications,
+  loadSeenIds,
+  saveSeenIds,
+} from "@/lib/icityNotificationStorage";
+
+import { collectInteractions } from "@/lib/icityNotificationHelper";
 
 /* -------------------------------------------------------
    时间参数
@@ -107,6 +117,12 @@ type ICityContextValue = {
 
   /* 立即触发一次随机互动（发帖/点赞/评论） */
   forceInteraction: () => void;
+
+  /* ★ 通知 */
+  notifications: ICityNotification[];
+  unreadCount: number;
+  markAllNotificationsRead: () => void;
+  clearNotifications: () => void;
 };
 
 const ICityContext =
@@ -208,6 +224,13 @@ export function ICityProvider({
   const [postImageUrls, setPostImageUrls] = useState<
     Record<string, string>
   >({});
+
+  /* ★ 通知 */
+  const [notifications, setNotifications] = useState<
+    ICityNotification[]
+  >([]);
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const notificationsInitializedRef = useRef(false);
 
   const postsRef = useRef<ICityPost[]>([]);
   const commentsRef = useRef<ICityComment[]>([]);
@@ -400,6 +423,80 @@ export function ICityProvider({
   );
 
   /* -------------------------------------------------------
+     ★ 通知扫描
+     ------------------------------------------------------- */
+
+  useEffect(() => {
+    if (posts.length === 0 && comments.length === 0) {
+      return;
+    }
+
+    const events = collectInteractions(posts, comments);
+
+    /* 首次加载：所有现有事件静默标记为"已见" */
+    if (!notificationsInitializedRef.current) {
+      notificationsInitializedRef.current = true;
+
+      const storedNotifs = loadNotifications();
+      const storedSeen = loadSeenIds();
+
+      if (
+        storedNotifs.length === 0 &&
+        storedSeen.size === 0
+      ) {
+        const ids = new Set(events.map((e) => e.id));
+        seenIdsRef.current = ids;
+        saveSeenIds(ids);
+        return;
+      }
+
+      seenIdsRef.current = storedSeen;
+      setNotifications(storedNotifs);
+      return;
+    }
+
+    /* 之后：只处理新事件 */
+    const seen = seenIdsRef.current;
+    const newOnes: ICityNotification[] = [];
+    const newSeen = new Set(seen);
+
+    for (const ev of events) {
+      if (seen.has(ev.id)) continue;
+      newOnes.push(ev);
+      newSeen.add(ev.id);
+    }
+
+    if (newOnes.length === 0) return;
+
+    seenIdsRef.current = newSeen;
+    saveSeenIds(newSeen);
+
+    setNotifications((prev) => {
+      const next = [...prev, ...newOnes]
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 200);
+      saveNotifications(next);
+      return next;
+    });
+  }, [posts, comments]);
+
+  const markAllNotificationsRead = useCallback(() => {
+    setNotifications((prev) => {
+      if (prev.every((n) => n.read)) return prev;
+      const next = prev.map((n) =>
+        n.read ? n : { ...n, read: true }
+      );
+      saveNotifications(next);
+      return next;
+    });
+  }, []);
+
+  const clearNotifications = useCallback(() => {
+    setNotifications([]);
+    saveNotifications([]);
+  }, []);
+
+  /* -------------------------------------------------------
      自动发帖
      ------------------------------------------------------- */
 
@@ -590,13 +687,12 @@ export function ICityProvider({
   );
 
   /* -------------------------------------------------------
-     ★ 立即触发一次互动（用于「刷新」按钮）
+     立即触发一次互动（用于「刷新」按钮）
      ------------------------------------------------------- */
 
   const forceInteraction = useCallback(() => {
     const list = postsRef.current;
 
-    /* 没有帖子 → 直接发帖 */
     if (list.length === 0) {
       performAutoPost();
       return;
@@ -604,13 +700,11 @@ export function ICityProvider({
 
     const r = Math.random();
 
-    /* 40% 发帖 */
     if (r < 0.4) {
       performAutoPost();
       return;
     }
 
-    /* 30% 点赞 */
     if (r < 0.7) {
       const character = pickRandomCharacter();
       const candidates = list.filter(
@@ -637,7 +731,6 @@ export function ICityProvider({
       return;
     }
 
-    /* 30% 评论 */
     const cards = loadCards(defaultCards);
     const character = pickRandomCharacter();
     const target =
@@ -659,7 +752,6 @@ export function ICityProvider({
 
     commitComments([...commentsRef.current, newComment]);
 
-    /* 50% 概率再触发一次评论链 */
     if (Math.random() < 0.5) {
       scheduleReactionsToComment(newComment, 0);
     }
@@ -836,7 +928,6 @@ export function ICityProvider({
     [commitPosts, scheduleReactionsToUserPost]
   );
 
-  /* ★ 允许删除任意帖子（包括 Levi / Erwin 的） */
   const deletePost = useCallback(
     (postId: string) => {
       const target = postsRef.current.find(
@@ -931,10 +1022,8 @@ export function ICityProvider({
     [commitComments, scheduleReactionsToComment]
   );
 
-  /* ★ 允许删除任意评论 */
   const deleteComment = useCallback(
     (commentId: string) => {
-      /* 同时删除以该评论为父级的回复 */
       const toDelete = new Set<string>([commentId]);
       let changed = true;
 
@@ -990,6 +1079,13 @@ export function ICityProvider({
         deleteComment,
         getCommentsForPost,
         forceInteraction,
+
+        /* ★ 通知 */
+        notifications,
+        unreadCount: notifications.filter((n) => !n.read)
+          .length,
+        markAllNotificationsRead,
+        clearNotifications,
       }}
     >
       {children}

@@ -11,7 +11,8 @@ export type AppId =
   | "calendar"
   | "cards"
   | "questionnaire"
-  | "checkin";
+  | "checkin"
+  | "letter";
 
 export type AppIconState = "custom" | null;
 
@@ -110,6 +111,7 @@ const defaultSettings: SystemSettings = {
     cards: null,
     questionnaire: null,
     checkin: null,
+    letter: null,
   },
   dockIcons: {
     "slot-1": null,
