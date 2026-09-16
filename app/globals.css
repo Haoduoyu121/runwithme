@@ -23225,3 +23225,55 @@ body {
   background-position: center !important;
   background-repeat: no-repeat !important;
 }
+/* =========================================================================
+   最终修复 · 覆盖 iOS PWA 安全区
+   - body/html 背景 = 当前壁纸，安全区露出来也是壁纸
+   - Dock 完全贴底，不使用 safe-area
+   ========================================================================= */
+
+html,
+body {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* ---------- Dock 完全贴底 ---------- */
+
+.dock {
+  bottom: 0 !important;
+  padding-bottom: 12px !important;
+  border-radius: 28px 28px 0 0 !important;
+}
+
+.icity-dock,
+.calendar-dock,
+.checkin-dock {
+  padding-bottom: 0 !important;
+}
+
+.icity-dock-inner,
+.calendar-dock-inner,
+.checkin-dock-inner {
+  margin-bottom: 10px !important;
+}
+
+/* ---------- Chat 输入栏贴底 ---------- */
+
+.chat-page .chat-composer {
+  padding-bottom: 10px !important;
+}
+
+/* ---------- Music / Letter 悬浮按钮贴底 ---------- */
+
+.music-v2-list-btn {
+  bottom: 20px !important;
+}
+
+.music-chat-fab {
+  bottom: 20px !important;
+}
+
+.letter-fab {
+  bottom: 20px !important;
+}

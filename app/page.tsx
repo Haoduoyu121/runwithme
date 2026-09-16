@@ -451,6 +451,47 @@ export default function Home() {
         const file = await getWallpaperFile(
           CUSTOM_LOCK_WALLPAPER
         );
+          /* ★ 把当前壁纸同步到 html/body，覆盖 iOS PWA 安全区 */
+  useEffect(() => {
+    if (!systemSettings) return;
+
+    const getWp = (id: string) => {
+      const w = wallpapers.find((x) => x.id === id);
+      return w ?? wallpapers[0];
+    };
+
+    const lockDefault = getWp(
+      systemSettings.lockScreenWallpaper
+    );
+    const homeDefault = getWp(
+      systemSettings.homeWallpaper
+    );
+
+    const lockWp = customLockWallpaper
+      ? `url("${customLockWallpaper}")`
+      : lockDefault.background;
+
+    const homeWp = customHomeWallpaper
+      ? `url("${customHomeWallpaper}")`
+      : homeDefault.background;
+
+    const current = !unlocked ? lockWp : homeWp;
+
+    const setBg = (el: HTMLElement) => {
+      el.style.background = current;
+      el.style.backgroundSize = "cover";
+      el.style.backgroundPosition = "center";
+      el.style.backgroundRepeat = "no-repeat";
+    };
+
+    setBg(document.documentElement);
+    setBg(document.body);
+  }, [
+    unlocked,
+    systemSettings,
+    customLockWallpaper,
+    customHomeWallpaper,
+  ]);
 
         if (file && !cancelled) {
           lockUrl = URL.createObjectURL(file);
