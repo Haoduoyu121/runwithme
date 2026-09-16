@@ -176,6 +176,11 @@ export default function CardStudioApp({
     }
   }
 
+  /* -------------------------------------------------------
+     媒体预览加载
+     ★ 修复：每次重新加载时，先把旧的 URL 全部 revoke
+     ------------------------------------------------------- */
+
   useEffect(() => {
     let cancelled = false;
 
@@ -198,7 +203,13 @@ export default function CardStudioApp({
               ? await getVoiceFile(card.mediaId)
               : await getStickerFile(card.mediaId);
 
-          if (!file) continue;
+          if (!file) {
+            console.warn(
+              "[CardStudio] 找不到媒体文件:",
+              card.mediaId
+            );
+            continue;
+          }
 
           if (cancelled) return;
 
@@ -208,19 +219,35 @@ export default function CardStudioApp({
         }
       }
 
-      if (!cancelled) {
-        setMediaUrls(nextUrls);
-      } else {
+      if (cancelled) {
         Object.values(nextUrls).forEach((url) =>
           URL.revokeObjectURL(url)
         );
+        return;
       }
+
+      /* ★ 替换前先 revoke 旧 URL，避免内存泄漏 */
+      setMediaUrls((prev) => {
+        Object.values(prev).forEach((url) => {
+          if (
+            !Object.values(nextUrls).includes(url)
+          ) {
+            URL.revokeObjectURL(url);
+          }
+        });
+        return nextUrls;
+      });
     }
 
     if (cardPool.length > 0) {
       void loadMediaPreviews();
     } else {
-      setMediaUrls({});
+      setMediaUrls((prev) => {
+        Object.values(prev).forEach((url) =>
+          URL.revokeObjectURL(url)
+        );
+        return {};
+      });
     }
 
     return () => {
@@ -238,9 +265,14 @@ export default function CardStudioApp({
         audioElement.pause();
       }
     };
-  }, [mediaUrls, audioElement]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-   function handleAddFile(
+  /* -------------------------------------------------------
+     iOS 安全：立即把文件读进内存
+     ------------------------------------------------------- */
+
+  function handleAddFile(
     event: ChangeEvent<HTMLInputElement>
   ) {
     const file = event.target.files?.[0] ?? null;
@@ -250,10 +282,6 @@ export default function CardStudioApp({
       return;
     }
 
-    /* ★ iOS 修复：立即读取文件内容到内存，
-       避免 File 对象在用户手势结束后被系统回收。
-       直接从 input 拿到的 File 在几秒后可能无法读取，
-       所以我们在这一刻把内容复制到内存，再包装成新的 File。 */
     const reader = new FileReader();
 
     reader.onload = () => {
@@ -279,17 +307,14 @@ export default function CardStudioApp({
             type = "audio/ogg";
           else if (nameLower.endsWith(".opus"))
             type = "audio/opus";
-          else if (
-            nameLower.endsWith(".png")
-          )
+          else if (nameLower.endsWith(".png"))
             type = "image/png";
           else if (
             nameLower.endsWith(".jpg") ||
             nameLower.endsWith(".jpeg")
           )
             type = "image/jpeg";
-          else
-            type = "application/octet-stream";
+          else type = "application/octet-stream";
         }
 
         const fresh = new File(
@@ -299,8 +324,6 @@ export default function CardStudioApp({
         );
 
         setAddFile(fresh);
-
-        /* 允许用户选同一个文件时也触发 onChange */
         event.target.value = "";
       } catch (e) {
         console.error("读取文件失败:", e);
@@ -310,10 +333,7 @@ export default function CardStudioApp({
     };
 
     reader.onerror = () => {
-      console.error(
-        "读取文件失败:",
-        reader.error
-      );
+      console.error("读取文件失败:", reader.error);
       alert("读取文件失败，请重试。");
       setAddFile(null);
     };
@@ -326,7 +346,6 @@ export default function CardStudioApp({
      ------------------------------------------------------- */
 
   async function addCard() {
-    /* Text：一行一张 */
     if (addType === "text") {
       const lines = splitTextLines(addText);
 
@@ -351,7 +370,6 @@ export default function CardStudioApp({
       return;
     }
 
-    /* Pat：也支持一行一张 */
     if (addType === "pat") {
       const lines = splitTextLines(addText);
 
@@ -376,7 +394,6 @@ export default function CardStudioApp({
       return;
     }
 
-    /* Emoji：一行一个 */
     if (addType === "emoji") {
       const lines = splitTextLines(addText);
 
@@ -401,7 +418,7 @@ export default function CardStudioApp({
       return;
     }
 
-        /* Voice */
+    /* Voice */
     if (addType === "voice") {
       const text = addText.trim();
 
@@ -423,7 +440,6 @@ export default function CardStudioApp({
         .toLowerCase()
         .startsWith("audio/");
 
-      /* iOS 上 file.name 可能没扩展名，所以 name 或 type 有一个符合就放行 */
       if (!isAudioByName && !isAudioByType) {
         alert(
           "只接受音频文件（mp3 / m4a / wav / aac / ogg / opus）。\n" +
@@ -590,10 +606,7 @@ export default function CardStudioApp({
 
     const text = editText.trim();
 
-    if (
-      editingCard.type !== "sticker" &&
-      !text
-    ) {
+    if (editingCard.type !== "sticker" && !text) {
       alert("这张 Card 需要文字内容。");
       return;
     }
@@ -739,23 +752,36 @@ export default function CardStudioApp({
     (card) => card.enabled
   ).length;
 
+  /* -------------------------------------------------------
+     ★ 播放语音（带诊断日志）
+     ------------------------------------------------------- */
+
   function playVoice(card: CharacterCard) {
     const url = mediaUrls[card.id];
 
     if (!url) {
-      alert("找不到这条语音文件。");
+      alert(
+        "找不到这条语音文件。\n" +
+          "如果这是刚刚上传的，请刷新页面重试。\n" +
+          "如果是旧卡片，可能需要删除后重新上传。"
+      );
       return;
     }
 
+    /* 点同一张卡：切换暂停/播放 */
     if (playingId === card.id && audioElement) {
       if (audioElement.paused) {
-        void audioElement.play();
+        void audioElement.play().catch((e) => {
+          console.error("播放失败:", e);
+          alert("播放失败：" + e.message);
+        });
       } else {
         audioElement.pause();
       }
       return;
     }
 
+    /* 其它情况：换一张卡播放 */
     if (audioElement) {
       audioElement.pause();
       audioElement.currentTime = 0;
@@ -766,18 +792,55 @@ export default function CardStudioApp({
     audio.onplay = () => setPlayingId(card.id);
     audio.onpause = () => setPlayingId(null);
     audio.onended = () => setPlayingId(null);
-    audio.onerror = () => {
+    audio.onerror = (e) => {
       setPlayingId(null);
-      console.error("播放语音失败");
+      const err = audio.error;
+      console.error(
+        "[CardStudio] 语音加载失败:",
+        {
+          code: err?.code,
+          message: err?.message,
+          url,
+          cardId: card.id,
+          mediaId: card.mediaId,
+        }
+      );
+      alert(
+        "语音无法播放。\n" +
+          "可能原因：文件损坏或格式不被支持。\n" +
+          "建议删除这张卡片后重新上传。"
+      );
+      void e;
     };
 
     setAudioElement(audio);
-    void audio.play();
+
+    audio
+      .play()
+      .then(() => {
+        console.log(
+          "[CardStudio] 开始播放:",
+          card.id,
+          url
+        );
+      })
+      .catch((e) => {
+        console.error("[CardStudio] play() 失败:", e);
+        setPlayingId(null);
+        alert(
+          "播放失败：" +
+            (e instanceof Error
+              ? e.message
+              : String(e))
+        );
+      });
   }
 
   function characterBadgeClass(c: CardCharacter) {
-    if (c === "Levi") return "studio-character studio-levi";
-    if (c === "Erwin") return "studio-character studio-erwin";
+    if (c === "Levi")
+      return "studio-character studio-levi";
+    if (c === "Erwin")
+      return "studio-character studio-erwin";
     return "studio-character studio-shared";
   }
 
@@ -1078,7 +1141,7 @@ export default function CardStudioApp({
           {addType === "voice" && (
             <>
               <label>
-                MP3 文件
+                音频文件（mp3 / m4a / wav / aac / ogg）
                 <input
                   type="file"
                   accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus"
@@ -1088,7 +1151,10 @@ export default function CardStudioApp({
 
               {addFile && (
                 <div className="studio-file-name">
-                  🎙️ {addFile.name}
+                  🎙️ {addFile.name} ·{" "}
+                  {(addFile.size / 1024).toFixed(1)} KB
+                  {addFile.type &&
+                    ` · ${addFile.type}`}
                 </div>
               )}
 
@@ -1452,9 +1518,7 @@ export default function CardStudioApp({
                   }
                 >
                   {categories.length === 0 ? (
-                    <option value="">
-                      （无分类）
-                    </option>
+                    <option value="">（无分类）</option>
                   ) : (
                     categories.map((category) => (
                       <option
@@ -1505,7 +1569,7 @@ export default function CardStudioApp({
                 <div className="studio-modal-file studio-modal-file-voice">
                   🎙️ {editingCard.fileName}
                   <div className="studio-modal-file-hint">
-                    MP3 文件暂时不能在编辑窗口中更换
+                    音频文件暂时不能在编辑窗口中更换
                   </div>
                 </div>
               )}
