@@ -240,11 +240,85 @@ export default function CardStudioApp({
     };
   }, [mediaUrls, audioElement]);
 
-  function handleAddFile(
+   function handleAddFile(
     event: ChangeEvent<HTMLInputElement>
   ) {
     const file = event.target.files?.[0] ?? null;
-    setAddFile(file);
+
+    if (!file) {
+      setAddFile(null);
+      return;
+    }
+
+    /* ★ iOS 修复：立即读取文件内容到内存，
+       避免 File 对象在用户手势结束后被系统回收。
+       直接从 input 拿到的 File 在几秒后可能无法读取，
+       所以我们在这一刻把内容复制到内存，再包装成新的 File。 */
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const buf = reader.result as ArrayBuffer;
+
+        const nameLower = (
+          file.name || ""
+        ).toLowerCase();
+
+        let type = file.type;
+
+        if (!type) {
+          if (nameLower.endsWith(".mp3"))
+            type = "audio/mpeg";
+          else if (nameLower.endsWith(".m4a"))
+            type = "audio/mp4";
+          else if (nameLower.endsWith(".wav"))
+            type = "audio/wav";
+          else if (nameLower.endsWith(".aac"))
+            type = "audio/aac";
+          else if (nameLower.endsWith(".ogg"))
+            type = "audio/ogg";
+          else if (nameLower.endsWith(".opus"))
+            type = "audio/opus";
+          else if (
+            nameLower.endsWith(".png")
+          )
+            type = "image/png";
+          else if (
+            nameLower.endsWith(".jpg") ||
+            nameLower.endsWith(".jpeg")
+          )
+            type = "image/jpeg";
+          else
+            type = "application/octet-stream";
+        }
+
+        const fresh = new File(
+          [buf],
+          file.name || "upload",
+          { type }
+        );
+
+        setAddFile(fresh);
+
+        /* 允许用户选同一个文件时也触发 onChange */
+        event.target.value = "";
+      } catch (e) {
+        console.error("读取文件失败:", e);
+        alert("读取文件失败，请重试。");
+        setAddFile(null);
+      }
+    };
+
+    reader.onerror = () => {
+      console.error(
+        "读取文件失败:",
+        reader.error
+      );
+      alert("读取文件失败，请重试。");
+      setAddFile(null);
+    };
+
+    reader.readAsArrayBuffer(file);
   }
 
   /* -------------------------------------------------------
@@ -327,17 +401,35 @@ export default function CardStudioApp({
       return;
     }
 
-    /* Voice */
+        /* Voice */
     if (addType === "voice") {
       const text = addText.trim();
 
       if (!addFile) {
-        alert("请先选择 MP3 文件。");
+        alert("请先选择音频文件。");
         return;
       }
 
-      if (!addFile.name.toLowerCase().endsWith(".mp3")) {
-        alert("目前只接受 MP3 文件。");
+      const nameLower = addFile.name.toLowerCase();
+      const isAudioByName =
+        nameLower.endsWith(".mp3") ||
+        nameLower.endsWith(".m4a") ||
+        nameLower.endsWith(".wav") ||
+        nameLower.endsWith(".aac") ||
+        nameLower.endsWith(".ogg") ||
+        nameLower.endsWith(".opus");
+
+      const isAudioByType = addFile.type
+        .toLowerCase()
+        .startsWith("audio/");
+
+      /* iOS 上 file.name 可能没扩展名，所以 name 或 type 有一个符合就放行 */
+      if (!isAudioByName && !isAudioByType) {
+        alert(
+          "只接受音频文件（mp3 / m4a / wav / aac / ogg / opus）。\n" +
+            `当前文件：${addFile.name || "(无文件名)"}\n` +
+            `类型：${addFile.type || "(未知)"}`
+        );
         return;
       }
 
@@ -989,7 +1081,7 @@ export default function CardStudioApp({
                 MP3 文件
                 <input
                   type="file"
-                  accept="*/*"
+                  accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus"
                   onChange={handleAddFile}
                 />
               </label>
@@ -1020,7 +1112,7 @@ export default function CardStudioApp({
                 贴纸图片
                 <input
                   type="file"
-                  accept="*/*"
+                  accept="image/*"
                   onChange={handleAddFile}
                 />
               </label>

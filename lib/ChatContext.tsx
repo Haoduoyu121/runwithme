@@ -34,6 +34,7 @@ import { getStickerFile } from "@/lib/stickerFiles";
 import { getVoiceFile } from "@/lib/voiceFiles";
 
 import { useCall } from "@/lib/CallContext";
+import { useSystem } from "@/lib/SystemContext";
 import { sendNotification } from "@/lib/notifications";
 
 const DEFAULT_MESSAGES: ChatMessage[] = [
@@ -53,26 +54,12 @@ const DEFAULT_MESSAGES: ChatMessage[] = [
   },
 ];
 
-const MIN_REPLY_COUNT = 1;
-const MAX_REPLY_COUNT = 3;
-
-const MIN_REPLY_DELAY = 2;
-const MAX_REPLY_DELAY = 6;
-
-const AUTO_REPLY_MIN_DELAY = 3 * 60 * 1000;
-const AUTO_REPLY_MAX_DELAY = 30 * 60 * 1000;
-
-const SEND_REPLY_MIN_DELAY = 2 * 1000;
-const SEND_REPLY_MAX_DELAY = 8 * 1000;
-
 function randomInteger(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function sleep(ms: number) {
-  return new Promise((resolve) =>
-    setTimeout(resolve, ms)
-  );
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 type ChatContextValue = {
@@ -99,13 +86,11 @@ export function ChatProvider({
   children: ReactNode;
 }) {
   const { activeCall, triggerIncomingCall } = useCall();
+  const { settings } = useSystem();
 
-  const [messages, setMessages] = useState<ChatMessage[]>(
-    []
-  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [generatingCount, setGeneratingCount] = useState(0);
-  const [autoReplyEnabled, setAutoReplyEnabled] =
-    useState(true);
+  const [autoReplyEnabled, setAutoReplyEnabled] = useState(true);
 
   const restoredImageUrlsRef = useRef<
     Record<string, string>
@@ -116,6 +101,15 @@ export function ChatProvider({
   const createdMediaUrlsRef = useRef<
     Record<string, string>
   >({});
+
+  /* 最近一条用户消息，用于引用 */
+  const lastUserMessageRef = useRef<ChatMessage | null>(null);
+
+  /* settings ref，避免闭包过期 */
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   /* -------------------------------------------------------
      初始化
@@ -130,17 +124,34 @@ export function ChatProvider({
     saveMessages(messages);
   }, [messages]);
 
+  /* 更新 lastUserMessageRef */
+  useEffect(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (
+        m.sender === "You" &&
+        !m.deleted &&
+        !m.recalled &&
+        m.text
+      ) {
+        lastUserMessageRef.current = m;
+        return;
+      }
+    }
+    lastUserMessageRef.current = null;
+  }, [messages]);
+
   useEffect(() => {
     return () => {
-      Object.values(
-        restoredImageUrlsRef.current
-      ).forEach((url) => URL.revokeObjectURL(url));
+      Object.values(restoredImageUrlsRef.current).forEach(
+        (url) => URL.revokeObjectURL(url)
+      );
       Object.values(
         restoredStickerUrlsRef.current
       ).forEach((url) => URL.revokeObjectURL(url));
-      Object.values(
-        createdMediaUrlsRef.current
-      ).forEach((url) => URL.revokeObjectURL(url));
+      Object.values(createdMediaUrlsRef.current).forEach(
+        (url) => URL.revokeObjectURL(url)
+      );
     };
   }, []);
 
@@ -188,17 +199,13 @@ export function ChatProvider({
           }
 
           if (message.type === "image") {
-            restoredImageUrlsRef.current[message.id] =
-              url;
+            restoredImageUrlsRef.current[message.id] = url;
           }
           if (message.type === "sticker") {
-            restoredStickerUrlsRef.current[
-              message.id
-            ] = url;
+            restoredStickerUrlsRef.current[message.id] = url;
           }
           if (message.type === "voice") {
-            createdMediaUrlsRef.current[message.id] =
-              url;
+            createdMediaUrlsRef.current[message.id] = url;
           }
 
           setMessages((previous) =>
@@ -293,6 +300,25 @@ export function ChatProvider({
       );
 
       if (result.message) {
+        /* ★ 一定概率引用最近一条用户消息 */
+        const quoteChance =
+          settingsRef.current.chatReply?.quoteChance ?? 0.15;
+
+        const lastUser = lastUserMessageRef.current;
+
+        if (
+          lastUser &&
+          lastUser.text &&
+          card.type === "text" &&
+          Math.random() < quoteChance
+        ) {
+          result.message.quote = {
+            messageId: lastUser.id,
+            sender: lastUser.sender,
+            text: lastUser.text,
+          };
+        }
+
         if (result.mediaUrl) {
           createdMediaUrlsRef.current[
             result.mediaUrl.messageId
@@ -329,9 +355,11 @@ export function ChatProvider({
     );
     if (enabledCards.length === 0) return;
 
+    const cfg = settingsRef.current.chatReply;
+
     const replyCount = randomInteger(
-      MIN_REPLY_COUNT,
-      MAX_REPLY_COUNT
+      cfg?.replyCountMin ?? 1,
+      cfg?.replyCountMax ?? 3
     );
 
     setGeneratingCount((prev) => prev + 1);
@@ -346,11 +374,10 @@ export function ChatProvider({
         await createReplyFromPicked(picked);
 
         if (i < replyCount - 1) {
+          const dMin = cfg?.replyIntervalMin ?? 2;
+          const dMax = cfg?.replyIntervalMax ?? 6;
           await sleep(
-            randomInteger(
-              MIN_REPLY_DELAY * 1000,
-              MAX_REPLY_DELAY * 1000
-            )
+            randomInteger(dMin * 1000, dMax * 1000)
           );
         }
       }
@@ -403,10 +430,11 @@ export function ChatProvider({
     if (activeCall) return;
     if (messages.length === 0) return;
 
-    const delay = randomInteger(
-      AUTO_REPLY_MIN_DELAY,
-      AUTO_REPLY_MAX_DELAY
-    );
+    const cfg = settings.chatReply;
+    const minMs = (cfg?.autoReplyMin ?? 3) * 60 * 1000;
+    const maxMs = (cfg?.autoReplyMax ?? 30) * 60 * 1000;
+
+    const delay = randomInteger(minMs, maxMs);
 
     const timer = window.setTimeout(() => {
       void generateAutoReply();
@@ -420,19 +448,20 @@ export function ChatProvider({
     activeCall,
     messages.length,
     generateAutoReply,
+    settings.chatReply,
   ]);
 
-  const scheduleAutoReplyAfterUserMessage =
-    useCallback(() => {
-      const delay = randomInteger(
-        SEND_REPLY_MIN_DELAY,
-        SEND_REPLY_MAX_DELAY
-      );
+  const scheduleAutoReplyAfterUserMessage = useCallback(() => {
+    const cfg = settingsRef.current.chatReply;
+    const minMs = (cfg?.userReplyDelayMin ?? 2) * 1000;
+    const maxMs = (cfg?.userReplyDelayMax ?? 8) * 1000;
 
-      window.setTimeout(() => {
-        void generateAutoReply();
-      }, delay);
-    }, [generateAutoReply]);
+    const delay = randomInteger(minMs, maxMs);
+
+    window.setTimeout(() => {
+      void generateAutoReply();
+    }, delay);
+  }, [generateAutoReply]);
 
   return (
     <ChatContext.Provider

@@ -23,6 +23,37 @@ export type DockSlotId =
   | "slot-3"
   | "slot-4";
 
+/* ---------- Chat 回复配置 ---------- */
+
+export type ChatReplySettings = {
+  /* 一次生成几条回复 */
+  replyCountMin: number;
+  replyCountMax: number;
+
+  /* 多条回复之间的间隔（秒） */
+  replyIntervalMin: number;
+  replyIntervalMax: number;
+
+  /* 用户发消息后多久开始回复（秒） */
+  userReplyDelayMin: number;
+  userReplyDelayMax: number;
+
+  /* 后台自动发消息的间隔（分钟） */
+  autoReplyMin: number;
+  autoReplyMax: number;
+
+  /* 引用用户消息的概率（0~1） */
+  quoteChance: number;
+};
+
+/* ---------- 角色显示名 ---------- */
+
+export type CharacterNames = {
+  you: string;
+  levi: string;
+  erwin: string;
+};
+
 /* ---------- Settings ---------- */
 
 export type SystemSettings = {
@@ -39,8 +70,23 @@ export type SystemSettings = {
   chatName: string;
   chatBackground: string | null;
 
-  /* ★ 新增：字体缩放（0.85 ~ 1.3） */
+  /* 字体缩放（0.85 ~ 1.3） */
   fontScale: number;
+
+  /* 拍一拍内容 */
+  patMessages: {
+    levi: string[];
+    erwin: string[];
+  };
+
+  /* 角色显示名 */
+  characterNames: CharacterNames;
+
+  /* Chat 回复配置 */
+  chatReply: ChatReplySettings;
+
+    /* Chat 自定义 CSS */
+  chatCustomCSS: string;
 };
 
 const SETTINGS_KEY = "runwithme_system_settings";
@@ -74,6 +120,37 @@ const defaultSettings: SystemSettings = {
   chatName: "Levi & Erwin",
   chatBackground: null,
   fontScale: 1,
+  patMessages: {
+    levi: [
+      "拍了拍 Levi 的头像",
+      "轻轻戳了戳 Levi",
+      "从背后抱住了 Levi",
+      "揉了揉 Levi 的头发",
+    ],
+    erwin: [
+      "拍了拍 Erwin 的头像",
+      "拉了拉 Erwin 的衣角",
+      "戳了戳 Erwin 的手臂",
+      "靠在了 Erwin 的肩膀上",
+    ],
+  },
+  characterNames: {
+    you: "You",
+    levi: "Levi",
+    erwin: "Erwin",
+  },
+  chatReply: {
+    replyCountMin: 1,
+    replyCountMax: 3,
+    replyIntervalMin: 2,
+    replyIntervalMax: 6,
+    userReplyDelayMin: 2,
+    userReplyDelayMax: 8,
+    autoReplyMin: 3,
+    autoReplyMax: 30,
+    quoteChance: 0.25,
+  },
+    chatCustomCSS: "",
 };
 
 export function loadSystemSettings(): SystemSettings {
@@ -109,14 +186,34 @@ export function loadSystemSettings(): SystemSettings {
         ...defaultSettings.dockIcons,
         ...(parsed.dockIcons ?? {}),
       },
-      /* ★ 兼容旧数据 + 范围限制 */
       fontScale:
         typeof parsed.fontScale === "number"
-          ? Math.min(
-              1.3,
-              Math.max(0.85, parsed.fontScale)
-            )
+          ? Math.min(1.3, Math.max(0.85, parsed.fontScale))
           : 1,
+      patMessages: {
+        levi:
+          Array.isArray(parsed.patMessages?.levi) &&
+          parsed.patMessages.levi.length > 0
+            ? parsed.patMessages.levi
+            : defaultSettings.patMessages.levi,
+        erwin:
+          Array.isArray(parsed.patMessages?.erwin) &&
+          parsed.patMessages.erwin.length > 0
+            ? parsed.patMessages.erwin
+            : defaultSettings.patMessages.erwin,
+      },
+      characterNames: {
+        ...defaultSettings.characterNames,
+        ...(parsed.characterNames ?? {}),
+      },
+      chatReply: {
+        ...defaultSettings.chatReply,
+        ...(parsed.chatReply ?? {}),
+      },
+            chatCustomCSS:
+        typeof parsed.chatCustomCSS === "string"
+          ? parsed.chatCustomCSS
+          : "",
     };
   } catch {
     return defaultSettings;
@@ -152,6 +249,18 @@ export function updateSystemSettings(
     dockIcons: {
       ...current.dockIcons,
       ...(updates.dockIcons ?? {}),
+    },
+    patMessages: {
+      ...current.patMessages,
+      ...(updates.patMessages ?? {}),
+    },
+    characterNames: {
+      ...current.characterNames,
+      ...(updates.characterNames ?? {}),
+    },
+    chatReply: {
+      ...current.chatReply,
+      ...(updates.chatReply ?? {}),
     },
   };
 

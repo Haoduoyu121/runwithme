@@ -1,4 +1,5 @@
-const DB_NAME = "runwithme_voice_db";
+/* 换了个新 DB 名，避开历史遗留的坏库 */
+const DB_NAME = "runwithme_voice_db_v2";
 const STORE_NAME = "voice_files";
 const DB_VERSION = 1;
 
@@ -31,6 +32,8 @@ export async function saveVoiceFile(
   id: string,
   file: Blob
 ): Promise<void> {
+  const buffer = await file.arrayBuffer();
+
   const db = await openDatabase();
 
   return new Promise((resolve, reject) => {
@@ -42,7 +45,7 @@ export async function saveVoiceFile(
     const store =
       transaction.objectStore(STORE_NAME);
 
-    store.put(file, id);
+    store.put(buffer, id);
 
     transaction.oncomplete = () => {
       db.close();
@@ -75,11 +78,28 @@ export async function getVoiceFile(
     request.onsuccess = () => {
       db.close();
 
-      if (request.result instanceof Blob) {
-        resolve(request.result);
-      } else {
+      const result = request.result;
+
+      if (!result) {
         resolve(null);
+        return;
       }
+
+      if (result instanceof Blob) {
+        resolve(result);
+        return;
+      }
+
+      if (result instanceof ArrayBuffer) {
+        resolve(
+          new Blob([result], {
+            type: "audio/mpeg",
+          })
+        );
+        return;
+      }
+
+      resolve(null);
     };
 
     request.onerror = () => {

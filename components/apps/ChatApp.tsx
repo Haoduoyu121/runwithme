@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { saveImageFile } from "@/lib/imageFiles";
 
@@ -31,6 +27,8 @@ import { getChatFile } from "@/lib/chatFiles";
 
 import ChatSettingsPanel from "@/components/apps/chat/ChatSettingsPanel";
 
+import type { CharacterNames } from "@/lib/systemStorage";
+
 type ChatAppProps = {
   onBack: () => void;
 };
@@ -53,8 +51,14 @@ function formatDuration(seconds: number) {
   ).padStart(2, "0")}`;
 }
 
-function getSenderName(sender: ChatSender) {
-  return sender === "You" ? "You" : sender;
+function getSenderName(
+  sender: ChatSender,
+  names: CharacterNames
+) {
+  if (sender === "You") return names.you;
+  if (sender === "Levi") return names.levi;
+  if (sender === "Erwin") return names.erwin;
+  return sender;
 }
 
 /* -------------------------------------------------------
@@ -77,11 +81,9 @@ function MessageActions({
       className="chat-message-actions"
       onPointerDown={(e) => e.stopPropagation()}
     >
-      {message.sender === "You" &&
-        !message.recalled &&
-        !message.deleted && (
-          <button onClick={onRecall}>撤回</button>
-        )}
+      {!message.recalled && !message.deleted && (
+        <button onClick={onRecall}>撤回</button>
+      )}
 
       {!message.deleted && (
         <button onClick={onDelete}>删除</button>
@@ -98,13 +100,15 @@ function MessageActions({
 
 function MessageQuote({
   quote,
+  names,
 }: {
   quote: { sender: ChatSender; text: string };
+  names: CharacterNames;
 }) {
   return (
     <div className="message-quote">
       <div className="message-quote-sender">
-        {getSenderName(quote.sender)}
+        {getSenderName(quote.sender, names)}
       </div>
 
       <div className="message-quote-text">
@@ -116,8 +120,10 @@ function MessageQuote({
 
 function TextMessage({
   message,
+  names,
 }: {
   message: ChatMessage;
+  names: CharacterNames;
 }) {
   if (message.deleted) {
     return (
@@ -130,7 +136,10 @@ function TextMessage({
       <div className="message-recalled">
         {message.sender === "You"
           ? "你撤回了一条消息"
-          : `${message.sender}撤回了一条消息`}
+          : `${getSenderName(
+              message.sender,
+              names
+            )}撤回了一条消息`}
       </div>
     );
   }
@@ -138,7 +147,10 @@ function TextMessage({
   return (
     <div className="message-text-wrapper">
       {message.quote && (
-        <MessageQuote quote={message.quote} />
+        <MessageQuote
+          quote={message.quote}
+          names={names}
+        />
       )}
 
       <div className="message-bubble">{message.text}</div>
@@ -148,8 +160,10 @@ function TextMessage({
 
 function VoiceMessage({
   message,
+  names,
 }: {
   message: ChatMessage;
+  names: CharacterNames;
 }) {
   if (message.deleted) {
     return (
@@ -162,7 +176,10 @@ function VoiceMessage({
       <div className="message-recalled">
         {message.sender === "You"
           ? "你撤回了一条消息"
-          : `${message.sender}撤回了一条消息`}
+          : `${getSenderName(
+              message.sender,
+              names
+            )}撤回了一条消息`}
       </div>
     );
   }
@@ -197,6 +214,24 @@ function PatMessage({
 }: {
   message: ChatMessage;
 }) {
+  if (message.deleted) {
+    return (
+      <div className="chat-pat-message chat-pat-deleted">
+        此消息已删除
+      </div>
+    );
+  }
+
+  if (message.recalled) {
+    return (
+      <div className="chat-pat-message chat-pat-recalled">
+        {message.sender === "You"
+          ? "你撤回了一条拍一拍"
+          : `${message.sender}撤回了一条拍一拍`}
+      </div>
+    );
+  }
+
   const name =
     message.sender === "You" ? "你" : message.sender;
 
@@ -210,8 +245,10 @@ function PatMessage({
 
 function CallMessage({
   message,
+  names,
 }: {
   message: ChatMessage;
+  names: CharacterNames;
 }) {
   const direction: CallDirection =
     message.callDirection ?? "outgoing";
@@ -224,16 +261,23 @@ function CallMessage({
   const target: CallCharacter =
     message.callCharacter ?? "Levi";
 
+  const targetName =
+    target === "Both"
+      ? "群组"
+      : getSenderName(target, names);
+
   let title = "";
 
   if (direction === "outgoing") {
     title =
-      target === "Both" ? "群组语音通话" : "语音通话";
+      target === "Both"
+        ? "群组语音通话"
+        : "语音通话";
   } else {
     title =
       target === "Both"
         ? "群组语音通话"
-        : `${target} 的语音通话`;
+        : `${targetName} 的语音通话`;
   }
 
   let subtitle = "";
@@ -286,11 +330,11 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     scheduleAutoReplyAfterUserMessage,
   } = useChat();
 
+  const names = settings.characterNames;
+
   const [input, setInput] = useState("");
 
-  const [stickers, setStickers] = useState<StickerItem[]>(
-    []
-  );
+  const [stickers, setStickers] = useState<StickerItem[]>([]);
   const [stickerUrls, setStickerUrls] = useState<
     Record<string, string>
   >({});
@@ -331,12 +375,74 @@ export default function ChatApp({ onBack }: ChatAppProps) {
 
   const chatName = settings.chatName;
 
+    /* ---------------- 注入自定义 CSS ---------------- */
+
+  useEffect(() => {
+    const STYLE_ID = "runwithme-chat-custom-css";
+    let el = document.getElementById(
+      STYLE_ID
+    ) as HTMLStyleElement | null;
+
+    if (!el) {
+      el = document.createElement("style");
+      el.id = STYLE_ID;
+      document.head.appendChild(el);
+    }
+
+    el.textContent = settings.chatCustomCSS ?? "";
+
+    return () => {
+      /* 卸载时保留（因为 ChatApp 每次进都会重建） */
+    };
+  }, [settings.chatCustomCSS]);
+
+  /* ---------------- 双击头像 = 拍一拍 ---------------- */
+
+  const patMessages = settings.patMessages;
+
+  const avatarTapRef = useRef<Record<string, number>>({});
+
+  function pickPatText(
+    sender: "Levi" | "Erwin"
+  ): string {
+    const key = sender.toLowerCase() as
+      | "levi"
+      | "erwin";
+    const list = patMessages[key] ?? [];
+    if (list.length === 0) {
+      return `拍了拍 ${sender} 的头像`;
+    }
+    return list[
+      Math.floor(Math.random() * list.length)
+    ];
+  }
+
+  function handleAvatarTap(
+    sender: "Levi" | "Erwin"
+  ) {
+    const now = Date.now();
+    const last = avatarTapRef.current[sender] ?? 0;
+
+    if (now - last < 350) {
+      avatarTapRef.current[sender] = 0;
+
+      addMessage({
+        id: createMessageId(),
+        sender: "You",
+        type: "pat",
+        text: pickPatText(sender),
+        timestamp: Date.now(),
+      });
+    } else {
+      avatarTapRef.current[sender] = now;
+    }
+  }
+
   /* 加载表情包 */
   useEffect(() => {
     const reload = () => setStickers(loadStickers());
     reload();
 
-    /* 监听自定义事件：设置面板保存表情包后通知刷新 */
     window.addEventListener(
       "runwithme:stickers-updated",
       reload
@@ -460,7 +566,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
       cancelled = true;
     };
   }, [stickers]);
-
 
   /* 自动滚底 */
   useEffect(() => {
@@ -588,12 +693,14 @@ export default function ChatApp({ onBack }: ChatAppProps) {
   }
 
   function patCharacter(sender: Character) {
-    /* 用户主动拍 */
+    const target: "Levi" | "Erwin" =
+      sender === "Erwin" ? "Erwin" : "Levi";
+
     addMessage({
       id: createMessageId(),
       sender: "You",
       type: "pat",
-      text: `拍了拍${sender}的头像`,
+      text: pickPatText(target),
       timestamp: Date.now(),
     });
     setShowPlusMenu(false);
@@ -633,25 +740,25 @@ export default function ChatApp({ onBack }: ChatAppProps) {
   }
 
   function handlePlusAction(
-  action: "sticker" | "image"
-) {
-  if (action === "sticker") {
-    setShowPlusMenu(false);
-    setShowStickerPanel(true);
-    return;
-  }
+    action: "sticker" | "image"
+  ) {
+    if (action === "sticker") {
+      setShowPlusMenu(false);
+      setShowStickerPanel(true);
+      return;
+    }
 
-  if (action === "image") {
-    setShowPlusMenu(false);
-    requestAnimationFrame(() => {
-      const el = document.getElementById(
-        "chat-image-input"
-      ) as HTMLInputElement | null;
-      el?.click();
-    });
-    return;
+    if (action === "image") {
+      setShowPlusMenu(false);
+      requestAnimationFrame(() => {
+        const el = document.getElementById(
+          "chat-image-input"
+        ) as HTMLInputElement | null;
+        el?.click();
+      });
+      return;
+    }
   }
-}
 
   function handleStartCall(
     target: "Levi" | "Erwin" | "Both"
@@ -684,14 +791,54 @@ export default function ChatApp({ onBack }: ChatAppProps) {
       );
     }
 
-    /* 拍一拍：居中展示 */
+    /* 拍一拍：居中展示，支持长按删除/撤回 */
     if (message.type === "pat") {
       return (
         <div
           key={message.id}
-          className="chat-pat-row"
+          className={`chat-pat-row${
+            selectedMessageId === message.id
+              ? " message-selected"
+              : ""
+          }`}
         >
-          <PatMessage message={message} />
+          <div className="chat-pat-wrapper">
+            <div
+              className="chat-message-longpress-target"
+              onPointerDown={() =>
+                startLongPress(message.id)
+              }
+              onPointerUp={cancelLongPress}
+              onPointerCancel={cancelLongPress}
+              onPointerLeave={cancelLongPress}
+              onClick={() =>
+                handleMessageClick(message.id)
+              }
+              onContextMenu={(event) => {
+                event.preventDefault();
+                cancelLongPress();
+                setSelectedMessageId(message.id);
+                setShowPlusMenu(false);
+              }}
+            >
+              <PatMessage message={message} />
+            </div>
+
+            {selectedMessageId === message.id && (
+              <div className="chat-message-context">
+                <MessageActions
+                  message={message}
+                  onDelete={() =>
+                    deleteMessage(message.id)
+                  }
+                  onRecall={() =>
+                    recallMessage(message.id)
+                  }
+                  onQuote={() => quoteMessage(message)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       );
     }
@@ -756,6 +903,15 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 }${
                   avatarUrl ? " message-avatar-image" : ""
                 }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (
+                    message.sender === "Levi" ||
+                    message.sender === "Erwin"
+                  ) {
+                    handleAvatarTap(message.sender);
+                  }
+                }}
               >
                 {avatarUrl ? (
                   <img
@@ -763,9 +919,9 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                     alt={message.sender}
                   />
                 ) : message.sender === "Levi" ? (
-                  "L"
+                  names.levi.charAt(0).toUpperCase()
                 ) : (
-                  "E"
+                  names.erwin.charAt(0).toUpperCase()
                 )}
               </div>
             ) : (
@@ -777,7 +933,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
         <div className="message-content">
           {isGroupStart && (
             <div className="message-name">
-              {getSenderName(message.sender)}
+              {getSenderName(message.sender, names)}
             </div>
           )}
 
@@ -800,11 +956,17 @@ export default function ChatApp({ onBack }: ChatAppProps) {
             }}
           >
             {message.type === "text" && (
-              <TextMessage message={message} />
+              <TextMessage
+                message={message}
+                names={names}
+              />
             )}
 
             {message.type === "voice" && (
-              <VoiceMessage message={message} />
+              <VoiceMessage
+                message={message}
+                names={names}
+              />
             )}
 
             {message.type === "sticker" &&
@@ -828,7 +990,10 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               )}
 
             {message.type === "call" && (
-              <CallMessage message={message} />
+              <CallMessage
+                message={message}
+                names={names}
+              />
             )}
           </div>
 
@@ -869,7 +1034,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 {avatarUrls.you ? (
                   <img src={avatarUrls.you} alt="You" />
                 ) : (
-                  "Y"
+                  names.you.charAt(0).toUpperCase()
                 )}
               </div>
             ) : (
@@ -907,6 +1072,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
         }
       }}
     >
+      className
       <header className="telegram-header">
         <button
           className="telegram-back"
@@ -935,7 +1101,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 : "online"}
           </div>
         </div>
-
 
         <button
           className="telegram-more"
@@ -1001,9 +1166,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
             <button
               onClick={() =>
                 patCharacter(
-                  Math.random() < 0.5
-                    ? "Levi"
-                    : "Erwin"
+                  Math.random() < 0.5 ? "Levi" : "Erwin"
                 )
               }
             >
@@ -1024,18 +1187,18 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 onClick={() => handleStartCall("Levi")}
               >
                 <span className="chat-call-picker-avatar avatar-levi">
-                  L
+                  {names.levi.charAt(0).toUpperCase()}
                 </span>
-                <small>Levi</small>
+                <small>{names.levi}</small>
               </button>
 
               <button
                 onClick={() => handleStartCall("Erwin")}
               >
                 <span className="chat-call-picker-avatar avatar-erwin">
-                  E
+                  {names.erwin.charAt(0).toUpperCase()}
                 </span>
-                <small>Erwin</small>
+                <small>{names.erwin}</small>
               </button>
 
               <button
@@ -1097,7 +1260,8 @@ export default function ChatApp({ onBack }: ChatAppProps) {
           <div className="chat-quote-preview">
             <div className="chat-quote-preview-content">
               <div className="chat-quote-preview-header">
-                回复 {getSenderName(quoteDraft.sender)}
+                回复{" "}
+                {getSenderName(quoteDraft.sender, names)}
               </div>
 
               <div className="chat-quote-preview-text">
@@ -1149,27 +1313,28 @@ export default function ChatApp({ onBack }: ChatAppProps) {
           />
 
           <input
-  id="chat-image-input"
-  type="file"
-  accept="image/*"
-  style={{
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: 1,
-    height: 1,
-    opacity: 0,
-    overflow: "hidden",
-    zIndex: -1,
-  }}
-  onChange={(event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+            id="chat-image-input"
+            type="file"
+            accept="image/*"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: 1,
+              height: 1,
+              opacity: 0,
+              overflow: "hidden",
+              zIndex: -1,
+            }}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
 
-    void sendImage(file);
-    event.target.value = "";
-  }}
-/>
+              void sendImage(file);
+              event.target.value = "";
+            }}
+          />
+
           <button
             className={
               showStickerPanel
