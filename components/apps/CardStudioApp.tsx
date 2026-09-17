@@ -1,614 +1,1642 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+} from "react";
 
 import {
-  useMusic,
-  formatTime,
-} from "@/lib/MusicContext";
+  cards as defaultCards,
+  type CharacterCard,
+  type CardCharacter,
+  type CardType,
+} from "@/data/cards";
 
-import { useSystem } from "@/lib/SystemContext";
-import { useChat } from "@/lib/ChatContext";
-import { getChatFile } from "@/lib/chatFiles";
+import { loadCards, saveCards } from "@/lib/storage";
 
 import {
-  loadListenPartner,
-  saveListenPartner,
-  type ListenPartner,
-} from "@/lib/listenTogetherStorage";
+  loadCategories,
+  saveCategories,
+} from "@/lib/categoryStorage";
 
-import { createMessageId } from "@/data/chat";
+import {
+  saveStickerFile,
+  deleteStickerFile,
+  getStickerFile,
+} from "@/lib/stickerFiles";
 
-import MusicListDrawer from "@/components/apps/music/MusicListDrawer";
-import MusicUploadPanel from "@/components/apps/music/MusicUploadPanel";
+import {
+  saveVoiceFile,
+  deleteVoiceFile,
+  getVoiceFile,
+} from "@/lib/voiceFiles";
 
-type MusicAppProps = {
+import CategoryEditor from "@/components/apps/card/CategoryEditor";
+
+type CardStudioAppProps = {
   onBack: () => void;
 };
 
-type AvatarKey = "you" | "levi" | "erwin";
+type FilterCharacter = "All" | CardCharacter;
+type FilterType = "All" | CardType;
 
-type InvitationState = {
-  target: "Levi" | "Erwin" | "Both";
-  status: "pending" | "accepted" | "rejected";
-  acceptedBy: ("Levi" | "Erwin")[];
-  rejectedBy: ("Levi" | "Erwin")[];
-};
-
-const ACCEPT_LINES = [
-  "行，一起听。",
-  "嗯，放吧。",
-  "我正好想听歌。",
-  "你选歌。",
-  "行，戴上耳机了。",
+const CHARACTER_OPTIONS: CardCharacter[] = [
+  "Levi",
+  "Erwin",
+  "Shared",
 ];
 
-const REJECT_LINES = [
-  "现在不太想听。",
-  "改天吧。",
-  "手上还有事，下次。",
-  "现在不方便。",
-  "先不听了。",
+const TYPE_OPTIONS: {
+  value: CardType;
+  label: string;
+}[] = [
+  { value: "text", label: "💬 Text" },
+  { value: "voice", label: "🎙️ Voice" },
+  { value: "sticker", label: "🧸 Sticker" },
+  { value: "pat", label: "👋 Pat（拍一拍）" },
+  { value: "emoji", label: "✨ Emoji" },
 ];
 
-function pickLine(list: string[]): string {
-  return list[Math.floor(Math.random() * list.length)];
+function createCardId() {
+  return `card-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
 }
 
-export default function MusicApp({ onBack }: MusicAppProps) {
-  const {
-    music,
-    currentIndex,
-    isPlaying,
-    currentTime,
-    duration,
-    loading,
-    error,
-    currentTrack,
-    reload,
-    playTrack,
-    togglePlay,
-    nextTrack,
-    previousTrack,
-    seek,
-  } = useMusic();
+function createMediaId(type: "voice" | "sticker") {
+  return `${type}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+}
 
-  const { settings } = useSystem();
-  const { addMessage } = useChat();
+function getTypeLabel(type: CardType) {
+  return (
+    TYPE_OPTIONS.find((t) => t.value === type)?.label ??
+    type
+  );
+}
 
-  const [partner, setPartner] =
-    useState<ListenPartner>("Solo");
-  const [showPartnerPicker, setShowPartnerPicker] =
+function getCharacterLabel(c: CardCharacter) {
+  if (c === "Shared") return "Shared";
+  return c;
+}
+
+function splitTextLines(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+export default function CardStudioApp({
+  onBack,
+}: CardStudioAppProps) {
+  const [cardPool, setCardPool] = useState<CharacterCard[]>(
+    []
+  );
+
+  const [categories, setCategories] = useState<string[]>(
+    []
+  );
+
+  const [characterFilter, setCharacterFilter] =
+    useState<FilterCharacter>("All");
+
+  const [typeFilter, setTypeFilter] =
+    useState<FilterType>("All");
+
+  const [categoryFilter, setCategoryFilter] =
+    useState("全部");
+
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    []
+  );
+
+  const [showAddPanel, setShowAddPanel] = useState(false);
+  const [showCategoryEditor, setShowCategoryEditor] =
     useState(false);
-  const [showList, setShowList] = useState(false);
-  const [showUpload, setShowUpload] = useState(false);
-  const [invitation, setInvitation] =
-    useState<InvitationState | null>(null);
 
-  const [avatarUrls, setAvatarUrls] = useState<
-    Record<AvatarKey, string | null>
-  >({ you: null, levi: null, erwin: null });
+  const [addType, setAddType] = useState<CardType>("text");
+  const [addCharacter, setAddCharacter] =
+    useState<CardCharacter>("Levi");
+  const [addCategory, setAddCategory] = useState("");
+  const [addText, setAddText] = useState("");
+  const [addFile, setAddFile] = useState<File | null>(null);
+
+  const [editingCard, setEditingCard] =
+    useState<CharacterCard | null>(null);
+  const [editCharacter, setEditCharacter] =
+    useState<CardCharacter>("Levi");
+  const [editCategory, setEditCategory] = useState("");
+  const [editText, setEditText] = useState("");
+  const [editEnabled, setEditEnabled] = useState(true);
+
+  const [mediaUrls, setMediaUrls] = useState<
+    Record<string, string>
+  >({});
+  const [playingId, setPlayingId] = useState<string | null>(
+    null
+  );
+  const [audioElement, setAudioElement] =
+    useState<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    setPartner(loadListenPartner());
+    setCardPool(loadCards(defaultCards));
+
+    const cats = loadCategories();
+    setCategories(cats);
+
+    if (cats.length > 0) {
+      setAddCategory(cats[0]);
+      setEditCategory(cats[0]);
+    }
   }, []);
 
-  /* 加载自定义头像 */
+  function updateCards(nextCards: CharacterCard[]) {
+    setCardPool(nextCards);
+    saveCards(nextCards);
+  }
+
+  function updateCategories(next: string[]) {
+    setCategories(next);
+    saveCategories(next);
+
+    if (next.length > 0) {
+      if (!next.includes(addCategory)) {
+        setAddCategory(next[0]);
+      }
+      if (!next.includes(editCategory)) {
+        setEditCategory(next[0]);
+      }
+    } else {
+      setAddCategory("");
+      setEditCategory("");
+    }
+  }
+
+  /* -------------------------------------------------------
+     媒体预览加载
+     ★ 修复：每次重新加载时，先把旧的 URL 全部 revoke
+     ------------------------------------------------------- */
+
   useEffect(() => {
     let cancelled = false;
-    const created: string[] = [];
 
-    async function load() {
-      const next: Record<AvatarKey, string | null> = {
-        you: null,
-        levi: null,
-        erwin: null,
-      };
+    async function loadMediaPreviews() {
+      const nextUrls: Record<string, string> = {};
 
-      for (const key of [
-        "you",
-        "levi",
-        "erwin",
-      ] as AvatarKey[]) {
-        if (!settings.avatars[key]) continue;
+      for (const card of cardPool) {
+        if (
+          card.type !== "voice" &&
+          card.type !== "sticker"
+        ) {
+          continue;
+        }
 
-        const file = await getChatFile(`avatar-${key}`);
-        if (!file) continue;
+        if (!card.mediaId) continue;
 
-        const url = URL.createObjectURL(file);
-        created.push(url);
-        next[key] = url;
+        try {
+          const file =
+            card.type === "voice"
+              ? await getVoiceFile(card.mediaId)
+              : await getStickerFile(card.mediaId);
+
+          if (!file) {
+            console.warn(
+              "[CardStudio] 找不到媒体文件:",
+              card.mediaId
+            );
+            continue;
+          }
+
+          if (cancelled) return;
+
+          nextUrls[card.id] = URL.createObjectURL(file);
+        } catch (error) {
+          console.error("读取媒体文件失败:", error);
+        }
       }
 
-      if (!cancelled) setAvatarUrls(next);
+      if (cancelled) {
+        Object.values(nextUrls).forEach((url) =>
+          URL.revokeObjectURL(url)
+        );
+        return;
+      }
+
+      /* ★ 替换前先 revoke 旧 URL，避免内存泄漏 */
+      setMediaUrls((prev) => {
+        Object.values(prev).forEach((url) => {
+          if (
+            !Object.values(nextUrls).includes(url)
+          ) {
+            URL.revokeObjectURL(url);
+          }
+        });
+        return nextUrls;
+      });
     }
 
-    void load();
+    if (cardPool.length > 0) {
+      void loadMediaPreviews();
+    } else {
+      setMediaUrls((prev) => {
+        Object.values(prev).forEach((url) =>
+          URL.revokeObjectURL(url)
+        );
+        return {};
+      });
+    }
 
     return () => {
       cancelled = true;
-      created.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [settings.avatars]);
+  }, [cardPool]);
 
-  const progress =
-    duration > 0
-      ? Math.min(100, (currentTime / duration) * 100)
-      : 0;
+  useEffect(() => {
+    return () => {
+      Object.values(mediaUrls).forEach((url) =>
+        URL.revokeObjectURL(url)
+      );
 
-  const listeners: AvatarKey[] = ["you"];
-  if (partner === "Levi" || partner === "Both") {
-    listeners.push("levi");
-  }
-  if (partner === "Erwin" || partner === "Both") {
-    listeners.push("erwin");
-  }
-
-  function handleSeek(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
-    seek(Number(e.target.value));
-  }
+      if (audioElement) {
+        audioElement.pause();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* -------------------------------------------------------
-     ★ 邀请流程
+     iOS 安全：立即把文件读进内存
      ------------------------------------------------------- */
 
-  function handleSelectPartner(p: ListenPartner) {
-    setShowPartnerPicker(false);
+  function handleAddFile(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0] ?? null;
 
-    if (p === "Solo") {
-      setPartner("Solo");
-      saveListenPartner("Solo");
-      setInvitation(null);
+    if (!file) {
+      setAddFile(null);
       return;
     }
 
-    const target = p as "Levi" | "Erwin" | "Both";
+    const reader = new FileReader();
 
-    /* 1. 往 Chat 发一条你自己发出的邀请消息 */
-    const inviteText =
-      target === "Both"
-        ? "你们两个要不要一起听歌？"
-        : `${target}，一起听歌吗？`;
+    reader.onload = () => {
+      try {
+        const buf = reader.result as ArrayBuffer;
 
-    addMessage({
-      id: createMessageId(),
-      sender: "You",
-      type: "text",
-      text: inviteText,
-      timestamp: Date.now(),
-    });
+        const nameLower = (
+          file.name || ""
+        ).toLowerCase();
 
-    /* 2. UI 显示等待中 */
-    setInvitation({
-      target,
-      status: "pending",
-      acceptedBy: [],
-      rejectedBy: [],
-    });
+        let type = file.type;
 
-    /* 3. 2.5 ~ 6.5 秒后返回结果 */
-    const delay = 2500 + Math.random() * 4000;
-    setTimeout(() => {
-      resolveInvitation(target);
-    }, delay);
-  }
+        if (!type) {
+          if (nameLower.endsWith(".mp3"))
+            type = "audio/mpeg";
+          else if (nameLower.endsWith(".m4a"))
+            type = "audio/mp4";
+          else if (nameLower.endsWith(".wav"))
+            type = "audio/wav";
+          else if (nameLower.endsWith(".aac"))
+            type = "audio/aac";
+          else if (nameLower.endsWith(".ogg"))
+            type = "audio/ogg";
+          else if (nameLower.endsWith(".opus"))
+            type = "audio/opus";
+          else if (nameLower.endsWith(".png"))
+            type = "image/png";
+          else if (
+            nameLower.endsWith(".jpg") ||
+            nameLower.endsWith(".jpeg")
+          )
+            type = "image/jpeg";
+          else type = "application/octet-stream";
+        }
 
-  function resolveInvitation(
-    target: "Levi" | "Erwin" | "Both"
-  ) {
-    let accepted: ("Levi" | "Erwin")[] = [];
-    let rejected: ("Levi" | "Erwin")[] = [];
+        const fresh = new File(
+          [buf],
+          file.name || "upload",
+          { type }
+        );
 
-    if (target === "Both") {
-      const r = Math.random();
-      if (r < 0.55) {
-        accepted = ["Levi", "Erwin"];
-      } else if (r < 0.78) {
-        accepted = ["Levi"];
-        rejected = ["Erwin"];
-      } else if (r < 0.95) {
-        accepted = ["Erwin"];
-        rejected = ["Levi"];
-      } else {
-        rejected = ["Levi", "Erwin"];
+        setAddFile(fresh);
+        event.target.value = "";
+      } catch (e) {
+        console.error("读取文件失败:", e);
+        alert("读取文件失败，请重试。");
+        setAddFile(null);
       }
-    } else {
-      if (Math.random() < 0.6) {
-        accepted = [target];
-      } else {
-        rejected = [target];
-      }
-    }
+    };
 
-    /* 4. 往 Chat 发对方的回应 */
-    let offset = 0;
-    accepted.forEach((who) => {
-      addMessage({
-        id: createMessageId(),
-        sender: who,
-        type: "text",
-        text: pickLine(ACCEPT_LINES),
-        timestamp: Date.now() + offset,
-      });
-      offset += 1;
-    });
+    reader.onerror = () => {
+      console.error("读取文件失败:", reader.error);
+      alert("读取文件失败，请重试。");
+      setAddFile(null);
+    };
 
-    rejected.forEach((who) => {
-      addMessage({
-        id: createMessageId(),
-        sender: who,
-        type: "text",
-        text: pickLine(REJECT_LINES),
-        timestamp: Date.now() + offset,
-      });
-      offset += 1;
-    });
-
-    /* 5. 更新 partner */
-    let nextPartner: ListenPartner = "Solo";
-    if (accepted.length === 2) nextPartner = "Both";
-    else if (accepted.length === 1)
-      nextPartner = accepted[0];
-
-    setPartner(nextPartner);
-    saveListenPartner(nextPartner);
-
-    setInvitation({
-      target,
-      status:
-        accepted.length > 0 ? "accepted" : "rejected",
-      acceptedBy: accepted,
-      rejectedBy: rejected,
-    });
-
-    /* 6. 3 秒后清掉提示 */
-    setTimeout(() => setInvitation(null), 3000);
+    reader.readAsArrayBuffer(file);
   }
 
   /* -------------------------------------------------------
-     Render
+     添加
      ------------------------------------------------------- */
 
+  async function addCard() {
+    if (addType === "text") {
+      const lines = splitTextLines(addText);
+
+      if (lines.length === 0) {
+        alert("请填写至少一行内容。");
+        return;
+      }
+
+      const newCards: CharacterCard[] = lines.map(
+        (line) => ({
+          id: createCardId(),
+          character: addCharacter,
+          type: "text",
+          category: addCategory,
+          text: line,
+          enabled: true,
+        })
+      );
+
+      updateCards([...cardPool, ...newCards]);
+      resetAddForm();
+      return;
+    }
+
+    if (addType === "pat") {
+      const lines = splitTextLines(addText);
+
+      if (lines.length === 0) {
+        alert("请填写至少一行拍一拍内容。");
+        return;
+      }
+
+      const newCards: CharacterCard[] = lines.map(
+        (line) => ({
+          id: createCardId(),
+          character: addCharacter,
+          type: "pat",
+          category: addCategory,
+          text: line,
+          enabled: true,
+        })
+      );
+
+      updateCards([...cardPool, ...newCards]);
+      resetAddForm();
+      return;
+    }
+
+    if (addType === "emoji") {
+      const lines = splitTextLines(addText);
+
+      if (lines.length === 0) {
+        alert("请填写至少一个 emoji。");
+        return;
+      }
+
+      const newCards: CharacterCard[] = lines.map(
+        (line) => ({
+          id: createCardId(),
+          character: "Shared",
+          type: "emoji",
+          category: addCategory,
+          text: line,
+          enabled: true,
+        })
+      );
+
+      updateCards([...cardPool, ...newCards]);
+      resetAddForm();
+      return;
+    }
+
+    /* Voice */
+    if (addType === "voice") {
+      const text = addText.trim();
+
+      if (!addFile) {
+        alert("请先选择音频文件。");
+        return;
+      }
+
+      const nameLower = addFile.name.toLowerCase();
+      const isAudioByName =
+        nameLower.endsWith(".mp3") ||
+        nameLower.endsWith(".m4a") ||
+        nameLower.endsWith(".wav") ||
+        nameLower.endsWith(".aac") ||
+        nameLower.endsWith(".ogg") ||
+        nameLower.endsWith(".opus");
+
+      const isAudioByType = addFile.type
+        .toLowerCase()
+        .startsWith("audio/");
+
+      if (!isAudioByName && !isAudioByType) {
+        alert(
+          "只接受音频文件（mp3 / m4a / wav / aac / ogg / opus）。\n" +
+            `当前文件：${addFile.name || "(无文件名)"}\n` +
+            `类型：${addFile.type || "(未知)"}`
+        );
+        return;
+      }
+
+      if (!text) {
+        alert("请填写这条语音的文字稿。");
+        return;
+      }
+
+      const mediaId = createMediaId("voice");
+
+      try {
+        await saveVoiceFile(mediaId, addFile);
+
+        const newCard: CharacterCard = {
+          id: createCardId(),
+          character: addCharacter,
+          type: "voice",
+          category: addCategory,
+          text,
+          mediaId,
+          fileName: addFile.name,
+          enabled: true,
+        };
+
+        updateCards([...cardPool, newCard]);
+        resetAddForm();
+      } catch (error) {
+        console.error("保存语音失败:", error);
+        alert("语音保存失败，请查看控制台。");
+      }
+
+      return;
+    }
+
+    /* Sticker */
+    if (addType === "sticker") {
+      const text = addText.trim();
+
+      if (!addFile) {
+        alert("请先选择图片。");
+        return;
+      }
+
+      if (
+        !["image/jpeg", "image/png"].includes(addFile.type)
+      ) {
+        alert("目前只接受 JPG / PNG 图片。");
+        return;
+      }
+
+      const mediaId = createMediaId("sticker");
+
+      try {
+        await saveStickerFile(mediaId, addFile);
+
+        const newCard: CharacterCard = {
+          id: createCardId(),
+          character: addCharacter,
+          type: "sticker",
+          category: addCategory,
+          text,
+          mediaId,
+          fileName: addFile.name,
+          enabled: true,
+        };
+
+        updateCards([...cardPool, newCard]);
+        resetAddForm();
+      } catch (error) {
+        console.error("保存贴纸失败:", error);
+        alert("贴纸保存失败，请查看控制台。");
+      }
+    }
+  }
+
+  function resetAddForm() {
+    setAddType("text");
+    setAddCharacter("Levi");
+    setAddCategory(categories[0] ?? "");
+    setAddText("");
+    setAddFile(null);
+    setShowAddPanel(false);
+  }
+
+  /* -------------------------------------------------------
+     删除
+     ------------------------------------------------------- */
+
+  async function deleteMediaForCard(card: CharacterCard) {
+    if (!card.mediaId) return;
+
+    try {
+      if (card.type === "voice") {
+        await deleteVoiceFile(card.mediaId);
+      }
+      if (card.type === "sticker") {
+        await deleteStickerFile(card.mediaId);
+      }
+    } catch (error) {
+      console.error("删除媒体文件失败:", error);
+    }
+  }
+
+  async function deleteCard(card: CharacterCard) {
+    const confirmed = window.confirm(
+      "确定要删除这张 Card 吗？"
+    );
+    if (!confirmed) return;
+
+    await deleteMediaForCard(card);
+
+    const url = mediaUrls[card.id];
+    if (url) URL.revokeObjectURL(url);
+
+    const nextCards = cardPool.filter(
+      (item) => item.id !== card.id
+    );
+
+    updateCards(nextCards);
+
+    setSelectedIds((prev) =>
+      prev.filter((id) => id !== card.id)
+    );
+
+    if (editingCard?.id === card.id) {
+      closeEdit();
+    }
+  }
+
+  function toggleCardEnabled(card: CharacterCard) {
+    const nextCards = cardPool.map((item) =>
+      item.id === card.id
+        ? { ...item, enabled: !item.enabled }
+        : item
+    );
+    updateCards(nextCards);
+  }
+
+  /* -------------------------------------------------------
+     编辑
+     ------------------------------------------------------- */
+
+  function openEdit(card: CharacterCard) {
+    setEditingCard(card);
+    setEditCharacter(card.character);
+    setEditCategory(card.category);
+    setEditText(card.text);
+    setEditEnabled(card.enabled);
+  }
+
+  function closeEdit() {
+    setEditingCard(null);
+    setEditText("");
+  }
+
+  function saveEdit() {
+    if (!editingCard) return;
+
+    const text = editText.trim();
+
+    if (editingCard.type !== "sticker" && !text) {
+      alert("这张 Card 需要文字内容。");
+      return;
+    }
+
+    const nextCards = cardPool.map((card) =>
+      card.id === editingCard.id
+        ? {
+            ...card,
+            character: editCharacter,
+            category: editCategory,
+            text,
+            enabled: editEnabled,
+          }
+        : card
+    );
+
+    updateCards(nextCards);
+    closeEdit();
+  }
+
+  /* -------------------------------------------------------
+     多选 / 批量
+     ------------------------------------------------------- */
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((item) => item !== id)
+        : [...prev, id]
+    );
+  }
+
+  function toggleSelectAll() {
+    const visibleIds = filteredCards.map(
+      (card) => card.id
+    );
+
+    const allSelected =
+      visibleIds.length > 0 &&
+      visibleIds.every((id) =>
+        selectedIds.includes(id)
+      );
+
+    if (allSelected) {
+      setSelectedIds((prev) =>
+        prev.filter((id) => !visibleIds.includes(id))
+      );
+    } else {
+      setSelectedIds((prev) => [
+        ...new Set([...prev, ...visibleIds]),
+      ]);
+    }
+  }
+
+  function batchSetEnabled(enabled: boolean) {
+    const nextCards = cardPool.map((card) =>
+      selectedIds.includes(card.id)
+        ? { ...card, enabled }
+        : card
+    );
+    updateCards(nextCards);
+  }
+
+  function batchSetCharacter(character: CardCharacter) {
+    const nextCards = cardPool.map((card) =>
+      selectedIds.includes(card.id)
+        ? { ...card, character }
+        : card
+    );
+    updateCards(nextCards);
+  }
+
+  function batchSetCategory(category: string) {
+    const nextCards = cardPool.map((card) =>
+      selectedIds.includes(card.id)
+        ? { ...card, category }
+        : card
+    );
+    updateCards(nextCards);
+  }
+
+  async function deleteSelected() {
+    const selectedCards = cardPool.filter((card) =>
+      selectedIds.includes(card.id)
+    );
+
+    const confirmed = window.confirm(
+      `确定要删除 ${selectedCards.length} 张 Card 吗？`
+    );
+    if (!confirmed) return;
+
+    for (const card of selectedCards) {
+      await deleteMediaForCard(card);
+
+      const url = mediaUrls[card.id];
+      if (url) URL.revokeObjectURL(url);
+    }
+
+    const nextCards = cardPool.filter(
+      (card) => !selectedIds.includes(card.id)
+    );
+
+    updateCards(nextCards);
+    setSelectedIds([]);
+  }
+
+  /* -------------------------------------------------------
+     筛选
+     ------------------------------------------------------- */
+
+  const filteredCards = useMemo(() => {
+    return cardPool.filter((card) => {
+      const characterMatch =
+        characterFilter === "All" ||
+        card.character === characterFilter;
+
+      const typeMatch =
+        typeFilter === "All" ||
+        card.type === typeFilter;
+
+      const categoryMatch =
+        categoryFilter === "全部" ||
+        card.category === categoryFilter;
+
+      return (
+        characterMatch && typeMatch && categoryMatch
+      );
+    });
+  }, [
+    cardPool,
+    characterFilter,
+    typeFilter,
+    categoryFilter,
+  ]);
+
+  const allVisibleSelected =
+    filteredCards.length > 0 &&
+    filteredCards.every((card) =>
+      selectedIds.includes(card.id)
+    );
+
+  const enabledCount = cardPool.filter(
+    (card) => card.enabled
+  ).length;
+
+  /* -------------------------------------------------------
+     ★ 播放语音（带诊断日志）
+     ------------------------------------------------------- */
+
+  function playVoice(card: CharacterCard) {
+    const url = mediaUrls[card.id];
+
+    if (!url) {
+      alert(
+        "找不到这条语音文件。\n" +
+          "如果这是刚刚上传的，请刷新页面重试。\n" +
+          "如果是旧卡片，可能需要删除后重新上传。"
+      );
+      return;
+    }
+
+    /* 点同一张卡：切换暂停/播放 */
+    if (playingId === card.id && audioElement) {
+      if (audioElement.paused) {
+        void audioElement.play().catch((e) => {
+          console.error("播放失败:", e);
+          alert("播放失败：" + e.message);
+        });
+      } else {
+        audioElement.pause();
+      }
+      return;
+    }
+
+    /* 其它情况：换一张卡播放 */
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+    }
+
+    const audio = new Audio(url);
+
+    audio.onplay = () => setPlayingId(card.id);
+    audio.onpause = () => setPlayingId(null);
+    audio.onended = () => setPlayingId(null);
+    audio.onerror = (e) => {
+      setPlayingId(null);
+      const err = audio.error;
+      console.error(
+        "[CardStudio] 语音加载失败:",
+        {
+          code: err?.code,
+          message: err?.message,
+          url,
+          cardId: card.id,
+          mediaId: card.mediaId,
+        }
+      );
+      alert(
+        "语音无法播放。\n" +
+          "可能原因：文件损坏或格式不被支持。\n" +
+          "建议删除这张卡片后重新上传。"
+      );
+      void e;
+    };
+
+    setAudioElement(audio);
+
+    audio
+      .play()
+      .then(() => {
+        console.log(
+          "[CardStudio] 开始播放:",
+          card.id,
+          url
+        );
+      })
+      .catch((e) => {
+        console.error("[CardStudio] play() 失败:", e);
+        setPlayingId(null);
+        alert(
+          "播放失败：" +
+            (e instanceof Error
+              ? e.message
+              : String(e))
+        );
+      });
+  }
+
+  function characterBadgeClass(c: CardCharacter) {
+    if (c === "Levi")
+      return "studio-character studio-levi";
+    if (c === "Erwin")
+      return "studio-character studio-erwin";
+    return "studio-character studio-shared";
+  }
+
+  const textLineCount =
+    addType === "text" ||
+    addType === "pat" ||
+    addType === "emoji"
+      ? splitTextLines(addText).length
+      : 0;
+
   return (
-    <main className="phone-screen app-screen music-app-v2">
-      {/* 顶栏 */}
-      <header className="music-v2-header">
-        <button
-          className="music-v2-back"
-          onClick={onBack}
-          aria-label="返回"
-        >
-          ‹
-        </button>
+    <main className="studio-page card-studio-page">
+      <header className="studio-header">
+        <div>
+          <div className="studio-eyebrow">RUNWITHME</div>
+          <h1>Character Cards</h1>
+          <p>管理他们所有可能出现的回复。</p>
+        </div>
 
-        <button
-          className="music-v2-listeners"
-          onClick={() => setShowPartnerPicker(true)}
-          aria-label="一起听"
-        >
-          {listeners.map((key) => (
-            <div
-              key={key}
-              className={`music-v2-listener-avatar music-v2-listener-${key}`}
+        <div className="studio-header-right">
+          <div className="studio-count">
+            {cardPool.length} cards
+            <span
+              style={{
+                marginLeft: "8px",
+                opacity: 0.55,
+              }}
             >
-              {avatarUrls[key] ? (
-                <img
-                  src={avatarUrls[key]!}
-                  alt={key}
-                />
-              ) : (
-                <span>
-                  {key === "you"
-                    ? "Y"
-                    : key === "levi"
-                      ? "L"
-                      : "E"}
-                </span>
-              )}
-            </div>
-          ))}
+              / {enabledCount} enabled
+            </span>
+          </div>
 
-          <div className="music-v2-listener-add">+</div>
-        </button>
-
-        <button
-          className="music-v2-upload-btn"
-          onClick={() => setShowUpload(true)}
-          aria-label="音乐管理"
-        >
-          ↑
-        </button>
+          <button
+            className="studio-back-link"
+            onClick={onBack}
+          >
+            ← Home
+          </button>
+        </div>
       </header>
 
-      {/* ★ 邀请状态提示 */}
-      {invitation && (
-        <div
-          className={`music-v2-invite-banner music-v2-invite-${invitation.status}`}
-        >
-          {invitation.status === "pending" && (
-            <>
-              <span className="music-v2-invite-dot" />
-              正在等待回应…
-            </>
-          )}
-
-          {invitation.status === "accepted" && (
-            <>
-              ✓ {invitation.acceptedBy.join(" & ")}{" "}
-              加入了
-              {invitation.rejectedBy.length > 0 &&
-                ` · ${invitation.rejectedBy.join(
-                  " & "
-                )} 没有接受`}
-            </>
-          )}
-
-          {invitation.status === "rejected" && (
-            <>✕ 没有回应，继续一个人听吧</>
-          )}
+      {/* 筛选 */}
+      <section className="studio-toolbar">
+        <div className="studio-filter-group">
+          {(
+            [
+              "All",
+              "Levi",
+              "Erwin",
+              "Shared",
+            ] as FilterCharacter[]
+          ).map((character) => (
+            <button
+              key={character}
+              className={
+                characterFilter === character
+                  ? "studio-filter active"
+                  : "studio-filter"
+              }
+              onClick={() =>
+                setCharacterFilter(character)
+              }
+            >
+              {character === "All"
+                ? "All"
+                : getCharacterLabel(character)}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* 唱片 */}
-      <section className="music-v2-disc-area">
-        <div
-          className={`music-v2-disc${
-            isPlaying ? " is-playing" : ""
-          }`}
-        >
-          <div className="music-v2-disc-cover">
-            <span>♪</span>
-          </div>
+        <div className="studio-filter-group">
+          {(
+            [
+              "All",
+              "text",
+              "voice",
+              "sticker",
+              "pat",
+              "emoji",
+            ] as FilterType[]
+          ).map((type) => (
+            <button
+              key={type}
+              className={
+                typeFilter === type
+                  ? "studio-filter active"
+                  : "studio-filter"
+              }
+              onClick={() => setTypeFilter(type)}
+            >
+              {type === "All"
+                ? "全部"
+                : getTypeLabel(type)}
+            </button>
+          ))}
         </div>
+
+        <select
+          className="studio-select"
+          value={categoryFilter}
+          onChange={(event) =>
+            setCategoryFilter(event.target.value)
+          }
+        >
+          <option value="全部">全部分类</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
+
+        <button
+          className="studio-select-button"
+          onClick={() => setShowCategoryEditor(true)}
+        >
+          ⚙ 分类
+        </button>
       </section>
 
-      {/* 信息 + 进度 */}
-      <section className="music-v2-info">
-        {currentTrack ? (
-          <>
-            <div className="music-v2-title">
-              {currentTrack.title}
-            </div>
+      {/* 操作 */}
+      <section className="studio-actions">
+        <button
+          className="studio-add-button"
+          onClick={() =>
+            setShowAddPanel((prev) => !prev)
+          }
+        >
+          ＋ 添加 Card
+        </button>
 
-            <div className="music-v2-artist">
-              {currentTrack.artist || "RunWithme"}
-            </div>
+        <button
+          className="studio-select-button"
+          onClick={toggleSelectAll}
+        >
+          {allVisibleSelected ? "取消全选" : "全选"}
+        </button>
+      </section>
 
-            <div className="music-v2-progress-area">
-              <input
-                className="music-v2-progress"
-                type="range"
-                min="0"
-                max={duration || 0}
-                step="0.1"
-                value={Math.min(
-                  currentTime,
-                  duration || 0
+      {/* 添加面板 */}
+      {showAddPanel && (
+        <section className="studio-add-panel">
+          <div className="studio-panel-title">
+            添加 Character Card
+          </div>
+
+          <div className="studio-form-row">
+            <label>
+              归属
+              <select
+                value={addCharacter}
+                onChange={(event) =>
+                  setAddCharacter(
+                    event.target.value as CardCharacter
+                  )
+                }
+                disabled={addType === "emoji"}
+              >
+                {CHARACTER_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {getCharacterLabel(c)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              类型
+              <select
+                value={addType}
+                onChange={(event) => {
+                  setAddType(
+                    event.target.value as CardType
+                  );
+                  setAddFile(null);
+                  setAddText("");
+                }}
+              >
+                {TYPE_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              分类
+              <select
+                value={addCategory}
+                onChange={(event) =>
+                  setAddCategory(event.target.value)
+                }
+                disabled={categories.length === 0}
+              >
+                {categories.length === 0 ? (
+                  <option value="">（无分类）</option>
+                ) : (
+                  categories.map((category) => (
+                    <option
+                      key={category}
+                      value={category}
+                    >
+                      {category}
+                    </option>
+                  ))
                 )}
-                onChange={handleSeek}
-                style={
-                  {
-                    "--music-progress": `${progress}%`,
-                  } as React.CSSProperties
-                }
-              />
-
-              <div className="music-v2-time-row">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="music-v2-empty">
-            还没有音乐，点右上角 ↑ 添加
+              </select>
+            </label>
           </div>
-        )}
 
-        {error && (
-          <div className="music-v2-error">{error}</div>
-        )}
-      </section>
+          {/* Text */}
+          {addType === "text" && (
+            <label className="studio-text-label">
+              <div className="studio-text-label-row">
+                <span>内容</span>
 
-      {/* 控制 */}
-      <section className="music-v2-controls">
-        <button
-          className="music-v2-btn"
-          onClick={() => void previousTrack()}
-          aria-label="上一首"
-          type="button"
-        >
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path d="M6 5h2.2v14H6z" />
-            <path d="M20 5v14L9.5 12z" />
-          </svg>
-        </button>
+                {textLineCount > 0 && (
+                  <span className="studio-text-count">
+                    将添加 {textLineCount} 张卡片
+                  </span>
+                )}
+              </div>
 
-        <button
-          className="music-v2-play-btn"
-          onClick={() => void togglePlay()}
-          aria-label={isPlaying ? "暂停" : "播放"}
-          type="button"
-        >
-          {loading ? (
-            <span className="music-v2-play-dots">
-              •••
-            </span>
-          ) : isPlaying ? (
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <rect
-                x="6"
-                y="5"
-                width="4.2"
-                height="14"
-                rx="1"
+              <textarea
+                className="studio-text-batch"
+                value={addText}
+                onChange={(event) =>
+                  setAddText(event.target.value)
+                }
+                placeholder={
+                  "每行一张卡片\n\n例如：\n今天辛苦了。\n早点休息。\n我在这里。"
+                }
+                rows={6}
               />
-              <rect
-                x="13.8"
-                y="5"
-                width="4.2"
-                height="14"
-                rx="1"
-              />
-            </svg>
-          ) : (
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d="M8 5.5v13a1 1 0 0 0 1.55.83l10-6.5a1 1 0 0 0 0-1.66l-10-6.5A1 1 0 0 0 8 5.5z" />
-            </svg>
+            </label>
           )}
-        </button>
 
-        <button
-          className="music-v2-btn"
-          onClick={() => void nextTrack()}
-          aria-label="下一首"
-          type="button"
-        >
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path d="M15.8 5H18v14h-2.2z" />
-            <path d="M4 5v14l10.5-7z" />
-          </svg>
-        </button>
-      </section>
+          {/* Pat */}
+          {addType === "pat" && (
+            <label className="studio-text-label">
+              <div className="studio-text-label-row">
+                <span>
+                  拍一拍内容（发送时会显示为「Levi 拍了拍你的头」）
+                </span>
 
-      {/* 右下角列表按钮 */}
-      <button
-        className="music-v2-list-btn"
-        onClick={() => setShowList(true)}
-        aria-label="播放列表"
-      >
-        <span />
-        <span />
-        <span />
-      </button>
+                {textLineCount > 0 && (
+                  <span className="studio-text-count">
+                    将添加 {textLineCount} 张
+                  </span>
+                )}
+              </div>
 
-      {/* 列表抽屉 */}
-      {showList && (
-        <MusicListDrawer
-          onClose={() => setShowList(false)}
-          onSelect={(index) => {
-            void playTrack(index);
-            setShowList(false);
-          }}
-        />
-      )}
-
-      {/* 上传 / 管理 */}
-      {showUpload && (
-        <MusicUploadPanel
-          onClose={() => {
-            setShowUpload(false);
-            reload();
-          }}
-        />
-      )}
-
-      {/* 邀请选择器 */}
-      {showPartnerPicker && (
-        <div
-          className="music-v2-picker-backdrop"
-          onClick={() => setShowPartnerPicker(false)}
-        >
-          <div
-            className="music-v2-picker"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="music-v2-picker-title">
-              一起听
-            </div>
-
-            <div className="music-v2-picker-options">
-              <button
-                className={
-                  partner === "Solo" ? "active" : ""
+              <textarea
+                className="studio-text-batch"
+                value={addText}
+                onChange={(event) =>
+                  setAddText(event.target.value)
                 }
-                onClick={() =>
-                  handleSelectPartner("Solo")
+                placeholder={
+                  "每行一条，例如：\n拍了拍你的头\n从背后抱住你\n揉了揉你的头发"
                 }
-              >
-                <div className="music-v2-picker-avatar avatar-you">
-                  Y
+                rows={6}
+              />
+            </label>
+          )}
+
+          {/* Emoji */}
+          {addType === "emoji" && (
+            <label className="studio-text-label">
+              <div className="studio-text-label-row">
+                <span>
+                  Emoji（随机决定是否附加在文本前 / 后，或单独发出）
+                </span>
+
+                {textLineCount > 0 && (
+                  <span className="studio-text-count">
+                    将添加 {textLineCount} 个
+                  </span>
+                )}
+              </div>
+
+              <textarea
+                className="studio-text-batch"
+                value={addText}
+                onChange={(event) =>
+                  setAddText(event.target.value)
+                }
+                placeholder={
+                  "每行一个 emoji，例如：\n💕\n🌸\n🥺\n☺️"
+                }
+                rows={6}
+              />
+            </label>
+          )}
+
+          {/* Voice */}
+          {addType === "voice" && (
+            <>
+              <label>
+                音频文件（mp3 / m4a / wav / aac / ogg）
+                <input
+                  type="file"
+                  accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus"
+                  onChange={handleAddFile}
+                />
+              </label>
+
+              {addFile && (
+                <div className="studio-file-name">
+                  🎙️ {addFile.name} ·{" "}
+                  {(addFile.size / 1024).toFixed(1)} KB
+                  {addFile.type &&
+                    ` · ${addFile.type}`}
                 </div>
-                <small>单独听</small>
-              </button>
+              )}
 
-              <button
-                className={
-                  partner === "Levi" ? "active" : ""
-                }
-                onClick={() =>
-                  handleSelectPartner("Levi")
-                }
-              >
-                <div className="music-v2-picker-avatar avatar-levi">
-                  L
-                </div>
-                <small>邀请 Levi</small>
-              </button>
+              <label>
+                文字稿
+                <textarea
+                  value={addText}
+                  onChange={(event) =>
+                    setAddText(event.target.value)
+                  }
+                  placeholder="填写这条语音实际说的内容……"
+                />
+              </label>
+            </>
+          )}
 
-              <button
-                className={
-                  partner === "Erwin" ? "active" : ""
-                }
-                onClick={() =>
-                  handleSelectPartner("Erwin")
-                }
-              >
-                <div className="music-v2-picker-avatar avatar-erwin">
-                  E
-                </div>
-                <small>邀请 Erwin</small>
-              </button>
+          {/* Sticker */}
+          {addType === "sticker" && (
+            <>
+              <label>
+                贴纸图片
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAddFile}
+                />
+              </label>
 
-              <button
-                className={
-                  partner === "Both" ? "active" : ""
-                }
-                onClick={() =>
-                  handleSelectPartner("Both")
-                }
-              >
-                <div className="music-v2-picker-avatar avatar-both">
-                  L&E
+              {addFile && (
+                <div className="studio-file-name">
+                  🧸 {addFile.name}
                 </div>
-                <small>邀请两个</small>
-              </button>
-            </div>
+              )}
+
+              <label>
+                贴纸文字
+                <span className="studio-form-optional">
+                  可选
+                </span>
+                <textarea
+                  value={addText}
+                  onChange={(event) =>
+                    setAddText(event.target.value)
+                  }
+                  placeholder="如果这张贴纸需要附带文字，可以写在这里……"
+                />
+              </label>
+            </>
+          )}
+
+          <div className="studio-add-footer">
+            <button onClick={resetAddForm}>取消</button>
 
             <button
-              className="music-v2-picker-cancel"
-              onClick={() => setShowPartnerPicker(false)}
+              onClick={() => void addCard()}
+              disabled={
+                (addType === "text" ||
+                  addType === "pat" ||
+                  addType === "emoji") &&
+                textLineCount === 0
+              }
             >
-              取消
+              保存 Card
             </button>
           </div>
+        </section>
+      )}
+
+      {/* 批量 */}
+      {selectedIds.length > 0 && (
+        <section className="studio-batch-bar">
+          <span>已选择 {selectedIds.length} 张</span>
+
+          <button onClick={() => batchSetEnabled(true)}>
+            启用
+          </button>
+
+          <button onClick={() => batchSetEnabled(false)}>
+            停用
+          </button>
+
+          <select
+            defaultValue=""
+            onChange={(event) => {
+              if (event.target.value) {
+                batchSetCharacter(
+                  event.target.value as CardCharacter
+                );
+                event.target.value = "";
+              }
+            }}
+          >
+            <option value="" disabled>
+              改归属
+            </option>
+            {CHARACTER_OPTIONS.map((c) => (
+              <option key={c} value={c}>
+                {getCharacterLabel(c)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            defaultValue=""
+            onChange={(event) => {
+              if (event.target.value) {
+                batchSetCategory(event.target.value);
+                event.target.value = "";
+              }
+            }}
+          >
+            <option value="" disabled>
+              改分类
+            </option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+
+          <button
+            className="danger"
+            onClick={() => void deleteSelected()}
+          >
+            删除
+          </button>
+        </section>
+      )}
+
+      {/* 列表 */}
+      <section className="studio-card-list">
+        {filteredCards.length === 0 ? (
+          <div className="studio-empty">
+            <div>♡</div>
+            <p>这里还没有 Card。</p>
+          </div>
+        ) : (
+          filteredCards.map((card) => {
+            const selected = selectedIds.includes(
+              card.id
+            );
+
+            return (
+              <article
+                key={card.id}
+                className={
+                  selected
+                    ? "studio-card selected"
+                    : "studio-card"
+                }
+              >
+                <label className="studio-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() =>
+                      toggleSelected(card.id)
+                    }
+                  />
+                  <span />
+                </label>
+
+                <div className="studio-card-main">
+                  <div className="studio-card-meta">
+                    <span
+                      className={characterBadgeClass(
+                        card.character
+                      )}
+                    >
+                      {getCharacterLabel(card.character)}
+                    </span>
+
+                    <span className="studio-category">
+                      {card.category}
+                    </span>
+
+                    <span className="studio-type-label">
+                      {getTypeLabel(card.type)}
+                    </span>
+
+                    {!card.enabled && (
+                      <span className="studio-disabled">
+                        已停用
+                      </span>
+                    )}
+                  </div>
+
+                  {card.type === "text" && (
+                    <div className="studio-card-text">
+                      {card.text}
+                    </div>
+                  )}
+
+                  {card.type === "pat" && (
+                    <div className="studio-card-text studio-card-pat">
+                      👋 {card.text}
+                    </div>
+                  )}
+
+                  {card.type === "emoji" && (
+                    <div className="studio-card-text studio-card-emoji">
+                      {card.text}
+                    </div>
+                  )}
+
+                  {card.type === "voice" && (
+                    <div className="studio-voice-row">
+                      <button
+                        type="button"
+                        className="studio-voice-play"
+                        onClick={() => playVoice(card)}
+                      >
+                        {playingId === card.id
+                          ? "Ⅱ"
+                          : "▶"}
+                      </button>
+
+                      <div>
+                        <div className="studio-file-name">
+                          🎙️ {card.fileName}
+                        </div>
+
+                        <div className="studio-card-text">
+                          「{card.text}」
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {card.type === "sticker" && (
+                    <div className="studio-sticker-row">
+                      <div className="studio-sticker-thumb">
+                        {mediaUrls[card.id] ? (
+                          <img
+                            src={mediaUrls[card.id]}
+                            alt={
+                              card.fileName ?? "Sticker"
+                            }
+                          />
+                        ) : (
+                          <span>🧸</span>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="studio-file-name">
+                          🧸 {card.fileName}
+                        </div>
+
+                        {card.text && (
+                          <div className="studio-card-text">
+                            「{card.text}」
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="studio-card-id">
+                    {card.id}
+                  </div>
+                </div>
+
+                <div className="studio-card-actions">
+                  <button
+                    className={
+                      card.enabled
+                        ? "card-toggle active"
+                        : "card-toggle"
+                    }
+                    onClick={() =>
+                      toggleCardEnabled(card)
+                    }
+                  >
+                    {card.enabled ? "启用" : "停用"}
+                  </button>
+
+                  <button
+                    className="card-edit"
+                    onClick={() => openEdit(card)}
+                  >
+                    编辑
+                  </button>
+
+                  <button
+                    className="card-delete"
+                    onClick={() => void deleteCard(card)}
+                  >
+                    删除
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        )}
+      </section>
+
+      {/* 编辑 */}
+      {editingCard && (
+        <div
+          className="studio-modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeEdit();
+            }
+          }}
+        >
+          <section
+            className="studio-edit-modal"
+            onMouseDown={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="studio-modal-header">
+              <div>
+                <div className="studio-eyebrow">
+                  CARD EDITOR
+                </div>
+                <h2>编辑 Card</h2>
+              </div>
+
+              <button
+                className="studio-modal-close"
+                onClick={closeEdit}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="studio-edit-form">
+              <div className="studio-modal-type">
+                {getTypeLabel(editingCard.type)}
+                <span>类型不可修改</span>
+              </div>
+
+              <label>
+                归属
+                <select
+                  value={editCharacter}
+                  onChange={(event) =>
+                    setEditCharacter(
+                      event.target.value as CardCharacter
+                    )
+                  }
+                >
+                  {CHARACTER_OPTIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {getCharacterLabel(c)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                分类
+                <select
+                  value={editCategory}
+                  onChange={(event) =>
+                    setEditCategory(event.target.value)
+                  }
+                >
+                  {categories.length === 0 ? (
+                    <option value="">（无分类）</option>
+                  ) : (
+                    categories.map((category) => (
+                      <option
+                        key={category}
+                        value={category}
+                      >
+                        {category}
+                      </option>
+                    ))
+                  )}
+
+                  {editCategory &&
+                    !categories.includes(editCategory) && (
+                      <option value={editCategory}>
+                        {editCategory}（已删除）
+                      </option>
+                    )}
+                </select>
+              </label>
+
+              <label>
+                {editingCard.type === "voice"
+                  ? "文字稿"
+                  : editingCard.type === "sticker"
+                    ? "贴纸文字"
+                    : editingCard.type === "pat"
+                      ? "拍一拍内容"
+                      : editingCard.type === "emoji"
+                        ? "Emoji"
+                        : "内容"}
+
+                {editingCard.type === "sticker" && (
+                  <span className="studio-form-optional">
+                    可选
+                  </span>
+                )}
+
+                <textarea
+                  value={editText}
+                  onChange={(event) =>
+                    setEditText(event.target.value)
+                  }
+                  autoFocus
+                />
+              </label>
+
+              {editingCard.type === "voice" && (
+                <div className="studio-modal-file studio-modal-file-voice">
+                  🎙️ {editingCard.fileName}
+                  <div className="studio-modal-file-hint">
+                    音频文件暂时不能在编辑窗口中更换
+                  </div>
+                </div>
+              )}
+
+              {editingCard.type === "sticker" && (
+                <div className="studio-modal-file studio-modal-file-sticker">
+                  🧸 {editingCard.fileName}
+                  <div className="studio-modal-file-hint">
+                    图片文件暂时不能在编辑窗口中更换
+                  </div>
+                </div>
+              )}
+
+              <label className="studio-enabled-row">
+                <span>Card 状态</span>
+
+                <button
+                  type="button"
+                  className={
+                    editEnabled
+                      ? "studio-switch on"
+                      : "studio-switch"
+                  }
+                  onClick={() =>
+                    setEditEnabled(
+                      (previous) => !previous
+                    )
+                  }
+                >
+                  <span />
+                </button>
+
+                <small>
+                  {editEnabled ? "启用" : "停用"}
+                </small>
+              </label>
+            </div>
+
+            <div className="studio-modal-footer">
+              <button
+                className="studio-cancel"
+                onClick={closeEdit}
+              >
+                取消
+              </button>
+
+              <button
+                className="studio-save"
+                onClick={saveEdit}
+                disabled={
+                  editingCard.type !== "sticker" &&
+                  !editText.trim()
+                }
+              >
+                保存修改
+              </button>
+            </div>
+          </section>
         </div>
+      )}
+
+      {showCategoryEditor && (
+        <CategoryEditor
+          categories={categories}
+          onClose={() => setShowCategoryEditor(false)}
+          onChange={updateCategories}
+        />
       )}
     </main>
   );
