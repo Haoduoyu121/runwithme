@@ -65,6 +65,14 @@ function getCharacterPool(
   );
 }
 
+const FALLBACK_LINES = [
+  "刚刚想到你，就写了这封。",
+  "最近有点忙，但没忘记你。",
+  "翻到以前的信，又看了一遍。",
+  "想说的话太多，反而不知道从哪写起。",
+  "你那边天气怎么样？",
+];
+
 export function generateCharacterLetter(
   character: "Levi" | "Erwin",
   opts?: {
@@ -73,7 +81,30 @@ export function generateCharacterLetter(
   }
 ): Letter | null {
   const pool = getCharacterPool(character);
-  if (pool.length === 0) return null;
+
+  /* 卡池为空时用兜底文案，不返回 null */
+  if (pool.length === 0) {
+    const lineCount = randInt(3, 5);
+    const picks: string[] = [];
+    for (let i = 0; i < lineCount; i++) {
+      const line =
+        FALLBACK_LINES[
+          Math.floor(Math.random() * FALLBACK_LINES.length)
+        ];
+      picks.push(addPunct(line));
+    }
+
+    return {
+      id: createLetterId(),
+      from: character,
+      to: "You",
+      subject: pickSubject(!!opts?.isReply),
+      body: picks.join("\n\n"),
+      createdAt: Date.now(),
+      read: false,
+      replyToId: opts?.replyToId,
+    };
+  }
 
   const count = randInt(5, 10);
   const picks: string[] = [];

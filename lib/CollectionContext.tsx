@@ -106,15 +106,21 @@ export function CollectionProvider({
     setHydrated(true);
   }, []);
 
-  /* 自动持久化 */
+  /* 自动持久化（debounce 400ms：用户输备注时每次按键都会触发 setItems） */
   useEffect(() => {
     if (!hydrated) return;
-    saveCollections(items);
+    const t = window.setTimeout(() => {
+      saveCollections(items);
+    }, 400);
+    return () => window.clearTimeout(t);
   }, [items, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
-    saveCollectionTags(tags);
+    const t = window.setTimeout(() => {
+      saveCollectionTags(tags);
+    }, 400);
+    return () => window.clearTimeout(t);
   }, [tags, hydrated]);
 
   /* ---------- 方法 ---------- */

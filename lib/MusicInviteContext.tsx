@@ -29,6 +29,8 @@ import {
   type SystemInvitation,
 } from "@/lib/systemInvitationStorage";
 
+import { useNotifications } from "@/lib/NotificationContext";
+
 const SYSTEM_INVITE_MIN_MS = 30 * 60 * 1000;
 const SYSTEM_INVITE_MAX_MS = 90 * 60 * 1000;
 const SYSTEM_INVITE_EXPIRE_MS = 90 * 1000;
@@ -55,6 +57,13 @@ export function MusicInviteProvider({
 }) {
   const { music, playTrack } = useMusic();
   const { addMessage } = useChat();
+
+  const { notify } = useNotifications();
+  const notifyRef = useRef(notify);
+
+  useEffect(() => {
+    notifyRef.current = notify;
+  }, [notify]);
 
   const [partner, setPartner] = useState<ListenPartner>("Solo");
   const [systemInvite, setSystemInvite] =
@@ -137,6 +146,20 @@ export function MusicInviteProvider({
     setSystemInvite(inv);
 
     console.log("[MusicInvite] 系统主动邀约:", from);
+
+    /* 站内通知：页面隐藏时发系统通知；页面可见时浮层已经在响了 */
+    const notifyCharacter: "Levi" | "Erwin" =
+      from === "Both" ? "Levi" : from;
+    notifyRef.current(
+      {
+        appId: "music",
+        character: notifyCharacter,
+        title:
+          from === "Both" ? "Levi & Erwin" : from,
+        body: "邀请你一起听歌",
+      },
+      { onlySystemIfHidden: true }
+    );
 
     const text = "要不要一起听歌？";
 

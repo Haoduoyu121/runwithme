@@ -26,6 +26,7 @@ import {
 } from "@/lib/letterStorage";
 
 import { generateCharacterLetter } from "@/lib/letterGenerator";
+import { useNotifications } from "@/lib/NotificationContext";
 
 /* 用户寄信 → 对方回信延迟：6~12 小时 */
 const REPLY_MIN_MS = 6 * 60 * 60 * 1000;
@@ -62,6 +63,13 @@ export function LetterProvider({
 }: {
   children: ReactNode;
 }) {
+  const { notify } = useNotifications();
+  const notifyRef = useRef(notify);
+
+  useEffect(() => {
+    notifyRef.current = notify;
+  }, [notify]);
+
   const [letters, setLetters] = useState<Letter[]>([]);
   const lettersRef = useRef<Letter[]>([]);
 
@@ -89,7 +97,7 @@ export function LetterProvider({
     const duePending = pending.filter(
       (p) => p.dueAt <= now
     );
-    const stillPending = pending.filter(
+    const stillPending: PendingLetter[] = pending.filter(
       (p) => p.dueAt > now
     );
 
@@ -101,7 +109,19 @@ export function LetterProvider({
         replyToId: p.replyToId,
         isReply: true,
       });
-      if (letter) newLetters.push(letter);
+      if (letter) {
+        newLetters.push(letter);
+      } else {
+        /* 卡池为空 / 生成失败 → 保留，1 小时后再试 */
+        console.warn(
+          "[Letter] 回信生成失败（卡池可能为空），1 小时后再试",
+          p.from
+        );
+        stillPending.push({
+          ...p,
+          dueAt: now + 60 * 60 * 1000,
+        });
+      }
     }
 
     /* 系统主动信 */
@@ -144,6 +164,29 @@ export function LetterProvider({
         const next = [...prev, ...newLetters];
         saveLetters(next);
         return next;
+      });
+
+      /* 站内通知：按角色合并，避免同批多发刷屏 */
+      const byChar: Record<"Levi" | "Erwin", number> = {
+        Levi: 0,
+        Erwin: 0,
+      };
+      for (const letter of newLetters) {
+        if (letter.from === "You") continue;
+        byChar[letter.from] += 1;
+      }
+      (["Levi", "Erwin"] as const).forEach((ch) => {
+        const n = byChar[ch];
+        if (n === 0) return;
+        notifyRef.current({
+          appId: "letter",
+          character: ch,
+          title: ch,
+          body:
+            n === 1
+              ? "给你写了一封信"
+              : `给你写了 ${n} 封信`,
+        });
       });
     }
   }, []);

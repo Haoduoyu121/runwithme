@@ -9,6 +9,10 @@ import {
   type HomeItem,
   type PolaroidWidget,
   type CountdownWidget,
+  type LetterWidget,
+  type StudyWidget,
+  type DailyQuoteWidget,
+  type CollectionWidget,
 } from "@/data/home";
 
 import { saveHomeFile } from "@/lib/homeFiles";
@@ -18,7 +22,12 @@ type Props = {
   onClose: () => void;
 };
 
-type Mode = "menu" | "polaroid" | "countdown";
+type Mode =
+  | "menu"
+  | "polaroid"
+  | "countdown"
+  | "letter"
+  | "study";
 
 export default function AddWidgetModal({
   onAdd,
@@ -96,6 +105,66 @@ export default function AddWidgetModal({
     onClose();
   }
 
+  function handleAddLetter() {
+    const widget: LetterWidget = {
+      id: createWidgetId(),
+      type: "letter",
+    };
+
+    onAdd({
+      id: createHomeItemId(),
+      size: "2x2",
+      content: { kind: "widget", widget },
+    });
+
+    onClose();
+  }
+
+  function handleAddStudy() {
+    const widget: StudyWidget = {
+      id: createWidgetId(),
+      type: "study",
+    };
+
+    onAdd({
+      id: createHomeItemId(),
+      size: "2x2",
+      content: { kind: "widget", widget },
+    });
+
+    onClose();
+  }
+
+  function handleAddDailyQuote() {
+    const widget: DailyQuoteWidget = {
+      id: createWidgetId(),
+      type: "daily-quote",
+    };
+
+    onAdd({
+      id: createHomeItemId(),
+      size: "2x2",
+      content: { kind: "widget", widget },
+    });
+
+    onClose();
+  }
+
+  function handleAddCollection() {
+    const widget: CollectionWidget = {
+      id: createWidgetId(),
+      type: "collection",
+    };
+
+    onAdd({
+      id: createHomeItemId(),
+      size: "2x2",
+      content: { kind: "widget", widget },
+    });
+
+    onClose();
+  }
+
   return (
     <div
       className="home-add-widget-backdrop"
@@ -156,6 +225,66 @@ export default function AddWidgetModal({
               </span>
               <span className="home-add-widget-option-desc">
                 距某天还有多久
+              </span>
+            </button>
+
+            <button
+              className="home-add-widget-option"
+              onClick={handleAddLetter}
+            >
+              <span className="home-add-widget-option-icon">
+                ✉
+              </span>
+              <span className="home-add-widget-option-name">
+                未读信
+              </span>
+              <span className="home-add-widget-option-desc">
+                未读数量 · 最近来信
+              </span>
+            </button>
+
+            <button
+              className="home-add-widget-option"
+              onClick={handleAddStudy}
+            >
+              <span className="home-add-widget-option-icon">
+                ✎
+              </span>
+              <span className="home-add-widget-option-name">
+                今日学习
+              </span>
+              <span className="home-add-widget-option-desc">
+                今日单词数 · 连续天数
+              </span>
+            </button>
+
+            <button
+              className="home-add-widget-option"
+              onClick={handleAddDailyQuote}
+            >
+              <span className="home-add-widget-option-icon">
+                ❝
+              </span>
+              <span className="home-add-widget-option-name">
+                每日一句
+              </span>
+              <span className="home-add-widget-option-desc">
+                今天的那一句
+              </span>
+            </button>
+
+            <button
+              className="home-add-widget-option"
+              onClick={handleAddCollection}
+            >
+              <span className="home-add-widget-option-icon">
+                ★
+              </span>
+              <span className="home-add-widget-option-name">
+                收藏
+              </span>
+              <span className="home-add-widget-option-desc">
+                收藏总数 · 今日新增
               </span>
             </button>
           </div>

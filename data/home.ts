@@ -5,19 +5,45 @@ export type HomeItemSize = "1x1" | "2x2";
 export type PolaroidWidget = {
   id: string;
   type: "polaroid";
-  imageId: string;      /* IndexedDB 中图片的 key */
-  caption: string;      /* 手写体标题 */
-  dateLabel: string;    /* 例如 "2026.09" */
+  imageId: string;
+  caption: string;
+  dateLabel: string;
 };
 
 export type CountdownWidget = {
   id: string;
   type: "countdown";
   title: string;
-  targetDate: string;   /* YYYY-MM-DD */
+  targetDate: string;
 };
 
-export type Widget = PolaroidWidget | CountdownWidget;
+export type LetterWidget = {
+  id: string;
+  type: "letter";
+};
+
+export type StudyWidget = {
+  id: string;
+  type: "study";
+};
+
+export type DailyQuoteWidget = {
+  id: string;
+  type: "daily-quote";
+};
+
+export type CollectionWidget = {
+  id: string;
+  type: "collection";
+};
+
+export type Widget =
+  | PolaroidWidget
+  | CountdownWidget
+  | LetterWidget
+  | StudyWidget
+  | DailyQuoteWidget
+  | CollectionWidget;
 
 export type HomeItemContent =
   | { kind: "app"; appId: AppId }
@@ -28,6 +54,11 @@ export type HomeItem = {
   size: HomeItemSize;
   content: HomeItemContent;
 };
+
+/* ---------- 分页 ---------- */
+
+export type HomePage = HomeItem[];
+export type HomePages = HomePage[];
 
 export const GRID_COLS = 4;
 
@@ -78,7 +109,7 @@ export function todayDateStr(): string {
   return `${y}-${m}-${dd}`;
 }
 
-/* 从 app 列表生成默认布局 */
+/* 从 app 列表生成默认布局（单页） */
 export function buildDefaultLayout(
   appIds: AppId[]
 ): HomeItem[] {
@@ -88,33 +119,42 @@ export function buildDefaultLayout(
     content: { kind: "app", appId },
   }));
 }
+
 /* =========================================================
-   布局合并
-   - 保留用户已有的所有 item（顺序、位置、小组件都保留）
-   - 只把 saved 里缺失的 App 追加到末尾
+   分页合并
+   - 保留用户已有所有页的 item（顺序、位置、小组件都保留）
+   - 只把 saved 里缺失的 App 追加到**第一页**
    - Widget 不主动补，由用户手动添加
    ========================================================= */
 
-export function mergeHomeLayout(
-  saved: HomeItem[],
+export function mergeHomePages(
+  saved: HomePages,
   defaultItems: HomeItem[]
-): HomeItem[] {
-  const savedAppIds = new Set<string>();
-
-  for (const item of saved) {
-    if (item.content.kind === "app") {
-      savedAppIds.add(item.content.appId);
+): HomePages {
+  const existingAppIds = new Set<string>();
+  for (const page of saved) {
+    for (const item of page) {
+      if (item.content.kind === "app") {
+        existingAppIds.add(item.content.appId);
+      }
     }
   }
 
   const missing: HomeItem[] = [];
-
   for (const def of defaultItems) {
     if (def.content.kind !== "app") continue;
-    if (savedAppIds.has(def.content.appId)) continue;
+    if (existingAppIds.has(def.content.appId)) continue;
     missing.push(def);
   }
 
+  /* saved 为空：直接返回一页默认 */
+  if (saved.length === 0) {
+    return [missing.length > 0 ? missing : defaultItems];
+  }
+
   if (missing.length === 0) return saved;
-  return [...saved, ...missing];
+
+  /* 追加到第一页 */
+  const [first, ...rest] = saved;
+  return [[...first, ...missing], ...rest];
 }

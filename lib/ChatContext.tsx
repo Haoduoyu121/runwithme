@@ -34,7 +34,7 @@ import { getVoiceFile } from "@/lib/voiceFiles";
 
 import { useCall } from "@/lib/CallContext";
 import { useSystem } from "@/lib/SystemContext";
-import { sendNotification } from "@/lib/notifications";
+import { useNotifications } from "@/lib/NotificationContext";
 
 const DEFAULT_MESSAGES: ChatMessage[] = [
   {
@@ -87,6 +87,13 @@ export function ChatProvider({
 }: {
   children: ReactNode;
 }) {
+  const { notify } = useNotifications();
+  const notifyRef = useRef(notify);
+
+  useEffect(() => {
+    notifyRef.current = notify;
+  }, [notify]);
+
   const {
     activeCall,
     triggerIncomingCall,
@@ -116,6 +123,9 @@ export function ChatProvider({
   const lastUserMessageRef =
     useRef<ChatMessage | null>(null);
 
+  /* 用户上次主动动作时间，用于判断是否该发站内通知 */
+  const userLastActiveAtRef = useRef(0);
+
   const settingsRef = useRef(settings);
   useEffect(() => {
     settingsRef.current = settings;
@@ -131,7 +141,10 @@ export function ChatProvider({
 
   useEffect(() => {
     if (messages.length === 0) return;
-    saveMessages(messages);
+    const t = window.setTimeout(() => {
+      saveMessages(messages);
+    }, 400);
+    return () => window.clearTimeout(t);
   }, [messages]);
 
   /* 更新 lastUserMessageRef */
@@ -253,29 +266,42 @@ export function ChatProvider({
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, msg]);
 
-    if (
-      msg.sender !== "You" &&
-      msg.type !== "system" &&
+    if (msg.sender === "You") {
+      userLastActiveAtRef.current = Date.now();
+      return;
+    }
+
+    if (msg.type === "system") return;
+
+    const title = msg.sender;
+
+    let body = "";
+    if (msg.type === "text") body = msg.text ?? "";
+    else if (msg.type === "pat")
+      body = `${msg.sender}${msg.text ?? ""}`;
+    else if (msg.type === "voice") body = "发来了一条语音";
+    else if (msg.type === "sticker") body = "发来了一个表情";
+    else if (msg.type === "image") body = "发来了一张图片";
+    else if (msg.type === "call") body = "来电";
+
+    if (!body) return;
+
+    const idleMs = Date.now() - userLastActiveAtRef.current;
+    const isHidden =
       typeof document !== "undefined" &&
-      document.visibilityState === "hidden"
-    ) {
-      const title = msg.sender;
+      document.visibilityState === "hidden";
 
-      let body = "";
-      if (msg.type === "text") body = msg.text ?? "";
-      else if (msg.type === "pat")
-        body = `${msg.sender}${msg.text ?? ""}`;
-      else if (msg.type === "voice")
-        body = "发来了一条语音";
-      else if (msg.type === "sticker")
-        body = "发来了一个表情";
-      else if (msg.type === "image")
-        body = "发来了一张图片";
-      else if (msg.type === "call") body = "来电";
-
-      if (body) {
-        sendNotification(title, body, msg.id);
-      }
+    /* 页面隐藏 → 无条件发；页面可见但用户静默 > 60s → 也发 */
+    if (isHidden || idleMs > 60_000) {
+      notifyRef.current({
+        appId: "chat",
+        character: msg.sender as "Levi" | "Erwin",
+        title,
+        body:
+          body.length > 40
+            ? body.slice(0, 40) + "…"
+            : body,
+      });
     }
   }, []);
 

@@ -12,6 +12,10 @@ import type { HomeItem } from "@/data/home";
 
 import PolaroidWidget from "@/components/home/widgets/PolaroidWidget";
 import CountdownWidget from "@/components/home/widgets/CountdownWidget";
+import LetterWidget from "@/components/home/widgets/LetterWidget";
+import StudyWidget from "@/components/home/widgets/StudyWidget";
+import DailyQuoteWidget from "@/components/home/widgets/DailyQuoteWidget";
+import CollectionWidget from "@/components/home/widgets/CollectionWidget";
 
 type AppMeta = {
   id: AppId;
@@ -25,13 +29,23 @@ type HomeGridProps = {
   apps: AppMeta[];
   iconUrls: Partial<Record<AppId, string>>;
   editing: boolean;
+  currentPage: number;
+  pageCount: number;
   onOpenApp: (id: AppId) => void;
   onChangeItems: (items: HomeItem[]) => void;
+  onCrossPageDrop: (
+    itemId: string,
+    fromPage: number,
+    toPage: number,
+    toIdx: number | null
+  ) => void;
+  onRequestPageChange: (dir: "left" | "right") => void;
   onDeleteWidget: (itemId: string) => void;
 };
 
 type Dragging = {
-  itemId: string;
+  item: HomeItem;
+  fromPage: number;
   x: number;
   y: number;
   offsetX: number;
@@ -40,13 +54,21 @@ type Dragging = {
   height: number;
 };
 
+/* 边缘触发翻页 */
+const EDGE_PX = 44;
+const EDGE_HOLD_MS = 550;
+
 export default function HomeGrid({
   items,
   apps,
   iconUrls,
   editing,
+  currentPage,
+  pageCount,
   onOpenApp,
   onChangeItems,
+  onCrossPageDrop,
+  onRequestPageChange,
   onDeleteWidget,
 }: HomeGridProps) {
   const [dragging, setDragging] = useState<Dragging | null>(
@@ -61,6 +83,12 @@ export default function HomeGrid({
     Record<string, HTMLDivElement | null>
   >({});
 
+  /* 边缘翻页的计时器 */
+  const edgeTimerRef = useRef<number | null>(null);
+  const edgeDirRef = useRef<"left" | "right" | null>(
+    null
+  );
+
   function getAppMeta(appId: AppId): AppMeta | undefined {
     return apps.find((a) => a.id === appId);
   }
@@ -73,7 +101,6 @@ export default function HomeGrid({
   ) {
     if (!editing) return;
 
-    /* 忽略点击在删除按钮 */
     const target = e.target as HTMLElement;
     if (target.dataset.noDrag === "true") return;
 
@@ -83,7 +110,8 @@ export default function HomeGrid({
     const rect = el.getBoundingClientRect();
 
     setDragging({
-      itemId: item.id,
+      item,
+      fromPage: currentPage,
       x: e.clientX,
       y: e.clientY,
       offsetX: e.clientX - rect.left,
@@ -92,72 +120,136 @@ export default function HomeGrid({
       height: rect.height,
     });
 
-    /* 阻止原生滚动手势 */
     e.preventDefault();
   }
 
   /* ---------- Global pointer move / up ---------- */
 
   useEffect(() => {
-  if (!dragging) return;
+    if (!dragging) return;
 
-  /* ★ 提前捕获 itemId，避免闭包里 narrowing 丢失 */
-  const dragItemId = dragging.itemId;
+    const dragItemId = dragging.item.id;
+    const dragFromPage = dragging.fromPage;
 
-  function handleMove(e: PointerEvent) {
-    setDragging((prev) =>
-      prev
-        ? { ...prev, x: e.clientX, y: e.clientY }
-        : null
-    );
-
-    /* 找到当前指针下的 item */
-    const target = findItemAtPoint(
-      e.clientX,
-      e.clientY,
-      dragItemId
-    );
-    setHoveredId(target);
-  }
-
-  function handleUp(e: PointerEvent) {
-    const targetId = findItemAtPoint(
-      e.clientX,
-      e.clientY,
-      dragItemId
-    );
-
-    if (targetId && targetId !== dragItemId) {
-      const fromIdx = items.findIndex(
-        (it) => it.id === dragItemId
-      );
-      const toIdx = items.findIndex(
-        (it) => it.id === targetId
+    function handleMove(e: PointerEvent) {
+      setDragging((prev) =>
+        prev
+          ? { ...prev, x: e.clientX, y: e.clientY }
+          : null
       );
 
-      if (fromIdx !== -1 && toIdx !== -1) {
-        const next = [...items];
-        const [moved] = next.splice(fromIdx, 1);
-        next.splice(toIdx, 0, moved);
-        onChangeItems(next);
+      const target = findItemAtPoint(
+        e.clientX,
+        e.clientY,
+        dragItemId
+      );
+      setHoveredId(target);
+
+      /* ---- 边缘翻页检测 ---- */
+      let dir: "left" | "right" | null = null;
+      if (e.clientX < EDGE_PX) dir = "left";
+      else if (e.clientX > window.innerWidth - EDGE_PX) {
+        dir = "right";
+      }
+
+      /* 边界处理 */
+      if (dir === "left" && currentPage <= 0) dir = null;
+      if (dir === "right" && currentPage >= pageCount - 1) {
+        dir = null;
+      }
+
+      if (dir !== edgeDirRef.current) {
+        if (edgeTimerRef.current !== null) {
+          window.clearTimeout(edgeTimerRef.current);
+          edgeTimerRef.current = null;
+        }
+        edgeDirRef.current = dir;
+
+        if (dir) {
+          edgeTimerRef.current = window.setTimeout(() => {
+            edgeTimerRef.current = null;
+            edgeDirRef.current = null;
+            onRequestPageChange(dir!);
+          }, EDGE_HOLD_MS);
+        }
       }
     }
 
-    setDragging(null);
-    setHoveredId(null);
-  }
+    function handleUp(e: PointerEvent) {
+      const targetId = findItemAtPoint(
+        e.clientX,
+        e.clientY,
+        dragItemId
+      );
 
-  window.addEventListener("pointermove", handleMove);
-  window.addEventListener("pointerup", handleUp);
-  window.addEventListener("pointercancel", handleUp);
+      const fromIdx = items.findIndex(
+        (it) => it.id === dragItemId
+      );
 
-  return () => {
-    window.removeEventListener("pointermove", handleMove);
-    window.removeEventListener("pointerup", handleUp);
-    window.removeEventListener("pointercancel", handleUp);
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [dragging, items]);
+      if (fromIdx !== -1) {
+        /* ---------- 同页重排 ---------- */
+        if (targetId && targetId !== dragItemId) {
+          const toIdx = items.findIndex(
+            (it) => it.id === targetId
+          );
+          if (toIdx !== -1) {
+            const next = [...items];
+            const [moved] = next.splice(fromIdx, 1);
+            next.splice(toIdx, 0, moved);
+            onChangeItems(next);
+          }
+        }
+      } else {
+        /* ---------- 跨页放置 ---------- */
+        const toIdx =
+          targetId !== null
+            ? items.findIndex((it) => it.id === targetId)
+            : null;
+
+        onCrossPageDrop(
+          dragItemId,
+          dragFromPage,
+          currentPage,
+          toIdx !== null && toIdx >= 0 ? toIdx : null
+        );
+      }
+
+      /* 清掉边缘状态 */
+      if (edgeTimerRef.current !== null) {
+        window.clearTimeout(edgeTimerRef.current);
+        edgeTimerRef.current = null;
+      }
+      edgeDirRef.current = null;
+
+      setDragging(null);
+      setHoveredId(null);
+    }
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+
+    return () => {
+      window.removeEventListener(
+        "pointermove",
+        handleMove
+      );
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener(
+        "pointercancel",
+        handleUp
+      );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dragging,
+    items,
+    currentPage,
+    pageCount,
+    onRequestPageChange,
+    onCrossPageDrop,
+    onChangeItems,
+  ]);
 
   function findItemAtPoint(
     x: number,
@@ -166,7 +258,9 @@ export default function HomeGrid({
   ): string | null {
     let result: string | null = null;
 
-    for (const [id, el] of Object.entries(itemRefs.current)) {
+    for (const [id, el] of Object.entries(
+      itemRefs.current
+    )) {
       if (!el || id === excludeId) continue;
 
       const r = el.getBoundingClientRect();
@@ -186,14 +280,13 @@ export default function HomeGrid({
 
   /* ---------- 渲染 ---------- */
 
-  const draggingItem = dragging
-    ? items.find((it) => it.id === dragging.itemId) ?? null
-    : null;
-
   const visibleItems = useMemo(() => {
     if (!dragging) return items;
-    return items.filter((it) => it.id !== dragging.itemId);
+    return items.filter((it) => it.id !== dragging.item.id);
   }, [items, dragging]);
+
+  const isCrossPageDrag =
+    dragging !== null && dragging.fromPage !== currentPage;
 
   return (
     <div
@@ -208,7 +301,7 @@ export default function HomeGrid({
           iconUrls={iconUrls}
           editing={editing}
           hovered={hoveredId === item.id}
-          dragging={dragging?.itemId === item.id}
+          dragging={dragging?.item.id === item.id}
           onPointerDown={(e) => handlePointerDown(item, e)}
           onOpenApp={onOpenApp}
           onDeleteWidget={() => onDeleteWidget(item.id)}
@@ -219,7 +312,7 @@ export default function HomeGrid({
       ))}
 
       {/* 拖动中的 floating 层 */}
-      {dragging && draggingItem && (
+      {dragging && (
         <div
           className="home-grid-drag-layer"
           style={{
@@ -233,10 +326,17 @@ export default function HomeGrid({
           }}
         >
           <FloatingItem
-            item={draggingItem}
+            item={dragging.item}
             apps={apps}
             iconUrls={iconUrls}
           />
+        </div>
+      )}
+
+      {/* 拖动跨越页时的暗色提示 */}
+      {isCrossPageDrag && (
+        <div className="home-grid-crosspage-hint">
+          松手放到第 {currentPage + 1} 页
         </div>
       )}
     </div>
@@ -303,7 +403,6 @@ function GridItem({
         />
       )}
 
-      {/* 编辑模式下删除小组件 */}
       {editing && isWidget && (
         <button
           className="home-grid-delete"
@@ -377,6 +476,22 @@ function WidgetContent({ item }: { item: HomeItem }) {
         dateLabel={w.dateLabel}
       />
     );
+  }
+
+  if (w.type === "letter") {
+    return <LetterWidget />;
+  }
+
+  if (w.type === "study") {
+    return <StudyWidget />;
+  }
+
+  if (w.type === "daily-quote") {
+    return <DailyQuoteWidget />;
+  }
+
+  if (w.type === "collection") {
+    return <CollectionWidget />;
   }
 
   return (

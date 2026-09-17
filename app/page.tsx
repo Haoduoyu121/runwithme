@@ -25,17 +25,19 @@ import { wallpapers } from "@/data/wallpapers";
 
 import {
   buildDefaultLayout,
-  mergeHomeLayout,
+  mergeHomePages,
   type HomeItem,
+  type HomePages,
 } from "@/data/home";
 
 import {
-  loadHomeLayout,
-  saveHomeLayout,
+  loadHomePages,
+  saveHomePages,
 } from "@/lib/homeStorage";
 
 import { getWallpaperFile } from "@/lib/wallpaperFiles";
 import { getAppIconFile } from "@/lib/appIconFiles";
+import { useNotifications } from "@/lib/NotificationContext";
 
 import HomeGrid from "@/components/home/HomeGrid";
 import AddWidgetModal from "@/components/home/AddWidgetModal";
@@ -102,12 +104,6 @@ const apps = [
     color: "pink",
   },
   {
-    id: "study" as AppId,
-    name: "Study",
-    icon: "✎",
-    color: "blue",
-  },
-    {
     id: "study" as AppId,
     name: "Study",
     icon: "✎",
@@ -202,33 +198,69 @@ function HomeScreen({
   onOpenCalendar: () => void;
   onOpenCards: () => void;
 }) {
-  /* ★ 初始为空数组，等 hydrate 后再填 */
-  const [items, setItems] = useState<HomeItem[]>([]);
+  /* ★ 分页 state：pages = HomePages，currentPage 是当前页下标 */
+  const [pages, setPages] = useState<HomePages>([]);
+  const [currentPage, setCurrentPage] = useState(0);
   const [hydrated, setHydrated] = useState(false);
 
   const [editing, setEditing] = useState(false);
+  const [editSnapshot, setEditSnapshot] = useState<HomeItem[]>(
+    []
+  );
   const [showAddWidget, setShowAddWidget] = useState(false);
+
+  /* 当前页的 items（空页时返回空数组） */
+  const items: HomeItem[] = pages[currentPage] ?? [];
 
   /* 首次挂载：从 localStorage 恢复 + 补全新增 App */
   useEffect(() => {
     const defaultItems = buildDefaultLayout(
       APP_IDS_FOR_LAYOUT
     );
-    const saved = loadHomeLayout(defaultItems);
-    const merged = mergeHomeLayout(saved, defaultItems);
-    setItems(merged);
+    const saved = loadHomePages(defaultItems);
+    const merged = mergeHomePages(saved, defaultItems);
+    setPages(merged);
     setHydrated(true);
   }, []);
 
   /* 保存：hydrate 完成后才允许保存，避免覆盖 */
   useEffect(() => {
     if (!hydrated) return;
-    saveHomeLayout(items);
-  }, [items, hydrated]);
+    saveHomePages(pages);
+  }, [pages, hydrated]);
+
+  /* 修改当前页 */
+  function updateCurrentPage(
+    updater: (prev: HomeItem[]) => HomeItem[]
+  ) {
+    setPages((prev) => {
+      const next = [...prev];
+      next[currentPage] = updater(
+        next[currentPage] ?? []
+      );
+      return next;
+    });
+  }
 
   /* 长按任意 item 进入编辑模式 */
   function handleItemLongPress() {
-    if (!editing) setEditing(true);
+    if (!editing) {
+      setEditSnapshot(items);
+      setEditing(true);
+    }
+  }
+
+  function handleDoneEditing() {
+    setEditing(false);
+  }
+
+  function handleCancelEditing() {
+    setPages((prev) => {
+      const next = [...prev];
+      next[currentPage] = editSnapshot;
+      return next;
+    });
+    setEditing(false);
   }
 
   /* 使用长按检测（在 HomeGrid 外部包一层） */
@@ -236,7 +268,19 @@ function HomeScreen({
     current: null as ReturnType<typeof setTimeout> | null,
   };
 
-  function handlePointerDownCapture() {
+  /* 翻页手势 */
+  const swipeRef = {
+    current: null as {
+      x: number;
+      y: number;
+      t: number;
+      id: number;
+    } | null,
+  };
+
+  function handlePointerDownCapture(
+    e: React.PointerEvent
+  ) {
     if (editing) return;
 
     if (longPressTimerRef.current) {
@@ -246,22 +290,129 @@ function HomeScreen({
     longPressTimerRef.current = setTimeout(() => {
       handleItemLongPress();
     }, 550);
+
+    swipeRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      t: Date.now(),
+      id: e.pointerId,
+    };
   }
 
-  function handlePointerUpCapture() {
+  function handlePointerUpCapture(
+    e: React.PointerEvent
+  ) {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+
+    const start = swipeRef.current;
+    swipeRef.current = null;
+
+    if (!start) return;
+    if (start.id !== e.pointerId) return;
+    if (editing) return;
+
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    const dt = Date.now() - start.t;
+
+    /* 时间过长 或 垂直位移更大 → 不是翻页手势 */
+    if (dt > 800) return;
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dx) < 60) return;
+
+    if (dx < 0) {
+      /* 向左滑 → 下一页 */
+      setCurrentPage((p) =>
+        p < pages.length - 1 ? p + 1 : p
+      );
+    } else {
+      /* 向右滑 → 上一页 */
+      setCurrentPage((p) => (p > 0 ? p - 1 : p));
+    }
+  }
+
+  function handlePointerCancelCapture() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    swipeRef.current = null;
+  }
+
+  /* 添加新页面 */
+  function handleAddPage() {
+    setPages((prev) => [...prev, []]);
+    setCurrentPage((prev) => prev + 1);
+  }
+
+    /* 跨页拖动 */
+  function handleCrossPageDrop(
+    itemId: string,
+    fromPage: number,
+    toPage: number,
+    toIdx: number | null
+  ) {
+    if (fromPage === toPage) return;
+
+    setPages((prev) => {
+      const next = prev.map((p) => [...p]);
+      const fromList = next[fromPage];
+      const toList = next[toPage];
+      if (!fromList || !toList) return prev;
+
+      const fi = fromList.findIndex(
+        (it) => it.id === itemId
+      );
+      if (fi === -1) return prev;
+
+      const [moved] = fromList.splice(fi, 1);
+
+      if (
+        toIdx === null ||
+        toIdx < 0 ||
+        toIdx > toList.length
+      ) {
+        toList.push(moved);
+      } else {
+        toList.splice(toIdx, 0, moved);
+      }
+
+      return next;
+    });
+  }
+
+  /* 删除当前页 */
+  function handleDeletePage() {
+    if (pages.length <= 1) {
+      window.alert("至少保留一页");
+      return;
+    }
+
+    const current = pages[currentPage] ?? [];
+    if (current.length > 0) {
+      const ok = window.confirm(
+        `这一页还有 ${current.length} 个图标。\n删除后这些图标会一起消失。\n\n继续？`
+      );
+      if (!ok) return;
+    }
+
+    setPages((prev) =>
+      prev.filter((_, i) => i !== currentPage)
+    );
+    /* 夹紧 currentPage 到新范围 */
+    setCurrentPage((p) => Math.min(p, pages.length - 2));
   }
 
   function handleAddWidget(item: HomeItem) {
-    setItems((prev) => [...prev, item]);
+    updateCurrentPage((prev) => [...prev, item]);
   }
 
   function handleDeleteWidget(itemId: string) {
     if (!window.confirm("移除这个小组件？")) return;
-    setItems((prev) =>
+    updateCurrentPage((prev) =>
       prev.filter((it) => it.id !== itemId)
     );
   }
@@ -272,8 +423,8 @@ function HomeScreen({
       style={{ background: wallpaper }}
       onPointerDown={handlePointerDownCapture}
       onPointerUp={handlePointerUpCapture}
-      onPointerCancel={handlePointerUpCapture}
-      onPointerLeave={handlePointerUpCapture}
+      onPointerCancel={handlePointerCancelCapture}
+      onPointerLeave={handlePointerCancelCapture}
     >
       {/* 顶部小状态栏 */}
       <div className="home-v2-top">
@@ -299,6 +450,54 @@ function HomeScreen({
         </span>
       </div>
 
+      {/* 编辑模式：悬浮工具栏（取消 / 完成） */}
+      {editing && (
+        <div className="home-edit-toolbar">
+          <button
+            className="home-edit-cancel"
+            onClick={handleCancelEditing}
+          >
+            取消
+          </button>
+          <button
+            className="home-edit-done"
+            onClick={handleDoneEditing}
+          >
+            完成
+          </button>
+        </div>
+      )}
+
+      {/* 编辑模式：左右翻页箭头 */}
+      {editing && pages.length > 1 && (
+        <>
+          {currentPage > 0 && (
+            <button
+              className="home-pager-arrow is-left"
+              onClick={() =>
+                setCurrentPage((p) => Math.max(0, p - 1))
+              }
+              aria-label="上一页"
+            >
+              ‹
+            </button>
+          )}
+          {currentPage < pages.length - 1 && (
+            <button
+              className="home-pager-arrow is-right"
+              onClick={() =>
+                setCurrentPage((p) =>
+                  Math.min(pages.length - 1, p + 1)
+                )
+              }
+              aria-label="下一页"
+            >
+              ›
+            </button>
+          )}
+        </>
+      )}
+
       {/* 网格 */}
       <div className="home-v2-grid-wrap">
         <HomeGrid
@@ -306,14 +505,55 @@ function HomeScreen({
           apps={apps}
           iconUrls={iconUrls}
           editing={editing}
+          currentPage={currentPage}
+          pageCount={pages.length}
           onOpenApp={(id) => {
             if (editing) return;
             onOpenApp(id);
           }}
-          onChangeItems={setItems}
+                    onChangeItems={(next) =>
+            updateCurrentPage(() => next)
+          }
+          onCrossPageDrop={handleCrossPageDrop}
+          onRequestPageChange={(dir) =>
+            setCurrentPage((p) => {
+              if (dir === "left") return Math.max(0, p - 1);
+              return Math.min(pages.length - 1, p + 1);
+            })
+          }
           onDeleteWidget={handleDeleteWidget}
         />
+
+        {items.length === 0 && (
+          <div className="home-empty-page">
+            <div className="home-empty-page-icon">✦</div>
+            <div className="home-empty-page-title">
+              这一页还是空的
+            </div>
+            <div className="home-empty-page-desc">
+              长按进入编辑，从别的页面拖 App
+              过来，或添加小组件
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* 页点指示器（非编辑模式） */}
+      {!editing && pages.length > 1 && (
+        <div className="home-pager-dots">
+          {pages.map((_, i) => (
+            <button
+              key={i}
+              className={
+                "home-pager-dot" +
+                (i === currentPage ? " active" : "")
+              }
+              onClick={() => setCurrentPage(i)}
+              aria-label={`第 ${i + 1} 页`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* 编辑模式底部按钮 */}
       {editing && (
@@ -322,7 +562,20 @@ function HomeScreen({
             className="home-v2-add-widget-btn"
             onClick={() => setShowAddWidget(true)}
           >
-            ＋ 添加小组件
+            ＋ 小组件
+          </button>
+          <button
+            className="home-v2-add-widget-btn"
+            onClick={handleAddPage}
+          >
+            ＋ 新页
+          </button>
+          <button
+            className="home-v2-add-widget-btn is-danger"
+            onClick={handleDeletePage}
+            disabled={pages.length <= 1}
+          >
+            − 删页
           </button>
         </div>
       )}
@@ -428,6 +681,7 @@ function AppWindow({
 
 export default function Home() {
   const router = useRouter();
+  const { registerLauncher } = useNotifications();
 
   const [unlocked, setUnlocked] = useState<boolean | null>(
     null
@@ -453,6 +707,20 @@ export default function Home() {
   const [appIconUrls, setAppIconUrls] = useState<
     Partial<Record<AppId, string>>
   >({});
+
+    /* 注册 App 启动器，供全局通知点击时调用 */
+  useEffect(() => {
+    registerLauncher((appId) => {
+      if (!unlocked) {
+        sessionStorage.setItem(
+          "runwithme_unlocked",
+          "true"
+        );
+        setUnlocked(true);
+      }
+      setCurrentApp(appId);
+    });
+  }, [registerLauncher, unlocked]);
 
   useEffect(() => {
     const loaded = loadSystemSettings();

@@ -1,5 +1,6 @@
 "use client";
 
+import KeepAlivePanel from "@/components/settings/KeepAlivePanel";
 import {
   useCallback,
   useEffect,
@@ -560,6 +561,40 @@ export default function SettingsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ---------- BACKGROUND / KEEPALIVE ---------- */}
+        <section className="settings-section">
+          <div className="settings-section-heading">
+            <div>
+              <span className="settings-section-label">
+                BACKGROUND
+              </span>
+              <h2>通知与保活</h2>
+            </div>
+            <span className="settings-section-icon">◐</span>
+          </div>
+
+          <div className="settings-card">
+            <KeepAlivePanel />
+          </div>
+        </section>
+
+        {/* ---------- BACKGROUND / KEEPALIVE ---------- */}
+        <section className="settings-section">
+          <div className="settings-section-heading">
+            <div>
+              <span className="settings-section-label">
+                BACKGROUND
+              </span>
+              <h2>通知与保活</h2>
+            </div>
+            <span className="settings-section-icon">◐</span>
+          </div>
+
+          <div className="settings-card">
+            <KeepAlivePanel />
           </div>
         </section>
 

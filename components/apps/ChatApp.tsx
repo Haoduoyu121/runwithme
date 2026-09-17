@@ -700,6 +700,33 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     });
   }, [messages, generatingCount]);
 
+  /* 键盘弹起时滚到底部 */
+  useEffect(() => {
+    function onKb(e: Event) {
+      const detail = (
+        e as CustomEvent<{ inset: number }>
+      ).detail;
+      if (!detail) return;
+      if (detail.inset <= 0) return;
+
+      /* 让浏览器先完成布局，再滚 */
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "auto",
+          block: "end",
+        });
+      });
+    }
+
+    window.addEventListener("runwithme:kb-change", onKb);
+    return () => {
+      window.removeEventListener(
+        "runwithme:kb-change",
+        onKb
+      );
+    };
+  }, []);
+
   /* -------------------------------------------------------
      发送
      ------------------------------------------------------- */

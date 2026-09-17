@@ -15,6 +15,11 @@ import CallUI from "@/components/call/CallUI";
 import FocusOverlay from "@/components/apps/checkin/FocusOverlay";
 import FontScaleApplier from "@/components/FontScaleApplier";
 import MusicInviteOverlay from "@/components/music/MusicInviteOverlay";
+import { NotificationProvider } from "@/lib/NotificationContext";
+import NotificationOverlay from "@/components/system/NotificationOverlay";
+import KeyboardInsetListener from "@/components/system/KeyboardInsetListener";
+import { WatchInviteScheduler } from "@/lib/WatchInviteScheduler";
+import { KeepAliveProvider } from "@/lib/KeepAliveContext";
 
 export const metadata: Metadata = {
   title: "RunWithme",
@@ -62,34 +67,36 @@ export default function RootLayout({
     <html lang="zh-CN">
      <body>
       <SystemProvider>
-       <CollectionProvider>
-        <CallProvider>
-         <MusicProvider>
-           <ChatProvider>
-             <MusicInviteProvider>
-              <LetterProvider>
-                <ICityProvider>
-                  <PomodoroProvider>
-                    {children}
-                    <CallUI />
-                    <FontScaleApplier />
-                    <MusicInviteOverlay />
-                    <PomodoroProvider>
-                    {children}
-                    <CallUI />
-                    <FontScaleApplier />
-                    <MusicInviteOverlay />
-                    <FocusOverlay />
-                  </PomodoroProvider>
-                  </PomodoroProvider>
-                </ICityProvider>
-              </LetterProvider>
-            </MusicInviteProvider>
-          </ChatProvider>
-        </MusicProvider>
-      </CallProvider>
-    </CollectionProvider>
-  </SystemProvider>
+        <NotificationProvider>
+          <KeepAliveProvider>
+            <WatchInviteScheduler>
+              <CollectionProvider>
+              <CallProvider>
+                <MusicProvider>
+                  <ChatProvider>
+                    <MusicInviteProvider>
+                      <LetterProvider>
+                        <ICityProvider>
+                          <PomodoroProvider>
+                            {children}
+                            <CallUI />
+                            <FontScaleApplier />
+                            <MusicInviteOverlay />
+                            <FocusOverlay />
+                            <NotificationOverlay />
+                            <KeyboardInsetListener />
+                          </PomodoroProvider>
+                        </ICityProvider>
+                      </LetterProvider>
+                    </MusicInviteProvider>
+                  </ChatProvider>
+                </MusicProvider>
+              </CallProvider>
+              </CollectionProvider>
+            </WatchInviteScheduler>
+          </KeepAliveProvider>
+        </NotificationProvider>
+      </SystemProvider>
 </body>
     </html>
   );

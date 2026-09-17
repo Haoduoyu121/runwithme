@@ -336,6 +336,31 @@ function dateStr(d: Date): string {
   )}`;
 }
 
+/* ---------- 内存缓冲：批量写入 ---------- */
+
+let pendingRecords: DailyStudyRecord[] | null = null;
+let flushTimer: number | null = null;
+
+function flushRecordsNow(): void {
+  if (pendingRecords === null) return;
+  saveRecords(pendingRecords);
+  pendingRecords = null;
+  if (flushTimer !== null) {
+    window.clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+}
+
+if (typeof window !== "undefined") {
+  /* 页面隐藏 / 关闭时兜底写入 */
+  window.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      flushRecordsNow();
+    }
+  });
+  window.addEventListener("beforeunload", flushRecordsNow);
+}
+
 export function updateTodayRecord(
   wordIds: string[],
   correct: boolean
@@ -343,7 +368,9 @@ export function updateTodayRecord(
   if (typeof window === "undefined") return;
 
   const today = dateStr(new Date());
-  const records = loadRecords();
+
+  /* 优先用内存缓冲，避免每次答题都 read + parse localStorage */
+  const records = pendingRecords ?? loadRecords();
 
   const existing = records.find(
     (r) => r.dateStr === today
@@ -375,12 +402,18 @@ export function updateTodayRecord(
   cutoff.setDate(cutoff.getDate() - 365);
   const cutoffStr = dateStr(cutoff);
 
-  const filtered = records
+  pendingRecords = records
     .filter((r) => r.dateStr >= cutoffStr)
     .sort((a, b) => (a.dateStr < b.dateStr ? 1 : -1));
 
-  saveRecords(filtered);
+  /* 500ms 内多次答题只写一次盘 */
+  if (flushTimer !== null) {
+    window.clearTimeout(flushTimer);
+  }
+  flushTimer = window.setTimeout(flushRecordsNow, 500);
 }
+
+export { flushRecordsNow };
 
 export function computeStudyStreak(
   records: DailyStudyRecord[]

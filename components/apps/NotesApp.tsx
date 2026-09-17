@@ -152,6 +152,37 @@ export default function NotesApp({
     setCards(loadWishlistCards());
   }, []);
 
+    /* 键盘弹起时把 textarea 滚进视野 */
+  useEffect(() => {
+    function onKb(e: Event) {
+      const detail = (
+        e as CustomEvent<{ inset: number }>
+      ).detail;
+      if (!detail || detail.inset <= 0) return;
+      if (!editingNoteId) return;
+
+      requestAnimationFrame(() => {
+        const el = document.querySelector(
+          ".notes-editor-content"
+        );
+        if (el && el instanceof HTMLElement) {
+          el.scrollIntoView({
+            block: "end",
+            behavior: "auto",
+          });
+        }
+      });
+    }
+
+    window.addEventListener("runwithme:kb-change", onKb);
+    return () => {
+      window.removeEventListener(
+        "runwithme:kb-change",
+        onKb
+      );
+    };
+  }, [editingNoteId]);
+
   function commitNotes(next: Note[]) {
     setNotes(next);
     saveNotes(next);
