@@ -176,28 +176,28 @@ function HomeScreen({
   onOpenCards: () => void;
 }) {
   /* ★ 初始为空数组，等 hydrate 后再填 */
-const [items, setItems] = useState<HomeItem[]>([]);
-const [hydrated, setHydrated] = useState(false);
+  const [items, setItems] = useState<HomeItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
-const [editing, setEditing] = useState(false);
-const [showAddWidget, setShowAddWidget] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [showAddWidget, setShowAddWidget] = useState(false);
 
-/* 首次挂载：从 localStorage 恢复 + 补全新增 App */
-useEffect(() => {
-  const defaultItems = buildDefaultLayout(
-    APP_IDS_FOR_LAYOUT
-  );
-  const saved = loadHomeLayout(defaultItems);
-  const merged = mergeHomeLayout(saved, defaultItems);
-  setItems(merged);
-  setHydrated(true);
-}, []);
+  /* 首次挂载：从 localStorage 恢复 + 补全新增 App */
+  useEffect(() => {
+    const defaultItems = buildDefaultLayout(
+      APP_IDS_FOR_LAYOUT
+    );
+    const saved = loadHomeLayout(defaultItems);
+    const merged = mergeHomeLayout(saved, defaultItems);
+    setItems(merged);
+    setHydrated(true);
+  }, []);
 
-/* 保存：hydrate 完成后才允许保存，避免覆盖 */
-useEffect(() => {
-  if (!hydrated) return;
-  saveHomeLayout(items);
-}, [items, hydrated]);
+  /* 保存：hydrate 完成后才允许保存，避免覆盖 */
+  useEffect(() => {
+    if (!hydrated) return;
+    saveHomeLayout(items);
+  }, [items, hydrated]);
 
   /* 长按任意 item 进入编辑模式 */
   function handleItemLongPress() {
@@ -382,7 +382,6 @@ function AppWindow({
       {app === "calendar" && <CalendarApp onBack={onBack} />}
       {app === "notes" && <NotesApp onBack={onBack} />}
       {app === "questionnaire" && (
-        
         <QuestionnaireApp onBack={onBack} />
       )}
       {app === "checkin" && <CheckInApp onBack={onBack} />}
@@ -435,6 +434,7 @@ export default function Home() {
     setUnlocked(hasUnlocked);
   }, []);
 
+  /* 加载自定义壁纸（锁屏 + 主屏） */
   useEffect(() => {
     if (!systemSettings) return;
 
@@ -451,42 +451,6 @@ export default function Home() {
         const file = await getWallpaperFile(
           CUSTOM_LOCK_WALLPAPER
         );
-          /* ★ 把当前壁纸通过 CSS 变量同步到 html，覆盖 iOS PWA 安全区 */
-  useEffect(() => {
-    if (!systemSettings) return;
-
-    const getWp = (id: string) => {
-      const w = wallpapers.find((x) => x.id === id);
-      return w ?? wallpapers[0];
-    };
-
-    const lockDefault = getWp(
-      systemSettings.lockScreenWallpaper
-    );
-    const homeDefault = getWp(
-      systemSettings.homeWallpaper
-    );
-
-    const lockWp = customLockWallpaper
-      ? `url("${customLockWallpaper}")`
-      : lockDefault.background;
-
-    const homeWp = customHomeWallpaper
-      ? `url("${customHomeWallpaper}")`
-      : homeDefault.background;
-
-    const current = !unlocked ? lockWp : homeWp;
-
-    document.documentElement.style.setProperty(
-      "--rw-bg",
-      current
-    );
-  }, [
-    unlocked,
-    systemSettings,
-    customLockWallpaper,
-    customHomeWallpaper,
-  ]);
 
         if (file && !cancelled) {
           lockUrl = URL.createObjectURL(file);
@@ -525,6 +489,44 @@ export default function Home() {
     systemSettings?.homeWallpaper,
   ]);
 
+  /* 把当前壁纸同步到 html 的 --rw-bg，覆盖 iOS PWA 底部安全区 */
+  useEffect(() => {
+    if (!systemSettings) return;
+
+    const getWp = (id: string) => {
+      const w = wallpapers.find((x) => x.id === id);
+      return w ?? wallpapers[0];
+    };
+
+    const lockDefault = getWp(
+      systemSettings.lockScreenWallpaper
+    );
+    const homeDefault = getWp(
+      systemSettings.homeWallpaper
+    );
+
+    const lockWp = customLockWallpaper
+      ? `url("${customLockWallpaper}")`
+      : lockDefault.background;
+
+    const homeWp = customHomeWallpaper
+      ? `url("${customHomeWallpaper}")`
+      : homeDefault.background;
+
+    const current = !unlocked ? lockWp : homeWp;
+
+    document.documentElement.style.setProperty(
+      "--rw-bg",
+      current
+    );
+  }, [
+    unlocked,
+    systemSettings,
+    customLockWallpaper,
+    customHomeWallpaper,
+  ]);
+
+  /* 加载自定义 App 图标 */
   useEffect(() => {
     if (!systemSettings) return;
 

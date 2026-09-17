@@ -66,14 +66,6 @@ button {
   overflow: hidden;
 }
 
-.phone-shell::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 46px;
-  pointer-events: none;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-}
 
 .phone-camera {
   position: absolute;
@@ -974,12 +966,12 @@ button {
 @media (max-width: 600px) {
   .site {
     padding: 0;
-    min-height: 100dvh;
+    min-height: 100vh;
   }
 
   .phone-shell {
     width: 100vw;
-    height: 100dvh;
+    height: 100vh;
     min-height: 0;
 
     border-radius: 0;
@@ -3366,7 +3358,7 @@ body {
   width: 100vw;
   width: 100dvw;
   height: 100vh;
-  height: 100dvh;
+  height: 100vh;
   min-width: 0;
   min-height: 0;
   margin: 0;
@@ -5655,12 +5647,6 @@ body {
 
 /* ---------- 10. 移动端：彻底关掉整页回弹 ---------- */
 @media (max-width: 600px) {
-  html, body {
-    position: fixed;
-    inset: 0;
-    overflow: hidden;
-    overscroll-behavior: none;
-  }
 
   /* Chat 输入框考虑安全区 */
   .chat-page .chat-composer {
@@ -7609,19 +7595,7 @@ html[data-runwithme-theme="dark"] .studio-music-title {
     box-shadow 0.2s ease;
 }
 
-/* 玻璃高光 */
-.app-icon::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(
-      160deg,
-      rgba(255, 255, 255, 0.4),
-      transparent 45%
-    );
-}
+
 
 .app-icon > span {
   position: relative;
@@ -17765,17 +17739,6 @@ html[data-runwithme-theme="dark"]
     inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
-.home-grid-app .app-icon::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.4),
-    transparent 45%
-  );
-}
 
 .home-grid-app .app-icon > span {
   position: relative;
@@ -23056,16 +23019,16 @@ html body .dock {
 /* home-screen 撑满全屏，别让壁纸断在半路 */
 html body .home-screen,
 html body .home-screen-v2 {
-  height: 100dvh !important;
-  min-height: 100dvh !important;
-  max-height: 100dvh !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
 }
 
 /* runwithme-app 也撑满 */
 html body .runwithme-app {
-  height: 100dvh !important;
-  min-height: 100dvh !important;
-  max-height: 100dvh !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
 }
 
 /* iCity / Calendar / Check-in Dock 也贴底 */
@@ -23087,18 +23050,46 @@ html body .checkin-dock-inner {
 }
 /* =========================================================================
    最终补丁 · 主屏撑满 + Dock 贴底（链式绝对定位）
-   - 不依赖任何 height / 100dvh
+   - 不依赖任何 height / 100vh
    - 每一层用 position: absolute; inset: 0 层层撑满
    ========================================================================= */
 
-html, body {
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  position: fixed !important;
-  inset: 0 !important;
+/* ============================================================
+   PWA Shell —— 统一 100vh，不要混用 100% / 100dvh
+   ============================================================ */
+
+html,
+body {
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background-color: #FFF2E9; /* 兜底色，建议和壁纸主色调一致 */
+}
+
+/* 全局 App 外壳：壁纸铺满，100vh */
+.app-shell {
+  position: relative;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* 内部滚动容器：滚动只发生在这里，不发生在 body */
+.app-scroll {
+  height: 100vh;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .site {
@@ -23310,4 +23301,18 @@ body {
 
 .music-chat-fab {
   bottom: 20px !important;
+}
+/* =========================================================
+   让 html 背景真正使用 JS 同步过来的壁纸变量 --rw-bg
+   （配合 page.tsx 里 setProperty("--rw-bg", ...) 生效）
+   ========================================================= */
+html {
+  background-image: var(--rw-bg, none);
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+body {
+  background: transparent !important;
 }
