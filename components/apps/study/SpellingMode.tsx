@@ -1,0 +1,166 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+import type { Word } from "@/data/study";
+
+type Props = {
+  word: Word;
+  onResult: (correct: boolean) => void;
+  onPlay: () => void;
+  playing: boolean;
+};
+
+type Status = "idle" | "correct" | "wrong";
+
+export default function SpellingMode({
+  word,
+  onResult,
+  onPlay,
+  playing,
+}: Props) {
+  const [input, setInput] = useState("");
+  const [status, setStatus] = useState<Status>("idle");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  /* 切词时复位 + 聚焦 */
+  useEffect(() => {
+    setInput("");
+    setStatus("idle");
+    const t = window.setTimeout(() => {
+      inputRef.current?.focus();
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [word.id]);
+
+  function check() {
+    const v = input.trim().toLowerCase();
+    if (!v) return;
+
+    const correct =
+      v === word.text.toLowerCase().replace(/\s+/g, " ");
+
+    if (correct) {
+      setStatus("correct");
+      onPlay();
+      /* 正确：短暂展示后自动跳到下一个 */
+      window.setTimeout(() => onResult(true), 800);
+    } else {
+      setStatus("wrong");
+      onPlay();
+      /* 错误：不自动跳，等用户点"继续" */
+    }
+  }
+
+  function skip() {
+    setStatus("wrong");
+    onPlay();
+    /* 同上，不自动跳 */
+  }
+
+  function goNext() {
+    onResult(status === "correct");
+  }
+
+  return (
+    <>
+      <div className="study-spell-body">
+        <div className="study-spell-prompt">
+          <div className="study-spell-prompt-label">
+            根据释义拼出单词
+          </div>
+
+          <div className="study-spell-meaning">
+            {word.meaning}
+          </div>
+
+          {word.example && status === "idle" && (
+            <div className="study-spell-example">
+              {word.example}
+            </div>
+          )}
+
+          {status === "wrong" && (
+            <div className="study-spell-answer">
+              正确答案：
+              <strong>{word.text}</strong>
+            </div>
+          )}
+        </div>
+
+        <div
+          className={`study-spell-input-wrap study-spell-input-${status}`}
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            className="study-spell-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              if (status === "idle") {
+                check();
+              } else if (status === "wrong") {
+                goNext();
+              }
+            }}
+            placeholder="输入单词…"
+            spellCheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            disabled={status === "correct"}
+          />
+
+          {status === "correct" && (
+            <span className="study-spell-icon study-spell-icon-correct">
+              ✓
+            </span>
+          )}
+          {status === "wrong" && (
+            <span className="study-spell-icon study-spell-icon-wrong">
+              ✕
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="study-session-controls">
+        {status === "idle" && (
+          <>
+            <button
+              className="study-session-btn study-session-btn-unknown"
+              onClick={skip}
+            >
+              不会
+            </button>
+            <button
+              className="study-session-btn primary"
+              onClick={check}
+              disabled={!input.trim()}
+            >
+              提交
+            </button>
+          </>
+        )}
+
+        {status === "correct" && (
+          <div className="study-spell-feedback study-spell-feedback-correct">
+            ✓ 正确
+          </div>
+        )}
+
+        {status === "wrong" && (
+          <button
+            className="study-session-btn primary"
+            onClick={goNext}
+          >
+            继续 →
+          </button>
+        )}
+      </div>
+    </>
+  );
+}

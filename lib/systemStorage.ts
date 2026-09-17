@@ -13,7 +13,8 @@ export type AppId =
   | "questionnaire"
   | "checkin"
   | "letter"
-  | "collection";
+  | "collection"
+  | "study"; 
 
 export type AppIconState = "custom" | null;
 
@@ -114,6 +115,7 @@ const defaultSettings: SystemSettings = {
     checkin: null,
     letter: null,
     collection: null,
+    study: null,
   },
   dockIcons: {
     "slot-1": null,
