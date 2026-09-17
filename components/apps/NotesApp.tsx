@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -32,6 +33,7 @@ import {
 } from "@/lib/notesStorage";
 
 import WishlistPoolEditor from "@/components/apps/notes/WishlistPoolEditor";
+import { useCollection } from "@/lib/CollectionContext";
 
 type NotesAppProps = {
   onBack: () => void;
@@ -110,6 +112,13 @@ function GearIcon() {
 export default function NotesApp({
   onBack,
 }: NotesAppProps) {
+  const { tryAutoCollect } = useCollection();
+
+  /* 已经触发过自动收藏的笔记 id（每篇只触发一次） */
+  const autoCollectedNoteRef = useRef<Set<string>>(
+    new Set()
+  );
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>(
     []
@@ -181,6 +190,29 @@ export default function NotesApp({
         : n
     );
     commitNotes(next);
+
+    /* 系统自动收藏：每篇笔记只在首次写入非空内容时触发一次 */
+    const updated = next.find((n) => n.id === id);
+    if (
+      updated &&
+      !autoCollectedNoteRef.current.has(id) &&
+      (updated.title.trim() || updated.body.trim())
+    ) {
+      autoCollectedNoteRef.current.add(id);
+      tryAutoCollect({
+        source: "notes",
+        sourceId: id,
+        content:
+          updated.title.trim() ||
+          updated.body.trim().slice(0, 100),
+        sender: "You",
+        originalAt: Date.now(),
+        meta: {
+          title: updated.title,
+          tagCount: updated.tags.length,
+        },
+      });
+    }
   }
 
   function deleteNote(id: string) {

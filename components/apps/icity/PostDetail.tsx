@@ -14,6 +14,7 @@ import {
 } from "@/data/icity";
 
 import { useICity } from "@/lib/ICityContext";
+import { useCollection } from "@/lib/CollectionContext";
 
 import ImageLightbox from "@/components/apps/icity/ImageLightbox";
 
@@ -41,6 +42,12 @@ export default function PostDetail({
     toggleLike,
     deletePost,
   } = useICity();
+
+  const {
+    items: collectionItems,
+    add: addCollection,
+    remove: removeCollection,
+  } = useCollection();
 
   const post = posts.find((p) => p.id === postId);
   const comments = getCommentsForPost(postId);
@@ -92,6 +99,80 @@ export default function PostDetail({
     addUserComment(safePost.id, trimmed, replyTo?.id);
     setInput("");
     setReplyTo(null);
+  }
+
+  /* ---------- 收藏 ---------- */
+
+  const isCollected = collectionItems.some(
+    (it) =>
+      it.owner === "user" &&
+      it.source === "icity" &&
+      it.sourceId === postId
+  );
+
+  function handleToggleCollect() {
+    if (isCollected) {
+      const existing = collectionItems.find(
+        (it) =>
+          it.owner === "user" &&
+          it.source === "icity" &&
+          it.sourceId === postId
+      );
+      if (existing) removeCollection(existing.id);
+      return;
+    }
+
+    /* 收藏内容 = 动态正文 + 全部评论（含回复） */
+    const lines: string[] = [];
+
+    lines.push("【动态】");
+    lines.push(safePost.text?.trim() || "（无文字）");
+    lines.push("");
+
+    if (comments.length > 0) {
+      lines.push("【评论】");
+
+      const topLevel = comments.filter(
+        (c) => !c.replyToCommentId
+      );
+
+      for (const c of topLevel) {
+        const cAuthor = getAuthorDisplay(
+          c.author,
+          profiles
+        ).name;
+        lines.push(`${cAuthor}：${c.text}`);
+
+        const replies = comments.filter(
+          (r) => r.replyToCommentId === c.id
+        );
+        for (const r of replies) {
+          const rAuthor = getAuthorDisplay(
+            r.author,
+            profiles
+          ).name;
+          lines.push(`　└ ${rAuthor}：${r.text}`);
+        }
+      }
+    }
+
+    addCollection({
+      owner: "user",
+      source: "icity",
+      sourceId: safePost.id,
+      content: lines.join("\n").trim(),
+      sender:
+        safePost.author === "Yui"
+          ? "You"
+          : safePost.author === "Levi"
+            ? "Levi"
+            : "Erwin",
+      originalAt: safePost.timestamp,
+      meta: {
+        imageCount: (safePost.imageIds ?? []).length,
+        commentCount: comments.length,
+      },
+    });
   }
 
   function handleDeletePost() {
@@ -238,6 +319,16 @@ export default function PostDetail({
         </button>
 
         <div className="icity-detail-title">Post</div>
+
+        <button
+          className={`icity-detail-collect${
+            isCollected ? " is-collected" : ""
+          }`}
+          onClick={handleToggleCollect}
+          aria-label={isCollected ? "取消收藏" : "收藏"}
+        >
+          {isCollected ? "★" : "☆"}
+        </button>
 
         <button
           className="icity-detail-delete"

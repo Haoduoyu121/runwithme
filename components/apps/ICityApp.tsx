@@ -10,6 +10,7 @@ import {
 } from "@/data/icity";
 
 import { useICity } from "@/lib/ICityContext";
+import { useCollection } from "@/lib/CollectionContext";
 
 import NewPostModal from "@/components/apps/icity/NewPostModal";
 import PostDetail from "@/components/apps/icity/PostDetail";
@@ -142,7 +143,8 @@ export default function ICityApp({
     forceInteraction,
     unreadCount,
   } = useICity();
-
+ 
+  const { tryAutoCollect } = useCollection();
   const [tab, setTab] = useState<Tab>("world");
   const [showNewPost, setShowNewPost] = useState(false);
   const [showDockMenu, setShowDockMenu] = useState(false);
@@ -405,6 +407,17 @@ export default function ICityApp({
           onClose={() => setShowNewPost(false)}
           onSubmit={(text, files) => {
             addUserPost(text, files);
+
+            /* 系统自动收藏判定（1%~5%） */
+            tryAutoCollect({
+              source: "icity",
+              content:
+                text.trim() ||
+                `（发了 ${files.length} 张照片）`,
+              sender: "You",
+              originalAt: Date.now(),
+              meta: { imageCount: files.length },
+            });
           }}
         />
       )}

@@ -26,10 +26,15 @@ import {
 } from "@/lib/photoFiles";
 
 import { compressImage } from "@/lib/photoUtils";
+import { useCollection } from "@/lib/CollectionContext";
 
 import PhotoViewer from "@/components/apps/photos/PhotoViewer";
 import CategoryManager from "@/components/apps/photos/CategoryManager";
 import CategoryPicker from "@/components/apps/photos/CategoryPicker";
+import PhotoNamingModal, {
+  displayPhotoName,
+  type PhotoNamingItem,
+} from "@/components/apps/photos/PhotoNamingModal";
 
 type PhotosAppProps = {
   onBack: () => void;
@@ -38,6 +43,8 @@ type PhotosAppProps = {
 export default function PhotosApp({
   onBack,
 }: PhotosAppProps) {
+  const { tryAutoCollect } = useCollection();
+
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [categories, setCategories] = useState<
     PhotoCategory[]
@@ -67,6 +74,9 @@ export default function PhotosApp({
     useState(false);
   const [showCategoryPicker, setShowCategoryPicker] =
     useState(false);
+  const [namingItems, setNamingItems] = useState<
+    PhotoNamingItem[] | null
+  >(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(
   null
@@ -228,9 +238,71 @@ export default function PhotosApp({
       });
 
       setUrls((prev) => ({ ...prev, ...newUrls }));
+
+      /* 打开命名弹窗；收藏判定延后到命名完成 */
+      setNamingItems(
+        ordered.map((it) => ({
+          id: it.id,
+          fileName: it.fileName,
+          url: newUrls[it.id] ?? "",
+        }))
+      );
     } finally {
       setUploading(false);
     }
+  }
+
+  /* ---------- 命名完成 ---------- */
+
+  function handleNamingConfirm(
+    names: Record<string, string>
+  ) {
+    if (!namingItems) return;
+
+    /* 1. 写回 description */
+    setPhotos((prev) => {
+      const next = prev.map((p) => {
+        if (!(p.id in names)) return p;
+        const raw = (names[p.id] ?? "").trim();
+        return raw ? { ...p, description: raw } : p;
+      });
+      savePhotos(next);
+      return next;
+    });
+
+    /* 2. 逐张触发系统收藏（1%~5%），content 优先用用户起的名字 */
+    for (const it of namingItems) {
+      const raw = (names[it.id] ?? "").trim();
+      const displayName = raw || displayPhotoName(it.fileName);
+
+      tryAutoCollect({
+        source: "photos",
+        sourceId: it.id,
+        content: `photo「${displayName}」`,
+        sender: "You",
+        originalAt: Date.now(),
+      });
+    }
+
+    setNamingItems(null);
+  }
+
+  function handleNamingSkip() {
+    if (!namingItems) return;
+
+    for (const it of namingItems) {
+      const displayName = displayPhotoName(it.fileName);
+
+      tryAutoCollect({
+        source: "photos",
+        sourceId: it.id,
+        content: `photo「${displayName}」`,
+        sender: "You",
+        originalAt: Date.now(),
+      });
+    }
+
+    setNamingItems(null);
   }
 
   /* -------------------------------------------------------
@@ -791,6 +863,14 @@ export default function PhotosApp({
             setShowCategoryPicker(false);
             exitSelectionMode();
           }}
+        />
+      )}
+
+      {namingItems && (
+        <PhotoNamingModal
+          items={namingItems}
+          onConfirm={handleNamingConfirm}
+          onSkip={handleNamingSkip}
         />
       )}
     </main>

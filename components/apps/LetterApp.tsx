@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { useCollection } from "@/lib/CollectionContext";
 import { useLetters } from "@/lib/LetterContext";
 
 import {
@@ -97,10 +98,60 @@ function LetterDetail({
   onClose: () => void;
   onDelete: () => void;
 }) {
+  const {
+    items: collectionItems,
+    add: addCollection,
+    remove: removeCollection,
+  } = useCollection();
+
   const senderName =
     letter.from === "You" ? "You" : letter.from;
   const receiverName =
     letter.to === "You" ? "You" : letter.to;
+
+  const isCollected = collectionItems.some(
+    (it) =>
+      it.owner === "user" &&
+      it.source === "letter" &&
+      it.sourceId === letter.id
+  );
+
+  function handleToggleCollect() {
+    if (isCollected) {
+      const existing = collectionItems.find(
+        (it) =>
+          it.owner === "user" &&
+          it.source === "letter" &&
+          it.sourceId === letter.id
+      );
+      if (existing) removeCollection(existing.id);
+      return;
+    }
+
+    /* 收藏内容 = From / To / Subject / Body */
+    const lines: string[] = [];
+    lines.push(`From: ${senderName}`);
+    lines.push(`To: ${receiverName}`);
+    if (letter.subject.trim()) {
+      lines.push(`Subject: ${letter.subject}`);
+    }
+    lines.push("");
+    lines.push(letter.body);
+
+    addCollection({
+      owner: "user",
+      source: "letter",
+      sourceId: letter.id,
+      content: lines.join("\n"),
+      sender:
+        letter.from === "You"
+          ? "You"
+          : letter.from === "Levi"
+            ? "Levi"
+            : "Erwin",
+      originalAt: letter.createdAt,
+    });
+  }
 
   return (
     <div className="letter-detail">
@@ -113,6 +164,15 @@ function LetterDetail({
           ‹
         </button>
         <div className="letter-detail-title">信件</div>
+        <button
+          className={`letter-detail-collect${
+            isCollected ? " is-collected" : ""
+          }`}
+          onClick={handleToggleCollect}
+          aria-label={isCollected ? "取消收藏" : "收藏"}
+        >
+          {isCollected ? "★" : "☆"}
+        </button>
         <button
           className="letter-detail-delete"
           onClick={onDelete}
@@ -314,6 +374,8 @@ export default function LetterApp({
     markRead,
     deleteLetter,
   } = useLetters();
+   
+  const { tryAutoCollect } = useCollection();
 
   const [tab, setTab] = useState<Tab>("Levi");
   const [showCompose, setShowCompose] = useState(false);
@@ -373,7 +435,21 @@ export default function LetterApp({
         <LetterCompose
           defaultTo={tab}
           onClose={() => setShowCompose(false)}
-          onSend={sendLetterTo}
+          onSend={(to, subject, body) => {
+            sendLetterTo(to, subject, body);
+
+            /* 系统自动收藏判定（1%~5%） */
+            tryAutoCollect({
+              source: "letter",
+              content: `To: ${to}${
+                subject.trim()
+                  ? `\nSubject: ${subject.trim()}`
+                  : ""
+              }\n\n${body}`,
+              sender: "You",
+              originalAt: Date.now(),
+            });
+          }}
         />
       </main>
     );

@@ -38,6 +38,7 @@ import { getAppIconFile } from "@/lib/appIconFiles";
 
 import HomeGrid from "@/components/home/HomeGrid";
 import AddWidgetModal from "@/components/home/AddWidgetModal";
+import CollectionApp from "@/components/apps/CollectionApp";
 
 const CUSTOM_LOCK_WALLPAPER = "uploaded-lock-wallpaper";
 const CUSTOM_HOME_WALLPAPER = "uploaded-home-wallpaper";
@@ -91,6 +92,12 @@ const apps = [
     name: "Letter",
     icon: "✉",
     color: "cream",
+  },
+  {
+    id: "collection" as AppId,
+    name: "Collection",
+    icon: "★",
+    color: "pink",
   },
 ];
 
@@ -385,7 +392,10 @@ function AppWindow({
         <QuestionnaireApp onBack={onBack} />
       )}
       {app === "checkin" && <CheckInApp onBack={onBack} />}
-      {app === "letter" && <LetterApp onBack={onBack} />}
+            {app === "letter" && <LetterApp onBack={onBack} />}
+      {app === "collection" && (
+        <CollectionApp onBack={onBack} />
+      )}
     </div>
   );
 }

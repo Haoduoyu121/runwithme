@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   formatMinSec,
@@ -11,6 +11,24 @@ import {
   usePomodoro,
   type PomodoroMode,
 } from "@/lib/PomodoroContext";
+
+import {
+  saveFocusWallpaper,
+  getFocusWallpaper,
+  deleteFocusWallpaper,
+} from "@/lib/focusWallpaperStorage";
+
+import {
+  saveFocusNoise,
+  getFocusNoise,
+  deleteFocusNoise,
+} from "@/lib/focusNoiseStorage";
+
+import {
+  loadFocusSettings,
+  saveFocusSettings,
+  type FocusWallpaperType,
+} from "@/lib/focusStorage";
 
 type PomodoroPanelProps = {
   activeTaskName: string | null;
@@ -29,17 +47,79 @@ export default function PomodoroPanel({
     reset,
     setMode,
     updateSettings,
+    openFocusOverlay,
   } = usePomodoro();
 
   const [showSettings, setShowSettings] = useState(false);
+
+  /* 壁纸状态 */
+  const [wallpaperType, setWallpaperType] =
+    useState<FocusWallpaperType>("none");
+  const [wallpaperUrl, setWallpaperUrl] = useState<
+    string | null
+  >(null);
+  const [uploading, setUploading] = useState(false);
+
+  /* 白噪音 */
+  const [noiseAvailable, setNoiseAvailable] =
+    useState(false);
+  const [noiseName, setNoiseName] = useState("");
+  const [noiseUploading, setNoiseUploading] =
+    useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const noiseInputRef = useRef<HTMLInputElement | null>(
+    null
+  );
+
+  /* 载入壁纸信息 */
+  useEffect(() => {
+    if (!showSettings) return;
+
+    const s = loadFocusSettings();
+    setWallpaperType(s.wallpaperType);
+
+    if (s.wallpaperType === "none") {
+      setWallpaperUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    let url: string | null = null;
+
+    async function load() {
+      const blob = await getFocusWallpaper();
+      if (!blob || cancelled) return;
+      url = URL.createObjectURL(blob);
+      setWallpaperUrl(url);
+    }
+    void load();
+
+    /* 顺便查白噪音是否存在 */
+    void (async () => {
+      try {
+        const blob = await getFocusNoise();
+        if (!cancelled) {
+          setNoiseAvailable(!!blob);
+          setNoiseName(blob ? "已上传白噪音" : "");
+        }
+      } catch {
+        if (!cancelled) setNoiseAvailable(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [showSettings]);
 
   /* 进度 */
   const progress =
     totalSeconds > 0
       ? Math.min(
           100,
-          ((totalSeconds - remaining) / totalSeconds) *
-            100
+          ((totalSeconds - remaining) / totalSeconds) * 100
         )
       : 0;
 
@@ -56,6 +136,129 @@ export default function PomodoroPanel({
     });
   }
 
+  /* START 时如果 focus 模式，自动打开全屏层 */
+  function handleToggle() {
+    const wasRunning = running;
+    toggle();
+    if (!wasRunning && mode === "focus") {
+      openFocusOverlay();
+    }
+  }
+
+  /* ---------- 壁纸 ---------- */
+
+  async function handlePickWallpaper(
+    files: FileList | null
+  ) {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      alert("只支持图片或视频。");
+      return;
+    }
+
+    /* 大小检查：视频 30MB，图片 15MB */
+    const LIMIT_VIDEO = 30 * 1024 * 1024;
+    const LIMIT_IMAGE = 15 * 1024 * 1024;
+    const limit = isVideo ? LIMIT_VIDEO : LIMIT_IMAGE;
+    const limitLabel = isVideo ? "30MB" : "15MB";
+
+    if (file.size > limit) {
+      alert(
+        `${isVideo ? "视频" : "图片"}不能超过 ${limitLabel}，当前 ${(
+          file.size /
+          1024 /
+          1024
+        ).toFixed(1)}MB。`
+      );
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await saveFocusWallpaper(file);
+      const next = {
+        wallpaperType: (isVideo ? "video" : "image") as
+          | "video"
+          | "image",
+        wallpaperMime: file.type,
+      };
+      saveFocusSettings(next);
+      setWallpaperType(next.wallpaperType);
+
+      /* 刷新预览 */
+      if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
+      const url = URL.createObjectURL(file);
+      setWallpaperUrl(url);
+    } catch (e) {
+      console.error("保存壁纸失败:", e);
+      alert("保存壁纸失败，可能文件太大。");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleRemoveWallpaper() {
+    if (!window.confirm("移除专注壁纸？")) return;
+    await deleteFocusWallpaper();
+    saveFocusSettings({
+      wallpaperType: "none",
+      wallpaperMime: "",
+    });
+    setWallpaperType("none");
+    if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
+    setWallpaperUrl(null);
+  }
+
+    /* ---------- 白噪音 ---------- */
+
+  async function handlePickNoise(
+    files: FileList | null
+  ) {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+
+    if (!file.type.startsWith("audio/")) {
+      alert("请上传音频文件（mp3 / m4a / ogg 等）。");
+      return;
+    }
+
+    /* 音频 20MB 上限 */
+    const LIMIT = 20 * 1024 * 1024;
+    if (file.size > LIMIT) {
+      alert(
+        `音频不能超过 20MB，当前 ${(
+          file.size /
+          1024 /
+          1024
+        ).toFixed(1)}MB。`
+      );
+      return;
+    }
+
+    setNoiseUploading(true);
+    try {
+      await saveFocusNoise(file);
+      setNoiseAvailable(true);
+      setNoiseName(file.name);
+    } catch (e) {
+      console.error("保存白噪音失败:", e);
+      alert("保存失败，可能文件太大。");
+    } finally {
+      setNoiseUploading(false);
+    }
+  }
+
+  async function handleRemoveNoise() {
+    if (!window.confirm("移除白噪音？")) return;
+    await deleteFocusNoise();
+    setNoiseAvailable(false);
+    setNoiseName("");
+  }
+
   return (
     <div className="checkin-pomodoro">
       {/* 模式切换 */}
@@ -67,9 +270,7 @@ export default function PomodoroPanel({
           Focus
         </button>
         <button
-          className={
-            mode === "short" ? "active" : ""
-          }
+          className={mode === "short" ? "active" : ""}
           onClick={() => handleModeChange("short")}
         >
           Short Break
@@ -151,7 +352,7 @@ export default function PomodoroPanel({
 
         <button
           className="checkin-pomo-btn primary"
-          onClick={toggle}
+          onClick={handleToggle}
         >
           {running ? "PAUSE" : "START"}
         </button>
@@ -164,6 +365,16 @@ export default function PomodoroPanel({
           ⚙
         </button>
       </div>
+
+      {/* 手动进入全屏（未自动进入时用） */}
+      {mode === "focus" && running && (
+        <button
+          className="checkin-pomo-enter-focus"
+          onClick={openFocusOverlay}
+        >
+          进入专注模式
+        </button>
+      )}
 
       {/* 设置弹窗 */}
       {showSettings && (
@@ -250,6 +461,155 @@ export default function PomodoroPanel({
                 }
               />
             </label>
+
+            {/* 专注壁纸 */}
+            <div className="checkin-focus-wallpaper-section">
+              <div className="checkin-focus-wallpaper-label">
+                专注模式壁纸
+              </div>
+
+              <div className="checkin-focus-wallpaper-preview">
+                {wallpaperType === "video" &&
+                wallpaperUrl ? (
+                  <video
+                    src={wallpaperUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  />
+                ) : wallpaperType === "image" &&
+                  wallpaperUrl ? (
+                  <img src={wallpaperUrl} alt="" />
+                ) : (
+                  <span>空白</span>
+                )}
+              </div>
+
+              <div className="checkin-focus-wallpaper-actions">
+                <button
+                  type="button"
+                  className="checkin-btn ghost"
+                  onClick={() =>
+                    fileInputRef.current?.click()
+                  }
+                  disabled={uploading}
+                >
+                  {uploading
+                    ? "上传中…"
+                    : wallpaperType === "none"
+                      ? "上传壁纸"
+                      : "更换壁纸"}
+                </button>
+
+                {wallpaperType !== "none" && (
+                  <button
+                    type="button"
+                    className="checkin-btn ghost danger"
+                    onClick={handleRemoveWallpaper}
+                  >
+                    移除
+                  </button>
+                )}
+              </div>
+
+              <div className="checkin-focus-wallpaper-hint">
+                支持图片 / mp4 视频（视频会静音循环）
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                style={{
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  opacity: 0,
+                  overflow: "hidden",
+                  pointerEvents: "none",
+                }}
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (files) void handlePickWallpaper(files);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+
+            {/* 白噪音 */}
+            <div className="checkin-focus-wallpaper-section">
+              <div className="checkin-focus-wallpaper-label">
+                白噪音
+              </div>
+
+              <div className="checkin-focus-noise-preview">
+                {noiseAvailable ? (
+                  <>
+                    <span className="checkin-focus-noise-icon">
+                      🎵
+                    </span>
+                    <span className="checkin-focus-noise-name">
+                      {noiseName || "已上传"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="checkin-focus-noise-empty">
+                    还没有白噪音
+                  </span>
+                )}
+              </div>
+
+              <div className="checkin-focus-wallpaper-actions">
+                <button
+                  type="button"
+                  className="checkin-btn ghost"
+                  onClick={() =>
+                    noiseInputRef.current?.click()
+                  }
+                  disabled={noiseUploading}
+                >
+                  {noiseUploading
+                    ? "上传中…"
+                    : noiseAvailable
+                      ? "更换音频"
+                      : "上传音频"}
+                </button>
+
+                {noiseAvailable && (
+                  <button
+                    type="button"
+                    className="checkin-btn ghost danger"
+                    onClick={handleRemoveNoise}
+                  >
+                    移除
+                  </button>
+                )}
+              </div>
+
+              <div className="checkin-focus-wallpaper-hint">
+                支持 mp3 / m4a / ogg，20MB 内。上传后在专注模式里默认播放，可点喇叭开关。
+              </div>
+
+              <input
+                ref={noiseInputRef}
+                type="file"
+                accept="audio/*"
+                style={{
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  opacity: 0,
+                  overflow: "hidden",
+                  pointerEvents: "none",
+                }}
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (files) void handlePickNoise(files);
+                  e.target.value = "";
+                }}
+              />
+            </div>
 
             <div className="checkin-modal-footer">
               <button

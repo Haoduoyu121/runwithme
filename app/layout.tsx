@@ -9,8 +9,10 @@ import { ICityProvider } from "@/lib/ICityContext";
 import { PomodoroProvider } from "@/lib/PomodoroContext";
 import { MusicInviteProvider } from "@/lib/MusicInviteContext";
 import { LetterProvider } from "@/lib/LetterContext";
+import { CollectionProvider } from "@/lib/CollectionContext";
 
 import CallUI from "@/components/call/CallUI";
+import FocusOverlay from "@/components/apps/checkin/FocusOverlay";
 import FontScaleApplier from "@/components/FontScaleApplier";
 import MusicInviteOverlay from "@/components/music/MusicInviteOverlay";
 
@@ -58,28 +60,37 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body>
-        <SystemProvider>
-          <CallProvider>
-            <MusicProvider>
-              <ChatProvider>
-                <MusicInviteProvider>
-                  <LetterProvider>
-                    <ICityProvider>
-                      <PomodoroProvider>
-                        {children}
-                        <CallUI />
-                        <FontScaleApplier />
-                        <MusicInviteOverlay />
-                      </PomodoroProvider>
-                    </ICityProvider>
-                  </LetterProvider>
-                </MusicInviteProvider>
-              </ChatProvider>
-            </MusicProvider>
-          </CallProvider>
-        </SystemProvider>
-      </body>
+     <body>
+      <SystemProvider>
+       <CollectionProvider>
+        <CallProvider>
+         <MusicProvider>
+           <ChatProvider>
+             <MusicInviteProvider>
+              <LetterProvider>
+                <ICityProvider>
+                  <PomodoroProvider>
+                    {children}
+                    <CallUI />
+                    <FontScaleApplier />
+                    <MusicInviteOverlay />
+                    <PomodoroProvider>
+                    {children}
+                    <CallUI />
+                    <FontScaleApplier />
+                    <MusicInviteOverlay />
+                    <FocusOverlay />
+                  </PomodoroProvider>
+                  </PomodoroProvider>
+                </ICityProvider>
+              </LetterProvider>
+            </MusicInviteProvider>
+          </ChatProvider>
+        </MusicProvider>
+      </CallProvider>
+    </CollectionProvider>
+  </SystemProvider>
+</body>
     </html>
   );
 }

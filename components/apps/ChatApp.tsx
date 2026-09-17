@@ -23,6 +23,7 @@ import { getStickerFile } from "@/lib/stickerFiles";
 import { useCall } from "@/lib/CallContext";
 import { useSystem } from "@/lib/SystemContext";
 import { useChat } from "@/lib/ChatContext";
+import { useCollection } from "@/lib/CollectionContext";
 import { getChatFile } from "@/lib/chatFiles";
 
 import ChatSettingsPanel from "@/components/apps/chat/ChatSettingsPanel";
@@ -67,17 +68,26 @@ function getSenderName(
 
 function MessageActions({
   message,
+  isCollected,
+  onCollect,
   onDelete,
   onRecall,
   onQuote,
   onMultiSelect,
 }: {
   message: ChatMessage;
+  isCollected: boolean;
+  onCollect: () => void;
   onDelete: () => void;
   onRecall: () => void;
   onQuote: () => void;
   onMultiSelect: () => void;
 }) {
+  const isCollectable =
+    !message.deleted &&
+    !message.recalled &&
+    (message.type === "text" || message.type === "pat");
+
   return (
     <div
       className="chat-message-actions"
@@ -96,6 +106,12 @@ function MessageActions({
         message.type === "text" && (
           <button onClick={onQuote}>引用</button>
         )}
+
+      {isCollectable && (
+        <button onClick={onCollect}>
+          {isCollected ? "取消收藏" : "收藏"}
+        </button>
+      )}
 
       <button onClick={onMultiSelect}>多选</button>
     </div>
@@ -418,6 +434,63 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     scheduleAutoReplyAfterUserMessage,
   } = useChat();
 
+    const {
+    items: collectionItems,
+    add: addCollection,
+    remove: removeCollection,
+    tryAutoCollect,
+  } = useCollection();
+
+  function isMessageCollected(messageId: string): boolean {
+    return collectionItems.some(
+      (it) =>
+        it.owner === "user" &&
+        it.source === "chat" &&
+        it.sourceId === messageId
+    );
+  }
+
+  function toggleCollectMessage(message: ChatMessage) {
+    const existing = collectionItems.find(
+      (it) =>
+        it.owner === "user" &&
+        it.source === "chat" &&
+        it.sourceId === message.id
+    );
+
+    if (existing) {
+      removeCollection(existing.id);
+    } else {
+      const content =
+        message.type === "pat"
+          ? message.text ?? "拍了一拍"
+          : message.text ?? "";
+
+      if (!content.trim()) {
+        setSelectedMessageId(null);
+        return;
+      }
+
+      const sender: "You" | "Levi" | "Erwin" | null =
+        message.sender === "You" ||
+        message.sender === "Levi" ||
+        message.sender === "Erwin"
+          ? message.sender
+          : null;
+
+      addCollection({
+        owner: "user",
+        source: "chat",
+        sourceId: message.id,
+        content,
+        sender,
+        originalAt: message.timestamp,
+      });
+    }
+
+    setSelectedMessageId(null);
+  }
+
   const names = settings.characterNames;
 
   const [input, setInput] = useState("");
@@ -634,8 +707,9 @@ export default function ChatApp({ onBack }: ChatAppProps) {
   function sendMessage() {
     const text = input.trim();
     if (!text) return;
+    const messageId = createMessageId();
     addMessage({
-      id: createMessageId(),
+      id: messageId,
       sender: "You",
       type: "text",
       text,
@@ -655,6 +729,15 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     setShowPlusMenu(false);
     setSelectedMessageId(null);
     scheduleAutoReplyAfterUserMessage();
+
+    /* 系统自动收藏判定（1%~5%） */
+    tryAutoCollect({
+      source: "chat",
+      sourceId: messageId,
+      content: text,
+      sender: "You",
+      originalAt: Date.now(),
+    });
   }
 
   function sendSticker(sticker: StickerItem) {
@@ -930,11 +1013,17 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               </span>
             )}
 
-            {!selectionMode &&
+                       {!selectionMode &&
               selectedMessageId === message.id && (
                 <div className="chat-message-context">
                   <MessageActions
                     message={message}
+                    isCollected={isMessageCollected(
+                      message.id
+                    )}
+                    onCollect={() =>
+                      toggleCollectMessage(message)
+                    }
                     onDelete={() =>
                       deleteMessage(message.id)
                     }
@@ -1128,11 +1217,17 @@ export default function ChatApp({ onBack }: ChatAppProps) {
             </span>
           )}
 
-          {!selectionMode &&
+                   {!selectionMode &&
             selectedMessageId === message.id && (
               <div className="chat-message-context">
                 <MessageActions
                   message={message}
+                  isCollected={isMessageCollected(
+                    message.id
+                  )}
+                  onCollect={() =>
+                    toggleCollectMessage(message)
+                  }
                   onDelete={() =>
                     deleteMessage(message.id)
                   }

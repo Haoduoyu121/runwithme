@@ -40,6 +40,7 @@ import {
   saveSQCards,
 } from "@/lib/questionnaireStorage";
 
+import { useCollection } from "@/lib/CollectionContext";
 import PoolEditor from "@/components/apps/questionnaire/PoolEditor";
 
 type QuestionnaireAppProps = {
@@ -121,6 +122,12 @@ function GearIcon() {
 export default function QuestionnaireApp({
   onBack,
 }: QuestionnaireAppProps) {
+    const {
+    items: collectionItems,
+    add: addCollection,
+    remove: removeCollection,
+    tryAutoCollect,
+  } = useCollection();
   const [posts, setPosts] = useState<QPost[]>([]);
   const [cqCards, setCQCards] = useState<
     CharacterQuestionCard[]
@@ -344,6 +351,16 @@ export default function QuestionnaireApp({
     commitPosts([post, ...postsRef.current]);
     setAskText("");
     setShowAskModal(false);
+
+    /* 系统自动收藏判定（1%~5%） */
+    tryAutoCollect({
+      source: "qa",
+      sourceId: post.id,
+      content: text,
+      sender: "You",
+      originalAt: now,
+      meta: { mode: "user-asked" },
+    });
   }
 
   /* ---------- 手动触发角色主动提问 ---------- */
@@ -399,6 +416,7 @@ export default function QuestionnaireApp({
       delete copy[postId];
       return copy;
     });
+
   }
 
   /* ---------- 删除 ---------- */
@@ -422,6 +440,66 @@ export default function QuestionnaireApp({
         : p
     );
     commitPosts(next);
+  }
+    /* ---------- 收藏 ---------- */
+
+  function isPostCollected(postId: string): boolean {
+    return collectionItems.some(
+      (it) =>
+        it.owner === "user" &&
+        it.source === "qa" &&
+        it.sourceId === postId
+    );
+  }
+
+  function toggleCollectPost(post: QPost) {
+    const existing = collectionItems.find(
+      (it) =>
+        it.owner === "user" &&
+        it.source === "qa" &&
+        it.sourceId === post.id
+    );
+
+    if (existing) {
+      removeCollection(existing.id);
+      return;
+    }
+
+    /* 收藏内容 = 问题 + 全部答案 */
+    const lines: string[] = [];
+
+    lines.push("【问题】");
+    lines.push(post.question);
+    lines.push("");
+
+    if (post.answers.length > 0) {
+      lines.push("【回答】");
+      for (const a of post.answers) {
+        const name = getQAuthorDisplay(a.author).name;
+        lines.push(`${name}：${a.text}`);
+      }
+    }
+
+    const sender: "You" | "Levi" | "Erwin" | null =
+      post.mode === "user-asked"
+        ? "You"
+        : post.mode === "character-asked" &&
+            post.askedBy
+          ? post.askedBy
+          : null;
+
+    addCollection({
+      owner: "user",
+      source: "qa",
+      sourceId: post.id,
+      content: lines.join("\n").trim(),
+      sender,
+      originalAt: post.createdAt,
+      meta: {
+        mode: post.mode,
+        answerCount: post.answers.length,
+      },
+    });
   }
 
   /* ---------- 过滤 ---------- */
@@ -500,6 +578,22 @@ export default function QuestionnaireApp({
           </div>
 
           <button
+            className={`q-post-collect${
+              isPostCollected(post.id)
+                ? " is-collected"
+                : ""
+            }`}
+            onClick={() => toggleCollectPost(post)}
+            aria-label={
+              isPostCollected(post.id)
+                ? "取消收藏"
+                : "收藏"
+            }
+          >
+            {isPostCollected(post.id) ? "★" : "☆"}
+          </button>
+
+          <button
             className="q-post-delete"
             onClick={() => deletePost(post.id)}
             aria-label="删除"
@@ -507,7 +601,6 @@ export default function QuestionnaireApp({
             ×
           </button>
         </div>
-
         {/* 提问人 */}
         {asker && askerDisplay && (
           <div className="q-post-asker">

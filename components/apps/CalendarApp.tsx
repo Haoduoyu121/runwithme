@@ -62,6 +62,7 @@ import {
 } from "@/lib/calendarSystemStorage";
 
 import SchedulePoolEditor from "@/components/apps/calendar/SchedulePoolEditor";
+import { useCollection } from "@/lib/CollectionContext";
 
 type CalendarAppProps = {
   onBack: () => void;
@@ -221,6 +222,8 @@ function pickCategory(
 export default function CalendarApp({
   onBack,
 }: CalendarAppProps) {
+  const { tryAutoCollect } = useCollection();
+
   const today = new Date();
 
   const [tab, setTab] = useState<Tab>("calendar");
@@ -470,6 +473,7 @@ export default function CalendarApp({
   function saveUserSchedule() {
     if (!selectedDateStr) return;
     const text = userScheduleDraft.trim();
+    const prevText = userSchedules[selectedDateStr] ?? "";
 
     const next = { ...userSchedules };
     if (text) next[selectedDateStr] = text;
@@ -478,6 +482,17 @@ export default function CalendarApp({
     setUserSchedules(next);
     saveUserSchedules(next);
     setEditingUserSchedule(false);
+
+    /* 系统自动收藏判定（1%~5%）—— 仅在首次写入非空行程时触发 */
+    if (!prevText && text) {
+      tryAutoCollect({
+        source: "schedule",
+        content: `行程（${selectedDateStr}）：${text}`,
+        sender: "You",
+        originalAt: Date.now(),
+        meta: { dateStr: selectedDateStr },
+      });
+    }
   }
 
   function deleteDailyNote() {
@@ -550,20 +565,31 @@ export default function CalendarApp({
       setAnniversaries(next);
       saveAnniversaries(next);
     } else {
+      const created: Anniversary = {
+        id: createAnniversaryId(),
+        title,
+        repeat: annForm.repeat,
+        year: finalYear,
+        month: annForm.month,
+        day: annForm.day,
+        createdAt: Date.now(),
+      };
+
       const next: Anniversary[] = [
         ...anniversaries,
-        {
-          id: createAnniversaryId(),
-          title,
-          repeat: annForm.repeat,
-          year: finalYear,
-          month: annForm.month,
-          day: annForm.day,
-          createdAt: Date.now(),
-        },
+        created,
       ];
       setAnniversaries(next);
       saveAnniversaries(next);
+
+      /* 系统自动收藏判定（1%~5%）—— 仅新建时触发 */
+      tryAutoCollect({
+        source: "anniversary",
+        sourceId: created.id,
+        content: `纪念日「${title}」`,
+        sender: "You",
+        originalAt: created.createdAt,
+      });
     }
 
     closeAnnForm();

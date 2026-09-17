@@ -17,6 +17,7 @@ import {
 
 import { loadMusic } from "@/lib/musicStorage";
 import { getMusicFile } from "@/lib/musicFiles";
+import { useCollection } from "@/lib/CollectionContext";
 
 type MusicContextValue = {
   music: MusicItem[];
@@ -54,6 +55,14 @@ export function MusicProvider({
 }: {
   children: ReactNode;
 }) {
+  const { tryAutoCollect } = useCollection();
+
+  /* 用 ref 存最新版 tryAutoCollect，避免它进 loadTrack 的依赖 */
+  const tryAutoCollectRef = useRef(tryAutoCollect);
+  useEffect(() => {
+    tryAutoCollectRef.current = tryAutoCollect;
+  }, [tryAutoCollect]);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
 
@@ -155,6 +164,19 @@ export function MusicProvider({
             })
           );
         } catch {}
+
+        /* 系统自动收藏判定（1%~5%，同 owner 不会重复收藏同一首） */
+        tryAutoCollectRef.current({
+          source: "music",
+          content: `music「${item.title}」`,
+          sender: null,
+          originalAt: Date.now(),
+          meta: {
+            songId: item.id,
+            title: item.title,
+            artist: item.artist ?? "",
+          },
+        });
 
         if (shouldPlay) {
           await audio.play();

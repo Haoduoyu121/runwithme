@@ -46,6 +46,11 @@ type PomodoroContextValue = {
   onFocusComplete: (
     handler: FocusCompleteHandler
   ) => () => void;
+
+  /* 全屏专注层 */
+  focusOverlayOpen: boolean;
+  openFocusOverlay: () => void;
+  closeFocusOverlay: () => void;
 };
 
 const PomodoroContext =
@@ -76,6 +81,8 @@ export function PomodoroProvider({
   const [boundTaskId, setBoundTaskId] = useState<
     string | null
   >(null);
+  const [focusOverlayOpen, setFocusOverlayOpen] =
+    useState(false);
 
   /* endTimeRef：记录本次结束时间戳（毫秒）
    * 用 Date.now() 计算剩余，避免浏览器节流导致计时变慢 */
@@ -267,6 +274,14 @@ export function PomodoroProvider({
     []
   );
 
+    const openFocusOverlay = useCallback(() => {
+    setFocusOverlayOpen(true);
+  }, []);
+
+  const closeFocusOverlay = useCallback(() => {
+    setFocusOverlayOpen(false);
+  }, []);
+
   const totalSeconds = modeSeconds(mode, settings);
 
   return (
@@ -286,6 +301,9 @@ export function PomodoroProvider({
         updateSettings,
         bindTask,
         onFocusComplete,
+        focusOverlayOpen,
+        openFocusOverlay,
+        closeFocusOverlay,
       }}
     >
       {children}

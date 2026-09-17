@@ -7,12 +7,13 @@ export type AppId =
   | "music"
   | "photos"
   | "icity"
-  | "notes"
-  | "calendar"
   | "cards"
+  | "calendar"
+  | "notes"
   | "questionnaire"
   | "checkin"
-  | "letter";
+  | "letter"
+  | "collection";
 
 export type AppIconState = "custom" | null;
 
@@ -112,6 +113,7 @@ const defaultSettings: SystemSettings = {
     questionnaire: null,
     checkin: null,
     letter: null,
+    collection: null,
   },
   dockIcons: {
     "slot-1": null,
