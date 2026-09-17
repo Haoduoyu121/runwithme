@@ -25202,3 +25202,821 @@ html[data-runwithme-theme="dark"]
   font-size: 12px;
   opacity: 0.5;
 }
+/* =========================================================================
+   Focus Overlay · 完成按钮 + 阻止卡
+   ========================================================================= */
+
+/* 让底部三个按钮均匀 */
+.focus-controls {
+  gap: 18px;
+  align-items: center;
+}
+
+/* 完成按钮 */
+.focus-finish-btn {
+  width: 54px;
+  height: 54px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(126, 209, 126, 0.28);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 1px rgba(126, 209, 126, 0.45);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+.focus-finish-btn:hover {
+  background: rgba(126, 209, 126, 0.45);
+  transform: scale(1.05);
+}
+
+.focus-finish-btn:active {
+  transform: scale(0.94);
+}
+
+/* ---------- 阻止卡 ---------- */
+
+.focus-block-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: focusBlockIn 0.22s ease;
+}
+
+@keyframes focusBlockIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.focus-block-card {
+  width: min(320px, 100%);
+  padding: 26px 22px 20px;
+  border-radius: 22px;
+  background: rgba(255, 248, 245, 0.98);
+  color: #4f3940;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  animation: focusBlockCardIn 0.24s ease;
+}
+
+@keyframes focusBlockCardIn {
+  from { transform: scale(0.94); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.focus-block-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff2e9;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 22px;
+  font-weight: 700;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.focus-block-avatar-levi {
+  background: linear-gradient(135deg, #a37b84, #8e656f);
+}
+
+.focus-block-avatar-erwin {
+  background: linear-gradient(135deg, #ad8f95, #9b7f86);
+}
+
+.focus-block-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  margin-top: -2px;
+}
+
+.focus-block-text {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  color: #5e4650;
+  padding: 0 4px;
+  margin: 4px 0 12px;
+}
+
+.focus-block-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.focus-block-stay,
+.focus-block-leave {
+  flex: 1;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.focus-block-stay {
+  background: #8e656f;
+  color: #fff2e9;
+  box-shadow: 0 6px 14px rgba(142, 101, 111, 0.24);
+}
+
+.focus-block-stay:hover {
+  transform: translateY(-1px);
+}
+
+.focus-block-stay:active {
+  transform: scale(0.96);
+}
+
+.focus-block-leave {
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+}
+
+.focus-block-leave:hover {
+  background: rgba(142, 101, 111, 0.18);
+}
+
+.focus-block-leave:active {
+  transform: scale(0.96);
+}
+/* =========================================================================
+   Focus Overlay · 语音气泡随机位置 + 完成弹窗
+   ========================================================================= */
+
+/* ---------- 覆盖旧 .focus-bubble 的定位 ---------- */
+
+.focus-bubble {
+  position: absolute;
+  /* 移除旧的 right / bottom，改由 inline style 控制 left/top */
+  right: auto;
+  bottom: auto;
+  z-index: 8;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: min(280px, 82%);
+  animation: focusBubbleIn 0.35s cubic-bezier(
+    0.34,
+    1.56,
+    0.64,
+    1
+  );
+}
+
+/* ---------- 完成弹窗 ---------- */
+
+.focus-completion-card {
+  padding-bottom: 20px;
+}
+
+.focus-completion-subtitle {
+  margin: 4px 0 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #8e656f;
+  opacity: 0.65;
+  text-align: center;
+}
+
+.focus-completion-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.focus-completion-primary,
+.focus-completion-secondary {
+  flex: 1;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.focus-completion-primary {
+  background: #8e656f;
+  color: #fff2e9;
+  box-shadow: 0 6px 14px rgba(142, 101, 111, 0.24);
+}
+
+.focus-completion-primary:hover {
+  transform: translateY(-1px);
+}
+
+.focus-completion-primary:active {
+  transform: scale(0.96);
+}
+
+.focus-completion-secondary {
+  background: rgba(252, 190, 195, 0.4);
+  color: #8e656f;
+}
+
+.focus-completion-secondary:hover {
+  background: rgba(252, 190, 195, 0.6);
+}
+
+.focus-completion-secondary:active {
+  transform: scale(0.96);
+}
+
+/* =========================================================================
+   PomodoroPanel · 语音卡池区块 + VoicePoolEditor
+   ========================================================================= */
+
+/* 让"语音气泡"说明文字也享受顶部内边距 */
+.checkin-focus-wallpaper-hint-top {
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+}
+
+.voice-pool-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  margin-bottom: 10px;
+}
+
+html[data-runwithme-theme="dark"] .voice-pool-summary {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.voice-pool-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8e656f;
+  opacity: 0.75;
+}
+
+html[data-runwithme-theme="dark"] .voice-pool-count {
+  color: #f3dfe4;
+}
+
+.voice-pool-manage {
+  padding: 7px 12px !important;
+  font-size: 11px !important;
+  flex: 0 0 auto !important;
+}
+
+/* 频率选择行 */
+.voice-freq-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.voice-freq-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.voice-freq-segment {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(142, 101, 111, 0.08);
+}
+
+html[data-runwithme-theme="dark"] .voice-freq-segment {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.voice-freq-segment button {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.voice-freq-segment button.active {
+  background: #fcbec3;
+  color: #8e656f;
+  font-weight: 700;
+}
+
+html[data-runwithme-theme="dark"]
+  .voice-freq-segment
+  button.active {
+  background: rgba(252, 190, 195, 0.3);
+  color: #f3dfe4;
+}
+
+/* ---------- VoicePoolEditor ---------- */
+
+.checkin-voice-modal {
+  max-width: 520px;
+}
+
+.voice-add-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 4px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.08);
+}
+
+html[data-runwithme-theme="dark"] .voice-add-panel {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.voice-add-row {
+  display: flex;
+  gap: 8px;
+}
+
+.voice-add-text {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  resize: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+html[data-runwithme-theme="dark"] .voice-add-text {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.voice-add-text:focus {
+  border-color: rgba(142, 101, 111, 0.4);
+}
+
+.voice-add-file-row {
+  align-items: center;
+}
+
+.voice-add-file {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px dashed rgba(142, 101, 111, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  color: #8e656f;
+  font-size: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.voice-add-file:hover {
+  background: rgba(252, 190, 195, 0.2);
+  border-color: rgba(252, 190, 195, 0.6);
+}
+
+html[data-runwithme-theme="dark"] .voice-add-file {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f3dfe4;
+}
+
+.voice-add-btn {
+  flex: 0 0 auto;
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.voice-add-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 单个语音卡 */
+.voice-card-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(142, 101, 111, 0.06);
+}
+
+html[data-runwithme-theme="dark"] .voice-card-item {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.voice-card-item.is-disabled {
+  opacity: 0.45;
+}
+
+.voice-card-play {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(252, 190, 195, 0.4);
+  color: #8e656f;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.voice-card-play:hover {
+  transform: scale(1.08);
+}
+
+.voice-card-play:active {
+  transform: scale(0.94);
+}
+
+.voice-card-text {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(142, 101, 111, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"] .voice-card-text {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+/* =========================================================================
+   Focus Bubble · Liquid Glass
+   覆盖之前所有 .focus-bubble 相关规则
+   ========================================================================= */
+
+.focus-bubble {
+  position: absolute;
+  right: auto;
+  bottom: auto;
+  z-index: 8;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: min(300px, 82%);
+  animation: focusBubbleIn 0.45s cubic-bezier(
+    0.34,
+    1.56,
+    0.64,
+    1
+  );
+}
+
+/* ---------- 液态玻璃主体 ---------- */
+
+.focus-bubble-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 12px 12px;
+  border: 0;
+  border-radius: 22px;
+  color: #4f3940;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  max-width: 100%;
+
+  /* 多层渐变模拟液态玻璃的折射 */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(255, 255, 255, 0.32) 45%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+
+  /* 外阴影扩散 + 顶部内高光 + 底部内暗边 + 描边 */
+  box-shadow:
+    0 14px 36px rgba(20, 10, 15, 0.28),
+    0 2px 8px rgba(20, 10, 15, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.48);
+
+  backdrop-filter: blur(28px) saturate(1.9);
+  -webkit-backdrop-filter: blur(28px) saturate(1.9);
+
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.3, 0.64, 1),
+    box-shadow 0.22s ease;
+}
+
+/* 顶部高光弧 */
+.focus-bubble-body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse at 22% -25%,
+    rgba(255, 255, 255, 0.85),
+    transparent 55%
+  );
+  pointer-events: none;
+}
+
+/* 底部 + 右侧的彩色折射（品牌色微透） */
+.focus-bubble-body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      circle at 88% 110%,
+      rgba(252, 190, 195, 0.4),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at -10% -10%,
+      rgba(207, 222, 227, 0.35),
+      transparent 50%
+    );
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+.focus-bubble-body:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 44px rgba(20, 10, 15, 0.34),
+    0 4px 12px rgba(20, 10, 15, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.focus-bubble-body:active {
+  transform: scale(0.97);
+  transition-duration: 0.1s;
+}
+
+/* ---------- 头像 ---------- */
+
+.focus-bubble-avatar {
+  position: relative;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff2e9;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 3px 10px rgba(80, 50, 60, 0.18);
+}
+
+.focus-bubble-avatar-levi {
+  background: linear-gradient(140deg, #b08a93, #8e656f);
+}
+
+.focus-bubble-avatar-erwin {
+  background: linear-gradient(140deg, #b89aa0, #9b7f86);
+}
+
+/* ---------- 文字区 ---------- */
+
+.focus-bubble-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.focus-bubble-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(94, 70, 80, 0.62);
+  padding-left: 1px;
+}
+
+.focus-bubble-text {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.32;
+  letter-spacing: 0.002em;
+  color: #46323a;
+  word-break: break-word;
+  white-space: pre-wrap;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- 播放键（融合进液态玻璃） ---------- */
+
+.focus-bubble-play {
+  position: relative;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8e656f;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.78),
+    rgba(255, 255, 255, 0.38)
+  );
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 3px 8px rgba(80, 50, 60, 0.12);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.focus-bubble-body:hover .focus-bubble-play {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 5px 12px rgba(80, 50, 60, 0.18);
+}
+
+/* ---------- 关闭按钮（同样玻璃化） ---------- */
+
+.focus-bubble-close {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.28),
+    rgba(255, 255, 255, 0.12)
+  );
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.14);
+
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.focus-bubble-close:hover {
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.42),
+    rgba(255, 255, 255, 0.2)
+  );
+  transform: scale(1.06);
+}
+
+.focus-bubble-close:active {
+  transform: scale(0.92);
+}
+/* =========================================================================
+   App Window Slot · 常驻 App 容器
+   每个打开过的 App 都在 DOM 里，切换只切 display
+   ========================================================================= */
+
+.app-window-slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 确保里面的 .app-screen 撑满 */
+.app-window-slot > .app-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}

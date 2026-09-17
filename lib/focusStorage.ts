@@ -4,11 +4,15 @@
 
 export type FocusWallpaperType = "none" | "image" | "video";
 
+import type { BubbleFrequency } from "@/data/checkinVoiceCards";
+
 export type FocusSettings = {
   wallpaperType: FocusWallpaperType;
   wallpaperMime: string;
   /* 白噪音是否默认开启（上传了文件才有意义） */
   noiseDefaultOn: boolean;
+  /* 语音气泡频率 */
+  bubbleFrequency: BubbleFrequency;
 };
 
 const KEY = "runwithme_focus_settings_v1";
@@ -17,6 +21,7 @@ export const DEFAULT_FOCUS_SETTINGS: FocusSettings = {
   wallpaperType: "none",
   wallpaperMime: "",
   noiseDefaultOn: true,
+  bubbleFrequency: "medium",
 };
 
 export function loadFocusSettings(): FocusSettings {
@@ -34,6 +39,13 @@ export function loadFocusSettings(): FocusSettings {
         parsed.wallpaperType === "video") &&
       typeof parsed.wallpaperMime === "string"
     ) {
+      const freq =
+        parsed.bubbleFrequency === "low" ||
+        parsed.bubbleFrequency === "medium" ||
+        parsed.bubbleFrequency === "high"
+          ? parsed.bubbleFrequency
+          : "medium";
+
       return {
         wallpaperType: parsed.wallpaperType,
         wallpaperMime: parsed.wallpaperMime,
@@ -41,6 +53,7 @@ export function loadFocusSettings(): FocusSettings {
           typeof parsed.noiseDefaultOn === "boolean"
             ? parsed.noiseDefaultOn
             : true,
+        bubbleFrequency: freq,
       };
     }
     return DEFAULT_FOCUS_SETTINGS;
@@ -48,7 +61,6 @@ export function loadFocusSettings(): FocusSettings {
     return DEFAULT_FOCUS_SETTINGS;
   }
 }
-
 /* ★ 改为 patch 模式：只传要改的字段，其余保留原值 */
 export function saveFocusSettings(
   patch: Partial<FocusSettings>

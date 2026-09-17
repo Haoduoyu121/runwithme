@@ -18,6 +18,8 @@ export type DayTaskRecord = {
   completedAt?: number;
   pomodoroCount: number;
   comments: TaskComment[];
+  /* 有值表示"未来某时刻要生成一条评论" */
+  pendingComment?: PendingComment;
 };
 
 export type TaskCard = {
@@ -31,6 +33,19 @@ export type CommentCard = {
   character: "Levi" | "Erwin";
   text: string;
   enabled: boolean;
+};
+
+/* 长按退出专注时弹出的"阻止卡" */
+export type BlockCard = {
+  id: string;
+  character: "Levi" | "Erwin";
+  text: string;
+  enabled: boolean;
+};
+
+/* 延迟评论：任务完成后 10~60 秒才生成评论 */
+export type PendingComment = {
+  scheduledAt: number;
 };
 
 export type PomodoroSettings = {
@@ -69,6 +84,14 @@ export function createCommentCardId(
   character: "Levi" | "Erwin"
 ): string {
   return `${character}-cc-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 6)}`;
+}
+
+export function createBlockCardId(
+  character: "Levi" | "Erwin"
+): string {
+  return `${character}-bc-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2, 6)}`;
 }

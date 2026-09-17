@@ -40,6 +40,8 @@ type PomodoroContextValue = {
   pause: () => void;
   toggle: () => void;
   reset: () => void;
+  /* 提前结束当前这一轮（会正常触发 focus 完成事件） */
+  finishEarly: () => void;
   setMode: (m: PomodoroMode) => void;
   updateSettings: (s: PomodoroSettings) => void;
   bindTask: (taskId: string | null) => void;
@@ -233,6 +235,11 @@ export function PomodoroProvider({
     );
   }, []);
 
+    const finishEarly = useCallback(() => {
+    if (!running) return;
+    handleComplete();
+  }, [running, handleComplete]);
+
   const setMode = useCallback((m: PomodoroMode) => {
     endTimeRef.current = null;
     setRunning(false);
@@ -297,6 +304,7 @@ export function PomodoroProvider({
         pause,
         toggle,
         reset,
+        finishEarly,
         setMode,
         updateSettings,
         bindTask,

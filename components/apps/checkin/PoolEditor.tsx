@@ -3,8 +3,10 @@
 import { useState } from "react";
 
 import {
+  createBlockCardId,
   createCommentCardId,
   createTaskCardId,
+  type BlockCard,
   type CommentCard,
   type TaskCard,
 } from "@/data/checkin";
@@ -12,18 +14,22 @@ import {
 type Props = {
   taskCards: TaskCard[];
   commentCards: CommentCard[];
+  blockCards: BlockCard[];
   onChangeTaskCards: (next: TaskCard[]) => void;
   onChangeCommentCards: (next: CommentCard[]) => void;
+  onChangeBlockCards: (next: BlockCard[]) => void;
   onClose: () => void;
 };
 
-type Pool = "task" | "comment";
+type Pool = "task" | "comment" | "block";
 
 export default function PoolEditor({
   taskCards,
   commentCards,
+  blockCards,
   onChangeTaskCards,
   onChangeCommentCards,
+  onChangeBlockCards,
   onClose,
 }: Props) {
   const [pool, setPool] = useState<Pool>("task");
@@ -32,6 +38,9 @@ export default function PoolEditor({
   const [newText, setNewText] = useState("");
 
   const commentList = commentCards.filter(
+    (c) => c.character === tab
+  );
+  const blockList = blockCards.filter(
     (c) => c.character === tab
   );
 
@@ -48,11 +57,21 @@ export default function PoolEditor({
           enabled: true,
         },
       ]);
-    } else {
+    } else if (pool === "comment") {
       onChangeCommentCards([
         ...commentCards,
         {
           id: createCommentCardId(tab),
+          character: tab,
+          text,
+          enabled: true,
+        },
+      ]);
+    } else {
+      onChangeBlockCards([
+        ...blockCards,
+        {
+          id: createBlockCardId(tab),
           character: tab,
           text,
           enabled: true,
@@ -70,9 +89,15 @@ export default function PoolEditor({
           c.id === id ? { ...c, enabled: !c.enabled } : c
         )
       );
-    } else {
+    } else if (pool === "comment") {
       onChangeCommentCards(
         commentCards.map((c) =>
+          c.id === id ? { ...c, enabled: !c.enabled } : c
+        )
+      );
+    } else {
+      onChangeBlockCards(
+        blockCards.map((c) =>
           c.id === id ? { ...c, enabled: !c.enabled } : c
         )
       );
@@ -82,9 +107,13 @@ export default function PoolEditor({
   function handleDelete(id: string) {
     if (pool === "task") {
       onChangeTaskCards(taskCards.filter((c) => c.id !== id));
-    } else {
+    } else if (pool === "comment") {
       onChangeCommentCards(
         commentCards.filter((c) => c.id !== id)
+      );
+    } else {
+      onChangeBlockCards(
+        blockCards.filter((c) => c.id !== id)
       );
     }
   }
@@ -96,9 +125,15 @@ export default function PoolEditor({
           c.id === id ? { ...c, text } : c
         )
       );
-    } else {
+    } else if (pool === "comment") {
       onChangeCommentCards(
         commentCards.map((c) =>
+          c.id === id ? { ...c, text } : c
+        )
+      );
+    } else {
+      onChangeBlockCards(
+        blockCards.map((c) =>
           c.id === id ? { ...c, text } : c
         )
       );
@@ -106,7 +141,11 @@ export default function PoolEditor({
   }
 
   const currentList =
-    pool === "task" ? taskCards : commentList;
+    pool === "task"
+      ? taskCards
+      : pool === "comment"
+        ? commentList
+        : blockList;
 
   return (
     <div
@@ -132,7 +171,7 @@ export default function PoolEditor({
             className={pool === "task" ? "active" : ""}
             onClick={() => setPool("task")}
           >
-            Task Cards
+            Task
           </button>
           <button
             className={
@@ -140,11 +179,17 @@ export default function PoolEditor({
             }
             onClick={() => setPool("comment")}
           >
-            Comment Cards
+            Comment
+          </button>
+          <button
+            className={pool === "block" ? "active" : ""}
+            onClick={() => setPool("block")}
+          >
+            Block
           </button>
         </div>
 
-        {pool === "comment" && (
+        {(pool === "comment" || pool === "block") && (
           <div className="checkin-segment">
             <button
               className={tab === "Levi" ? "active" : ""}
@@ -175,7 +220,9 @@ export default function PoolEditor({
             placeholder={
               pool === "task"
                 ? "新增任务卡…"
-                : "新增评论卡…"
+                : pool === "comment"
+                  ? "新增评论卡…"
+                  : "新增长按退出时的阻止卡…"
             }
             maxLength={80}
           />

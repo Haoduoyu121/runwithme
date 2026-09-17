@@ -414,6 +414,11 @@ export default function Home() {
   const [currentApp, setCurrentApp] =
     useState<AppId | null>(null);
 
+    /* 已经打开过的 App 列表；一旦加入永不移除 */
+  const [mountedApps, setMountedApps] = useState<AppId[]>(
+    []
+  );  
+
   const [systemSettings, setSystemSettings] =
     useState<SystemSettings | null>(null);
 
@@ -443,6 +448,16 @@ export default function Home() {
 
     setUnlocked(hasUnlocked);
   }, []);
+
+     /* 一旦打开过某个 App，就把它加进常驻列表 */
+  useEffect(() => {
+    if (!currentApp) return;
+    setMountedApps((prev) =>
+      prev.includes(currentApp)
+        ? prev
+        : [...prev, currentApp]
+    );
+  }, [currentApp]);
 
   /* 加载自定义壁纸（锁屏 + 主屏） */
   useEffect(() => {
@@ -634,29 +649,49 @@ export default function Home() {
             wallpaper={lockWallpaper}
             onUnlock={handleUnlock}
           />
-        ) : currentApp ? (
-          <AppWindow
-            app={currentApp}
-            onBack={handleBackHome}
-          />
         ) : (
-          <HomeScreen
-            wallpaper={homeWallpaper}
-            iconUrls={appIconUrls}
-            onOpenApp={setCurrentApp}
-            onOpenSettings={() => {
-              router.push("/studio/settings");
-            }}
-            onOpenHomeStudio={() => {
-              router.push("/home-studio");
-            }}
-            onOpenCalendar={() => {
-              setCurrentApp("calendar" as AppId);
-            }}
-            onOpenCards={() => {
-              setCurrentApp("cards" as AppId);
-            }}
-          />
+          <>
+            {/* Home 只在没有打开 App 时挂载 */}
+            {currentApp === null && (
+              <HomeScreen
+                wallpaper={homeWallpaper}
+                iconUrls={appIconUrls}
+                onOpenApp={setCurrentApp}
+                onOpenSettings={() => {
+                  router.push("/studio/settings");
+                }}
+                onOpenHomeStudio={() => {
+                  router.push("/home-studio");
+                }}
+                onOpenCalendar={() => {
+                  setCurrentApp("calendar" as AppId);
+                }}
+                onOpenCards={() => {
+                  setCurrentApp("cards" as AppId);
+                }}
+              />
+            )}
+
+            {/* 打开过的 App 都常驻，切换只切显隐 */}
+            {mountedApps.map((appId) => (
+              <div
+                key={appId}
+                className="app-window-slot"
+                style={{
+                  display:
+                    currentApp === appId
+                      ? undefined
+                      : "none",
+                }}
+                aria-hidden={currentApp !== appId}
+              >
+                <AppWindow
+                  app={appId}
+                  onBack={handleBackHome}
+                />
+              </div>
+            ))}
+          </>
         )}
       </div>
     </div>

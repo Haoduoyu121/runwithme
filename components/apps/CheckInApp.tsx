@@ -22,6 +22,7 @@ import {
   type CheckinCharacter,
   type CommentCard,
   type DayTaskRecord,
+  type BlockCard,
   type Task,
   type TaskCard,
   type TaskComment,
@@ -37,6 +38,11 @@ import {
   saveTaskCards,
   saveTasks,
 } from "@/lib/checkinStorage";
+
+import {
+  loadBlockCards,
+  saveBlockCards,
+} from "@/lib/checkinBlockCardStorage";
 
 import { usePomodoro } from "@/lib/PomodoroContext";
 
@@ -201,6 +207,9 @@ export default function CheckInApp({
   const [commentCards, setCommentCards] = useState<
     CommentCard[]
   >([]);
+  const [blockCards, setBlockCards] = useState<BlockCard[]>(
+    []
+  );
 
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
@@ -223,6 +232,11 @@ export default function CheckInApp({
     recordsRef.current = records;
   }, [records]);
 
+  const commentCardsRef = useRef(commentCards);
+  useEffect(() => {
+    commentCardsRef.current = commentCards;
+  }, [commentCards]);
+
   /* ---------- 初始化 ---------- */
 
   useEffect(() => {
@@ -230,6 +244,7 @@ export default function CheckInApp({
     setRecords(loadRecords());
     setTaskCards(loadTaskCards());
     setCommentCards(loadCommentCards());
+    setBlockCards(loadBlockCards());
   }, []);
 
   /* ---------- 提交 ---------- */
@@ -262,6 +277,13 @@ export default function CheckInApp({
     },
     []
   );
+    const commitBlockCards = useCallback(
+    (next: BlockCard[]) => {
+      setBlockCards(next);
+      saveBlockCards(next);
+    },
+    []
+  );
 
   /* ---------- 订阅全局番茄钟完成事件 ---------- */
 
@@ -278,11 +300,21 @@ export default function CheckInApp({
         comments: [],
       };
 
+      /* 如果还没有待处理的评论，就写一个 10~60s 后触发的 */
+      const pendingComment = prev.pendingComment
+        ? prev.pendingComment
+        : {
+            scheduledAt:
+              Date.now() +
+              (10 + Math.random() * 50) * 1000,
+          };
+
       const next = {
         ...recordsRef.current,
         [key]: {
           ...prev,
           pomodoroCount: prev.pomodoroCount + 1,
+          pendingComment,
         },
       };
 
@@ -387,29 +419,47 @@ export default function CheckInApp({
     setRecord(today, taskId, (prev) => {
       const nowCompleted = !prev.completed;
 
-      let comments = prev.comments;
+      /* 取消完成：清掉未触发的延迟评论 */
+      if (!nowCompleted) {
+        return {
+          ...prev,
+          completed: false,
+          completedAt: undefined,
+          pendingComment: undefined,
+        };
+      }
 
-      if (nowCompleted && prev.comments.length === 0) {
-        comments = generateCommentsForTask();
+      /* 变成完成：如果还没有评论、也还没有 pending，就写一个 */
+      let pendingComment = prev.pendingComment;
+
+      if (
+        prev.comments.length === 0 &&
+        !pendingComment
+      ) {
+        pendingComment = {
+          scheduledAt:
+            Date.now() + (10 + Math.random() * 50) * 1000,
+        };
       }
 
       return {
         ...prev,
-        completed: nowCompleted,
-        completedAt: nowCompleted
-          ? Date.now()
-          : undefined,
-        comments,
+        completed: true,
+        completedAt: Date.now(),
+        pendingComment,
       };
     });
   }
 
-  function generateCommentsForTask(): TaskComment[] {
+  /* 从卡池抽 0~2 条评论 */
+  function generateCommentsFromPool(
+    cards: CommentCard[]
+  ): TaskComment[] {
     const result: TaskComment[] = [];
 
     if (Math.random() > 0.7) return result;
 
-    const pick1 = pickRandomEnabled(commentCards);
+    const pick1 = pickRandomEnabled(cards);
     if (!pick1) return result;
 
     result.push({
@@ -420,7 +470,7 @@ export default function CheckInApp({
     });
 
     if (Math.random() < 0.3) {
-      const others = commentCards.filter(
+      const others = cards.filter(
         (c) => c.character !== pick1.character
       );
       const pick2 = pickRandomEnabled(others);
@@ -436,6 +486,47 @@ export default function CheckInApp({
 
     return result;
   }
+
+    /* ---------- 延迟评论：每 5s 检查一次 ---------- */
+
+  const checkPendingComments = useCallback(() => {
+    const now = Date.now();
+    const current = recordsRef.current;
+
+    let changed = false;
+    const next: Record<string, DayTaskRecord> = {
+      ...current,
+    };
+
+    for (const [key, rec] of Object.entries(current)) {
+      if (!rec.pendingComment) continue;
+      if (rec.pendingComment.scheduledAt > now) continue;
+
+      const newComments = generateCommentsFromPool(
+        commentCardsRef.current
+      );
+
+      next[key] = {
+        ...rec,
+        comments: [...rec.comments, ...newComments],
+        pendingComment: undefined,
+      };
+      changed = true;
+    }
+
+    if (changed) commitRecords(next);
+  }, [commitRecords]);
+
+  useEffect(() => {
+    /* 打开时立刻检查一次（处理上次没跑完的） */
+    checkPendingComments();
+
+    const t = window.setInterval(() => {
+      checkPendingComments();
+    }, 5000);
+
+    return () => window.clearInterval(t);
+  }, [checkPendingComments]);
 
   /* ---------- 评论 ---------- */
 
@@ -995,8 +1086,10 @@ export default function CheckInApp({
         <PoolEditor
           taskCards={taskCards}
           commentCards={commentCards}
+          blockCards={blockCards}
           onChangeTaskCards={commitTaskCards}
           onChangeCommentCards={commitCommentCards}
+          onChangeBlockCards={commitBlockCards}
           onClose={() => setShowPoolEditor(false)}
         />
       )}

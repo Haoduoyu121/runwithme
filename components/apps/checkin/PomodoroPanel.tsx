@@ -30,6 +30,19 @@ import {
   type FocusWallpaperType,
 } from "@/lib/focusStorage";
 
+import {
+  BUBBLE_FREQUENCY_LABELS,
+  type BubbleFrequency,
+  type VoiceCard,
+} from "@/data/checkinVoiceCards";
+
+import {
+  loadVoiceCards,
+  saveVoiceCards,
+} from "@/lib/checkinVoiceStorage";
+
+import VoicePoolEditor from "@/components/apps/checkin/VoicePoolEditor";
+
 type PomodoroPanelProps = {
   activeTaskName: string | null;
 };
@@ -52,13 +65,14 @@ export default function PomodoroPanel({
 
   const [showSettings, setShowSettings] = useState(false);
 
-  /* 壁纸状态 */
+  /* 壁纸 */
   const [wallpaperType, setWallpaperType] =
     useState<FocusWallpaperType>("none");
   const [wallpaperUrl, setWallpaperUrl] = useState<
     string | null
   >(null);
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   /* 白噪音 */
   const [noiseAvailable, setNoiseAvailable] =
@@ -66,37 +80,50 @@ export default function PomodoroPanel({
   const [noiseName, setNoiseName] = useState("");
   const [noiseUploading, setNoiseUploading] =
     useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const noiseInputRef = useRef<HTMLInputElement | null>(
     null
   );
 
-  /* 载入壁纸信息 */
+  /* 语音卡池 */
+  const [voiceCards, setVoiceCards] = useState<
+    VoiceCard[]
+  >([]);
+  const [showVoicePool, setShowVoicePool] =
+    useState(false);
+
+  /* 频率（镜像进设置弹窗） */
+  const [bubbleFrequency, setBubbleFrequency] =
+    useState<BubbleFrequency>("medium");
+
+  /* 载入信息 */
   useEffect(() => {
     if (!showSettings) return;
 
     const s = loadFocusSettings();
     setWallpaperType(s.wallpaperType);
+    setBubbleFrequency(s.bubbleFrequency);
 
-    if (s.wallpaperType === "none") {
-      setWallpaperUrl(null);
-      return;
-    }
+    setVoiceCards(loadVoiceCards());
 
     let cancelled = false;
     let url: string | null = null;
 
-    async function load() {
-      const blob = await getFocusWallpaper();
-      if (!blob || cancelled) return;
-      url = URL.createObjectURL(blob);
-      setWallpaperUrl(url);
+    async function loadWallpaper() {
+      if (s.wallpaperType === "none") {
+        setWallpaperUrl(null);
+        return;
+      }
+      try {
+        const blob = await getFocusWallpaper();
+        if (!blob || cancelled) return;
+        url = URL.createObjectURL(blob);
+        setWallpaperUrl(url);
+      } catch (e) {
+        console.error("读取专注壁纸失败:", e);
+      }
     }
-    void load();
 
-    /* 顺便查白噪音是否存在 */
-    void (async () => {
+    async function loadNoise() {
       try {
         const blob = await getFocusNoise();
         if (!cancelled) {
@@ -106,7 +133,10 @@ export default function PomodoroPanel({
       } catch {
         if (!cancelled) setNoiseAvailable(false);
       }
-    })();
+    }
+
+    void loadWallpaper();
+    void loadNoise();
 
     return () => {
       cancelled = true;
@@ -130,13 +160,9 @@ export default function PomodoroPanel({
   function patchSettings(
     patch: Partial<PomodoroSettings>
   ) {
-    updateSettings({
-      ...settings,
-      ...patch,
-    });
+    updateSettings({ ...settings, ...patch });
   }
 
-  /* START 时如果 focus 模式，自动打开全屏层 */
   function handleToggle() {
     const wasRunning = running;
     toggle();
@@ -160,7 +186,6 @@ export default function PomodoroPanel({
       return;
     }
 
-    /* 大小检查：视频 30MB，图片 15MB */
     const LIMIT_VIDEO = 30 * 1024 * 1024;
     const LIMIT_IMAGE = 15 * 1024 * 1024;
     const limit = isVideo ? LIMIT_VIDEO : LIMIT_IMAGE;
@@ -180,7 +205,10 @@ export default function PomodoroPanel({
     setUploading(true);
     try {
       await saveFocusWallpaper(file);
+
+      const current = loadFocusSettings();
       const next = {
+        ...current,
         wallpaperType: (isVideo ? "video" : "image") as
           | "video"
           | "image",
@@ -189,7 +217,6 @@ export default function PomodoroPanel({
       saveFocusSettings(next);
       setWallpaperType(next.wallpaperType);
 
-      /* 刷新预览 */
       if (wallpaperUrl) URL.revokeObjectURL(wallpaperUrl);
       const url = URL.createObjectURL(file);
       setWallpaperUrl(url);
@@ -204,7 +231,9 @@ export default function PomodoroPanel({
   async function handleRemoveWallpaper() {
     if (!window.confirm("移除专注壁纸？")) return;
     await deleteFocusWallpaper();
+    const current = loadFocusSettings();
     saveFocusSettings({
+      ...current,
       wallpaperType: "none",
       wallpaperMime: "",
     });
@@ -213,7 +242,7 @@ export default function PomodoroPanel({
     setWallpaperUrl(null);
   }
 
-    /* ---------- 白噪音 ---------- */
+  /* ---------- 白噪音 ---------- */
 
   async function handlePickNoise(
     files: FileList | null
@@ -222,11 +251,10 @@ export default function PomodoroPanel({
     const file = files[0];
 
     if (!file.type.startsWith("audio/")) {
-      alert("请上传音频文件（mp3 / m4a / ogg 等）。");
+      alert("请上传音频文件。");
       return;
     }
 
-    /* 音频 20MB 上限 */
     const LIMIT = 20 * 1024 * 1024;
     if (file.size > LIMIT) {
       alert(
@@ -257,6 +285,21 @@ export default function PomodoroPanel({
     await deleteFocusNoise();
     setNoiseAvailable(false);
     setNoiseName("");
+  }
+
+  /* ---------- 频率 ---------- */
+
+  function handleFrequencyChange(f: BubbleFrequency) {
+    setBubbleFrequency(f);
+    const current = loadFocusSettings();
+    saveFocusSettings({ ...current, bubbleFrequency: f });
+  }
+
+  /* ---------- 语音卡池 ---------- */
+
+  function commitVoiceCards(next: VoiceCard[]) {
+    setVoiceCards(next);
+    saveVoiceCards(next);
   }
 
   return (
@@ -366,7 +409,6 @@ export default function PomodoroPanel({
         </button>
       </div>
 
-      {/* 手动进入全屏（未自动进入时用） */}
       {mode === "focus" && running && (
         <button
           className="checkin-pomo-enter-focus"
@@ -611,6 +653,57 @@ export default function PomodoroPanel({
               />
             </div>
 
+            {/* 语音气泡 */}
+            <div className="checkin-focus-wallpaper-section">
+              <div className="checkin-focus-wallpaper-label">
+                语音气泡
+              </div>
+
+              <div className="checkin-focus-wallpaper-hint checkin-focus-wallpaper-hint-top">
+                专注模式里偶尔弹出一个小气泡，点一下播放语音。
+              </div>
+
+              <div className="voice-pool-summary">
+                <span className="voice-pool-count">
+                  {voiceCards.filter((c) => c.enabled).length}{" "}
+                  张可用
+                </span>
+                <button
+                  type="button"
+                  className="checkin-btn ghost voice-pool-manage"
+                  onClick={() => setShowVoicePool(true)}
+                >
+                  管理语音卡池
+                </button>
+              </div>
+
+              <div className="voice-freq-row">
+                <span className="voice-freq-label">
+                  出现频率
+                </span>
+                <div className="voice-freq-segment">
+                  {(
+                    ["low", "medium", "high"] as BubbleFrequency[]
+                  ).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      className={
+                        bubbleFrequency === f
+                          ? "active"
+                          : ""
+                      }
+                      onClick={() =>
+                        handleFrequencyChange(f)
+                      }
+                    >
+                      {BUBBLE_FREQUENCY_LABELS[f]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div className="checkin-modal-footer">
               <button
                 className="checkin-btn"
@@ -621,6 +714,15 @@ export default function PomodoroPanel({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 语音卡池编辑器 */}
+      {showVoicePool && (
+        <VoicePoolEditor
+          cards={voiceCards}
+          onChange={commitVoiceCards}
+          onClose={() => setShowVoicePool(false)}
+        />
       )}
     </div>
   );
