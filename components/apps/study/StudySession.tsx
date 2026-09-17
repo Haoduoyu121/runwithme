@@ -1,11 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   nextMastery,
+  pickCheerInterval,
+  pickRandomEnabled,
   type SessionPartner,
+  type StudyCheerCard,
   type StudyMode,
+  type StudySessionKind,
   type StudySettings,
   type Word,
   type WordBook,
@@ -16,11 +25,16 @@ import {
   stopCurrentAudio,
 } from "@/lib/studyAudio";
 
+import { loadCheerCards } from "@/lib/studyStorage";
+
+import CheerBubble from "@/components/apps/study/CheerBubble";
+
 import FlashcardMode from "@/components/apps/study/FlashcardMode";
 import SpellingMode from "@/components/apps/study/SpellingMode";
 import MatchingMode from "@/components/apps/study/MatchingMode";
 
 type Props = {
+  kind: StudySessionKind;
   partner: SessionPartner;
   book: WordBook;
   words: Word[];
@@ -29,6 +43,13 @@ type Props = {
   onExit: () => void;
   onRestart: () => void;
   onUpdateWord: (wordId: string, patch: Partial<Word>) => void;
+  onRecordStudy: (
+    wordIds: string[],
+    correct: boolean
+  ) => void;
+  /* 错题集 */
+  onAddMistake: (wordId: string) => void;
+  onRemoveMistake: (wordId: string) => void;
 };
 
 const PARTNER_LABELS: Record<SessionPartner, string> = {
@@ -48,6 +69,7 @@ const MODES: {
 ];
 
 export default function StudySession({
+  kind,
   partner,
   book,
   words,
@@ -56,16 +78,24 @@ export default function StudySession({
   onExit,
   onRestart,
   onUpdateWord,
+  onRecordStudy,
+  onAddMistake,
+  onRemoveMistake,
 }: Props) {
   const [index, setIndex] = useState(0);
   const [mode, setMode] = useState<StudyMode>("card");
   const [playing, setPlaying] = useState(false);
   const [finished, setFinished] = useState(false);
-
-  /* 连连看专用：批索引 */
   const [batchIndex, setBatchIndex] = useState(0);
 
-  /* 卡片/拼写模式当前词 */
+  /* 鼓励气泡 */
+  const [cheerBubble, setCheerBubble] =
+    useState<StudyCheerCard | null>(null);
+  const cheerCounterRef = useRef(0);
+  const cheerNextAtRef = useRef(
+    pickCheerInterval(settings.cheerFrequency)
+  );
+
   const currentId = sessionWordIds[index];
   const current = useMemo(
     () => words.find((w) => w.id === currentId) ?? null,
@@ -74,7 +104,6 @@ export default function StudySession({
 
   const total = sessionWordIds.length;
 
-  /* 连连看批次 */
   const batches = useMemo(() => {
     const result: string[][] = [];
     for (let i = 0; i < sessionWordIds.length; i += 4) {
@@ -91,6 +120,12 @@ export default function StudySession({
         .filter((w): w is Word => !!w),
     [currentBatchIds, words]
   );
+
+  /* ---------- 卸载时停止音频 ---------- */
+
+  useEffect(() => {
+    return () => stopCurrentAudio();
+  }, []);
 
   /* ---------- 播放 ---------- */
 
@@ -115,6 +150,26 @@ export default function StudySession({
     window.setTimeout(() => setPlaying(false), 1500);
   }
 
+    /* ---------- 鼓励气泡计数 ---------- */
+
+  function recordStudied(count: number) {
+    if (finished) return;
+    cheerCounterRef.current += count;
+
+    if (
+      cheerCounterRef.current >= cheerNextAtRef.current
+    ) {
+      cheerCounterRef.current = 0;
+      cheerNextAtRef.current = pickCheerInterval(
+        settings.cheerFrequency
+      );
+
+      const cards = loadCheerCards();
+      const card = pickRandomEnabled(cards);
+      if (card) setCheerBubble(card);
+    }
+  }
+
   /* ---------- 导航 ---------- */
 
   function goPrev() {
@@ -123,7 +178,7 @@ export default function StudySession({
     setIndex(index - 1);
   }
 
-  /* ---------- 单个词判定（卡片 / 拼写模式） ---------- */
+  /* ---------- 判定 ---------- */
 
   function applyResult(correct: boolean) {
     if (!current) return;
@@ -141,6 +196,18 @@ export default function StudySession({
       lastReviewedAt: Date.now(),
     });
 
+    onRecordStudy([current.id], correct);
+    recordStudied(1);
+
+    /* 错题集逻辑 */
+    if (correct) {
+      if (kind === "mistakes") {
+        onRemoveMistake(current.id);
+      }
+    } else {
+      onAddMistake(current.id);
+    }
+
     if (index < total - 1) {
       setIndex(index + 1);
     } else {
@@ -148,10 +215,9 @@ export default function StudySession({
     }
   }
 
-  /* ---------- 连连看：一批完成 ---------- */
+  /* ---------- 连连看完成一批 ---------- */
 
   function handleBatchComplete(wrong: number) {
-    /* 一批里错误 0 次 → 全批算对；否则算错 */
     const correct = wrong === 0;
 
     for (const id of currentBatchIds) {
@@ -170,7 +236,19 @@ export default function StudySession({
         wrongCount: w.wrongCount + (correct ? 0 : 1),
         lastReviewedAt: Date.now(),
       });
+
+      /* 错题集逻辑 */
+      if (correct) {
+        if (kind === "mistakes") {
+          onRemoveMistake(id);
+        }
+      } else {
+        onAddMistake(id);
+      }
     }
+
+    onRecordStudy(currentBatchIds, correct);
+    recordStudied(currentBatchIds.length);
 
     if (batchIndex < batches.length - 1) {
       setBatchIndex(batchIndex + 1);
@@ -179,17 +257,20 @@ export default function StudySession({
     }
   }
 
-  /* ---------- 完成弹窗按钮 ---------- */
+  /* ---------- 完成弹窗 ---------- */
 
   function handleContinue() {
     setFinished(false);
     setIndex(0);
     setBatchIndex(0);
+    setMode("card");
+    stopCurrentAudio();
     onRestart();
   }
 
   function handleLater() {
     setFinished(false);
+    stopCurrentAudio();
     onExit();
   }
 
@@ -201,7 +282,9 @@ export default function StudySession({
         <div className="study-empty">
           <div className="study-empty-icon">∅</div>
           <div className="study-empty-title">
-            这本词书里没有单词
+            {kind === "mistakes"
+              ? "错题集是空的"
+              : "这本词书里没有单词"}
           </div>
         </div>
         <div className="study-session-empty-actions">
@@ -234,27 +317,33 @@ export default function StudySession({
       : "0 组"
     : `${index + 1} / ${total}`;
 
+  const sessionLabel =
+    kind === "mistakes"
+      ? `错题集 · ${PARTNER_LABELS[partner]}`
+      : `${PARTNER_LABELS[partner]} · ${book.name}`;
+
   return (
     <div className="study-session">
-      {/* 顶部栏 */}
       <div className="study-session-topbar">
         <button
           className="study-session-exit"
-          onClick={onExit}
+          onClick={() => {
+            stopCurrentAudio();
+            onExit();
+          }}
           aria-label="退出"
           type="button"
         >
           ✕
         </button>
         <div className="study-session-title">
-          {PARTNER_LABELS[partner]} · {book.name}
+          {sessionLabel}
         </div>
         <div className="study-session-progress-text">
           {progressText}
         </div>
       </div>
 
-      {/* 进度条 */}
       <div className="study-session-progress-bar">
         <div
           className="study-session-progress-fill"
@@ -262,7 +351,6 @@ export default function StudySession({
         />
       </div>
 
-      {/* 模式切换 */}
       <div className="study-mode-segment">
         {MODES.map((m) => (
           <button
@@ -282,7 +370,6 @@ export default function StudySession({
         ))}
       </div>
 
-      {/* 内容 */}
       {current && mode === "card" && (
         <FlashcardMode
           word={current}
@@ -298,7 +385,6 @@ export default function StudySession({
       {current && mode === "spell" && (
         <SpellingMode
           word={current}
-          playing={playing}
           onPlay={handlePlay}
           onResult={applyResult}
         />
@@ -312,16 +398,27 @@ export default function StudySession({
         />
       )}
 
-      {/* 完成弹窗 */}
+              {/* 鼓励气泡（完成弹窗时不显示） */}
+      {cheerBubble && !finished && (
+        <CheerBubble
+          card={cheerBubble}
+          onDone={() => setCheerBubble(null)}
+        />
+      )}
+
       {finished && (
         <div className="study-modal-backdrop">
           <div className="study-modal study-finish-modal">
             <div className="study-finish-icon">✓</div>
             <div className="study-finish-title">
-              这一轮学完了
+              {kind === "mistakes"
+                ? "错题练完了"
+                : "这一轮学完了"}
             </div>
             <div className="study-finish-desc">
-              已经过了一遍 {total} 个单词。要不要继续？
+              {kind === "mistakes"
+                ? `这一轮过了 ${total} 个错题。要不要再来一遍？`
+                : `已经过了一遍 ${total} 个单词。要不要继续？`}
             </div>
 
             <div className="study-finish-actions">

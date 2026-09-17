@@ -9,6 +9,7 @@ import type {
   StudyCheerCard,
   DailyStudyRecord,
   StudySettings,
+  StudyMistake,
 } from "@/data/study";
 
 import {
@@ -142,12 +143,34 @@ export function saveDailySentences(
 export function loadRecords(): DailyStudyRecord[] {
   const raw = readJSON<unknown>(RECORDS_KEY, []);
   if (!Array.isArray(raw)) return [];
-  return raw.filter(
-    (r): r is DailyStudyRecord =>
-      !!r &&
-      typeof r === "object" &&
-      typeof (r as DailyStudyRecord).dateStr === "string"
-  );
+
+  return raw
+    .filter(
+      (r): r is Record<string, unknown> =>
+        !!r &&
+        typeof r === "object" &&
+        typeof (r as { dateStr?: unknown }).dateStr ===
+          "string"
+    )
+    .map((r) => {
+      const rec: DailyStudyRecord = {
+        dateStr: r.dateStr as string,
+        wordIds: Array.isArray(r.wordIds)
+          ? (r.wordIds as string[]).filter(
+              (x): x is string => typeof x === "string"
+            )
+          : [],
+        correctCount:
+          typeof r.correctCount === "number"
+            ? r.correctCount
+            : 0,
+        wrongCount:
+          typeof r.wrongCount === "number"
+            ? r.wrongCount
+            : 0,
+      };
+      return rec;
+    });
 }
 
 export function saveRecords(
@@ -301,4 +324,126 @@ export function markSystemCollectedToday(): void {
       today
     );
   } catch {}
+}
+/* ---------- 每日学习记录 ---------- */
+
+function dateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(
+    d.getMonth() + 1
+  ).padStart(2, "0")}-${String(d.getDate()).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+export function updateTodayRecord(
+  wordIds: string[],
+  correct: boolean
+): void {
+  if (typeof window === "undefined") return;
+
+  const today = dateStr(new Date());
+  const records = loadRecords();
+
+  const existing = records.find(
+    (r) => r.dateStr === today
+  );
+
+  if (existing) {
+    const seen = new Set(existing.wordIds);
+    const merged = [...existing.wordIds];
+    for (const id of wordIds) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        merged.push(id);
+      }
+    }
+    existing.wordIds = merged;
+    existing.correctCount += correct ? wordIds.length : 0;
+    existing.wrongCount += correct ? 0 : wordIds.length;
+  } else {
+    records.push({
+      dateStr: today,
+      wordIds: [...new Set(wordIds)],
+      correctCount: correct ? wordIds.length : 0,
+      wrongCount: correct ? 0 : wordIds.length,
+    });
+  }
+
+  /* 只保留最近 365 天 */
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 365);
+  const cutoffStr = dateStr(cutoff);
+
+  const filtered = records
+    .filter((r) => r.dateStr >= cutoffStr)
+    .sort((a, b) => (a.dateStr < b.dateStr ? 1 : -1));
+
+  saveRecords(filtered);
+}
+
+export function computeStudyStreak(
+  records: DailyStudyRecord[]
+): number {
+  if (records.length === 0) return 0;
+
+  const byDate = new Map<string, DailyStudyRecord>();
+  for (const r of records) byDate.set(r.dateStr, r);
+
+  function hasActivity(d: Date): boolean {
+    const key = dateStr(d);
+    const r = byDate.get(key);
+    return !!r && r.wordIds.length > 0;
+  }
+
+  let streak = 0;
+  const cursor = new Date();
+
+  /* 今天没学就从昨天开始数 */
+  if (!hasActivity(cursor)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  while (hasActivity(cursor)) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
+}
+/* ---------- 错题集 ---------- */
+
+const MISTAKES_KEY = "runwithme_study_mistakes_v1";
+
+export function loadMistakes(): StudyMistake[] {
+  const raw = readJSON<unknown>(MISTAKES_KEY, []);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (m): m is StudyMistake =>
+      !!m &&
+      typeof m === "object" &&
+      typeof (m as StudyMistake).wordId === "string"
+  );
+}
+
+export function saveMistakes(list: StudyMistake[]): void {
+  writeJSON(MISTAKES_KEY, list);
+}
+
+export function addMistake(
+  list: StudyMistake[],
+  wordId: string
+): StudyMistake[] {
+  if (list.some((m) => m.wordId === wordId)) return list;
+  return [
+    { wordId, addedAt: Date.now() },
+    ...list,
+  ];
+}
+
+export function removeMistake(
+  list: StudyMistake[],
+  wordId: string
+): StudyMistake[] {
+  return list.filter((m) => m.wordId !== wordId);
 }

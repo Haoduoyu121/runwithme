@@ -67,8 +67,8 @@ export type StudyCheerCard = {
 export type DailyStudyRecord = {
   /* 格式 YYYY-MM-DD */
   dateStr: string;
-  /* 当天学过的单词数（去重） */
-  wordsStudied: number;
+  /* 当天学过的 word id（去重） */
+  wordIds: string[];
   /* 当天答对次数 */
   correctCount: number;
   /* 当天答错次数 */
@@ -120,6 +120,17 @@ export const CHEER_INTERVAL: Record<
   medium: [4, 6],
   high: [2, 3],
 };
+
+/* 从频率档位抽一个"下一次触发需要背多少个词" */
+export function pickCheerInterval(
+  freq: CheerFrequency
+): number {
+  const [min, max] = CHEER_INTERVAL[freq];
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+/* 气泡停留时长（毫秒） */
+export const CHEER_BUBBLE_DURATION_MS = 9000;
 
 /* ---------- mastery ---------- */
 
@@ -239,7 +250,10 @@ export type SessionPartner = "levi" | "erwin" | "both";
 
 export type StudyMode = "card" | "spell" | "match";
 
+export type StudySessionKind = "normal" | "mistakes";
+
 export type StudySessionState = {
+  kind: StudySessionKind;
   partner: SessionPartner;
   bookId: string;
   /* 本轮多少词（进入会话时从 settings 快照） */
@@ -252,4 +266,10 @@ export type StudySessionState = {
   startedAt: number;
   /* 本会话已学单词数（去重的 word id） */
   studiedWordIds: string[];
+};
+
+/* 错题集条目 */
+export type StudyMistake = {
+  wordId: string;
+  addedAt: number;
 };

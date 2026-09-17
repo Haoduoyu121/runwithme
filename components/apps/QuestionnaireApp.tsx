@@ -10,20 +10,23 @@ import {
 
 import {
   createQAnswerId,
+  createQOptionId,
   createQPostId,
   formatQTimeAgo,
   getModeLabel,
   getQAuthorDisplay,
+  isChoicePost,
   pickAnswerDelay,
+  pickCharacterPrepDelay,
+  pickChoiceAnswerDelay,
   pickRandomEnabled,
   todayStr,
   type AnswerCard,
   type CharacterQuestionCard,
-  type QAnswer,
   type QCharacter,
+  type QOption,
   type QPendingAnswer,
   type QPost,
-  type QPostMode,
   type SystemQuestionCard,
 } from "@/data/questionnaire";
 
@@ -42,6 +45,8 @@ import {
 
 import { useCollection } from "@/lib/CollectionContext";
 import PoolEditor from "@/components/apps/questionnaire/PoolEditor";
+import NewQuestionModal from "@/components/apps/questionnaire/NewQuestionModal";
+import SpawnMenu from "@/components/apps/questionnaire/SpawnMenu";
 
 type QuestionnaireAppProps = {
   onBack: () => void;
@@ -122,12 +127,13 @@ function GearIcon() {
 export default function QuestionnaireApp({
   onBack,
 }: QuestionnaireAppProps) {
-    const {
+  const {
     items: collectionItems,
     add: addCollection,
     remove: removeCollection,
     tryAutoCollect,
   } = useCollection();
+
   const [posts, setPosts] = useState<QPost[]>([]);
   const [cqCards, setCQCards] = useState<
     CharacterQuestionCard[]
@@ -143,7 +149,12 @@ export default function QuestionnaireApp({
     useState(false);
 
   const [showAskModal, setShowAskModal] = useState(false);
-  const [askText, setAskText] = useState("");
+
+  const [showSpawnMenu, setShowSpawnMenu] =
+    useState(false);
+
+  /* 每秒 tick，用于刷新"正在准备…"的倒计时 */
+  const [nowTick, setNowTick] = useState(Date.now());
 
   const [replyDrafts, setReplyDrafts] = useState<
     Record<string, string>
@@ -193,8 +204,28 @@ export default function QuestionnaireApp({
       if (duePendings.length === 0) return p;
 
       const newAnswers = [...p.answers];
+      const isChoice =
+        !!p.options && p.options.length > 0;
 
       for (const pnd of duePendings) {
+        if (isChoice) {
+          /* 选项问卷：从选项里随机选一个 */
+          const opts = p.options!;
+          const opt =
+            opts[Math.floor(Math.random() * opts.length)];
+
+          newAnswers.push({
+            id: createQAnswerId(),
+            author: pnd.character,
+            text: opt.text,
+            createdAt: now,
+            optionId: opt.id,
+          });
+          changed = true;
+          continue;
+        }
+
+        /* 文字问题：从回答卡池抽 */
         const card = pickRandomEnabled(
           answers.filter(
             (c) => c.character === pnd.character
@@ -320,11 +351,19 @@ export default function QuestionnaireApp({
     return () => window.clearInterval(t);
   }, [processPendingAnswers]);
 
+  /* 每秒 tick，用于刷新"正在准备…"占位 */
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      setNowTick(Date.now());
+    }, 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
   /* ---------- 用户提问 ---------- */
 
-  function submitUserQuestion() {
-    const text = askText.trim();
-    if (!text) return;
+  function submitUserQuestionWith(text: string) {
+    const t = text.trim();
+    if (!t) return;
 
     const now = Date.now();
 
@@ -342,28 +381,82 @@ export default function QuestionnaireApp({
     const post: QPost = {
       id: createQPostId(),
       mode: "user-asked",
-      question: text,
+      question: t,
       createdAt: now,
       answers: [],
       pending,
     };
 
     commitPosts([post, ...postsRef.current]);
-    setAskText("");
     setShowAskModal(false);
 
     /* 系统自动收藏判定（1%~5%） */
     tryAutoCollect({
       source: "qa",
       sourceId: post.id,
-      content: text,
+      content: t,
       sender: "You",
       originalAt: now,
       meta: { mode: "user-asked" },
     });
   }
 
-  /* ---------- 手动触发角色主动提问 ---------- */
+  /* ---------- 用户发选项问卷 ---------- */
+
+  function submitUserChoiceQuestion(
+    question: string,
+    optionTexts: string[]
+  ) {
+    const now = Date.now();
+
+    const options: QOption[] = optionTexts.map((t) => ({
+      id: createQOptionId(),
+      text: t,
+    }));
+
+    const pending: QPendingAnswer[] = [
+      {
+        character: "Levi",
+        scheduledAt: now + pickChoiceAnswerDelay(),
+      },
+      {
+        character: "Erwin",
+        scheduledAt: now + pickChoiceAnswerDelay(),
+      },
+    ];
+
+    const post: QPost = {
+      id: createQPostId(),
+      mode: "user-asked",
+      question,
+      options,
+      createdAt: now,
+      answers: [],
+      pending,
+    };
+
+    commitPosts([post, ...postsRef.current]);
+
+    /* 系统自动收藏判定 */
+    tryAutoCollect({
+      source: "qa",
+      sourceId: post.id,
+      content: `${question}\n${optionTexts
+        .map(
+          (t, i) =>
+            `${String.fromCharCode(65 + i)}. ${t}`
+        )
+        .join("\n")}`,
+      sender: "You",
+      originalAt: now,
+      meta: {
+        mode: "user-asked",
+        kind: "choice",
+      },
+    });
+  }
+
+  /* ---------- 角色文字提问（立即生成） ---------- */
 
   function triggerCharacterQuestion() {
     const cq = cqCardsRef.current;
@@ -384,6 +477,112 @@ export default function QuestionnaireApp({
     };
 
     commitPosts([post, ...postsRef.current]);
+  }
+
+  /* ---------- 角色选项问卷（延迟 10~50s 出现） ---------- */
+
+  function triggerCharacterChoiceQuestion() {
+    const cq = cqCardsRef.current;
+    const ac = acCardsRef.current;
+
+    const pickQ = pickRandomEnabled(cq);
+    if (!pickQ) {
+      alert("Character Question 卡池为空。");
+      return;
+    }
+
+    /* 从对应角色的 AnswerCard 里抽 2~4 个不重复的选项 */
+    const candidateAnswers = ac.filter(
+      (c) =>
+        c.enabled && c.character === pickQ.character
+    );
+
+    if (candidateAnswers.length < 2) {
+      alert(
+        `${pickQ.character} 的 Answer 卡池不足以生成选项（至少需要 2 张）。`
+      );
+      return;
+    }
+
+    /* 洗牌后取 2~4 个 */
+    const shuffled = [...candidateAnswers];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [
+        shuffled[j],
+        shuffled[i],
+      ];
+    }
+
+    const count = Math.min(
+      2 + Math.floor(Math.random() * 3),
+      shuffled.length
+    );
+
+    const chosen = shuffled.slice(0, count);
+
+    const options: QOption[] = chosen.map((c) => ({
+      id: createQOptionId(),
+      text: c.text,
+    }));
+
+    const now = Date.now();
+
+    const post: QPost = {
+      id: createQPostId(),
+      mode: "character-asked",
+      question: pickQ.text,
+      options,
+      askedBy: pickQ.character,
+      createdAt: now,
+      answers: [],
+      pending: [],
+      availableAt: now + pickCharacterPrepDelay(),
+    };
+
+    commitPosts([post, ...postsRef.current]);
+  }
+
+  /* ---------- 用户对角色选项问卷作答 ---------- */
+
+  function submitYuiChoiceAnswer(
+    postId: string,
+    optionId: string
+  ) {
+    const post = postsRef.current.find(
+      (p) => p.id === postId
+    );
+    if (!post) return;
+    if (post.yuiAnswered) return;
+    if (!post.options) return;
+
+    const opt = post.options.find(
+      (o) => o.id === optionId
+    );
+    if (!opt) return;
+
+    const now = Date.now();
+
+    const next = postsRef.current.map((p) =>
+      p.id === postId
+        ? {
+            ...p,
+            answers: [
+              ...p.answers,
+              {
+                id: createQAnswerId(),
+                author: "Yui" as const,
+                text: opt.text,
+                createdAt: now,
+                optionId: opt.id,
+              },
+            ],
+            yuiAnswered: true,
+          }
+        : p
+    );
+
+    commitPosts(next);
   }
 
   /* ---------- Yui 回答（character-asked / daily） ---------- */
@@ -416,14 +615,15 @@ export default function QuestionnaireApp({
       delete copy[postId];
       return copy;
     });
-
   }
 
   /* ---------- 删除 ---------- */
 
   function deletePost(id: string) {
     if (!window.confirm("删除这条问卷？")) return;
-    commitPosts(postsRef.current.filter((p) => p.id !== id));
+    commitPosts(
+      postsRef.current.filter((p) => p.id !== id)
+    );
   }
 
   function deleteAnswer(postId: string, answerId: string) {
@@ -441,7 +641,8 @@ export default function QuestionnaireApp({
     );
     commitPosts(next);
   }
-    /* ---------- 收藏 ---------- */
+
+  /* ---------- 收藏 ---------- */
 
   function isPostCollected(postId: string): boolean {
     return collectionItems.some(
@@ -470,6 +671,17 @@ export default function QuestionnaireApp({
 
     lines.push("【问题】");
     lines.push(post.question);
+
+    /* 选项问卷附加选项 */
+    if (post.options && post.options.length > 0) {
+      lines.push("");
+      post.options.forEach((opt, i) => {
+        lines.push(
+          `${String.fromCharCode(65 + i)}. ${opt.text}`
+        );
+      });
+    }
+
     lines.push("");
 
     if (post.answers.length > 0) {
@@ -483,8 +695,7 @@ export default function QuestionnaireApp({
     const sender: "You" | "Levi" | "Erwin" | null =
       post.mode === "user-asked"
         ? "You"
-        : post.mode === "character-asked" &&
-            post.askedBy
+        : post.mode === "character-asked" && post.askedBy
           ? post.askedBy
           : null;
 
@@ -498,6 +709,7 @@ export default function QuestionnaireApp({
       meta: {
         mode: post.mode,
         answerCount: post.answers.length,
+        isChoice: !!post.options?.length,
       },
     });
   }
@@ -522,6 +734,50 @@ export default function QuestionnaireApp({
   /* ---------- 卡片渲染 ---------- */
 
   function renderPost(post: QPost) {
+    /* 正在准备中：显示占位卡片 */
+    if (
+      post.availableAt &&
+      post.availableAt > nowTick
+    ) {
+      return (
+        <article
+          key={post.id}
+          className="q-post q-post-preparing"
+        >
+          <div className="q-post-head">
+            <div className="q-post-mode-tag">
+              From Them
+            </div>
+
+            <div className="q-post-time">
+              Preparing…
+            </div>
+          </div>
+
+          <div className="q-preparing-row">
+            <div
+              className={`q-avatar q-avatar-small ${
+                post.askedBy === "Levi"
+                  ? "q-avatar-levi"
+                  : "q-avatar-erwin"
+              }`}
+            >
+              {post.askedBy?.charAt(0) ?? "?"}
+            </div>
+            <span className="q-preparing-text">
+              {post.askedBy ?? "他们"} 正在准备问题…
+            </span>
+          </div>
+
+          <div className="q-preparing-dots">
+            <span />
+            <span />
+            <span />
+          </div>
+        </article>
+      );
+    }
+
     const modeLabel = getModeLabel(post.mode);
 
     const asker: QCharacter | null =
@@ -533,18 +789,12 @@ export default function QuestionnaireApp({
       ? getQAuthorDisplay(asker)
       : null;
 
-    /* 顶部小标题 */
-    let title = "";
-    if (post.mode === "user-asked") {
-      title = "Yui 提问";
-    } else if (post.mode === "character-asked") {
-      title = `${asker ?? ""} 提问`;
-    } else {
-      title = "Daily Question";
-    }
+    /* 选项问卷不显示 Yui 文字输入框 */
+    const isChoice = isChoicePost(post);
 
     /* 是否显示"等待 Yui 回答"输入框 */
     const showYuiReply =
+      !isChoice &&
       !post.yuiAnswered &&
       (post.mode === "character-asked" ||
         post.mode === "daily");
@@ -601,6 +851,7 @@ export default function QuestionnaireApp({
             ×
           </button>
         </div>
+
         {/* 提问人 */}
         {asker && askerDisplay && (
           <div className="q-post-asker">
@@ -618,16 +869,71 @@ export default function QuestionnaireApp({
           {post.question}
         </div>
 
+        {/* 选项列表 */}
+        {isChoicePost(post) &&
+          post.options &&
+          (() => {
+            const isYuiAnswerable =
+              post.mode === "character-asked" &&
+              !post.yuiAnswered;
+
+            return (
+              <div className="q-options">
+                {post.options.map((opt, i) => {
+                  const isChosen = post.answers.some(
+                    (a) => a.optionId === opt.id
+                  );
+
+                  if (isYuiAnswerable) {
+                    return (
+                      <button
+                        key={opt.id}
+                        className="q-option q-option-clickable"
+                        onClick={() =>
+                          submitYuiChoiceAnswer(
+                            post.id,
+                            opt.id
+                          )
+                        }
+                        type="button"
+                      >
+                        <span className="q-option-label">
+                          {String.fromCharCode(65 + i)}
+                        </span>
+                        <span className="q-option-text">
+                          {opt.text}
+                        </span>
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={opt.id}
+                      className={`q-option${
+                        isChosen ? " is-chosen" : ""
+                      }`}
+                    >
+                      <span className="q-option-label">
+                        {String.fromCharCode(65 + i)}
+                      </span>
+                      <span className="q-option-text">
+                        {opt.text}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
         {/* 回答列表 */}
         {post.answers.length > 0 && (
           <div className="q-post-answers">
             {post.answers.map((a) => {
               const aDisplay = getQAuthorDisplay(a.author);
               return (
-                <div
-                  key={a.id}
-                  className="q-answer"
-                >
+                <div key={a.id} className="q-answer">
                   <div
                     className={`q-avatar q-avatar-small ${aDisplay.colorClass}`}
                   >
@@ -717,12 +1023,19 @@ export default function QuestionnaireApp({
         {/* 如果 Yui 已回答（character-asked），显示一个小标签 */}
         {post.mode === "character-asked" &&
           post.yuiAnswered && (
-            <div className="q-post-hint">
-              已回复
+            <div className="q-post-hint">已回复</div>
+          )}
+
+        {/* 角色选项问卷，用户还没回答 → 提示可点击 */}
+        {isChoicePost(post) &&
+          post.mode === "character-asked" &&
+          !post.yuiAnswered && (
+            <div className="q-post-hint q-post-hint-choice">
+              点一个选项回答
             </div>
           )}
 
-        {/* 如果 daily 已由 Yui 回答，但 Levi/Erwin 还在 pending 里 —— 已经在上面处理 */}
+        {/* 等待角色回答的提示 */}
         {answeredCharacters.size > 0 &&
           post.pending.length > 0 &&
           post.mode !== "character-asked" && (
@@ -763,8 +1076,8 @@ export default function QuestionnaireApp({
 
         <button
           className="q-icon-btn"
-          onClick={triggerCharacterQuestion}
-          aria-label="随机提问"
+          onClick={() => setShowSpawnMenu(true)}
+          aria-label="让他们提问"
         >
           <SparkleIcon />
         </button>
@@ -779,10 +1092,7 @@ export default function QuestionnaireApp({
 
         <button
           className="q-add-btn"
-          onClick={() => {
-            setAskText("");
-            setShowAskModal(true);
-          }}
+          onClick={() => setShowAskModal(true)}
           aria-label="提问"
         >
           <PlusIcon />
@@ -832,57 +1142,15 @@ export default function QuestionnaireApp({
 
       {/* 提问弹窗 */}
       {showAskModal && (
-        <div
-          className="q-modal-backdrop"
-          onClick={() => setShowAskModal(false)}
-        >
-          <div
-            className="q-modal q-ask-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="q-modal-header">
-              <h2>New Question</h2>
-              <button
-                className="q-modal-close"
-                onClick={() => setShowAskModal(false)}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="q-ask-to">
-              Levi 和 Erwin 都会回答
-            </div>
-
-            <textarea
-              className="q-ask-textarea"
-              value={askText}
-              onChange={(e) =>
-                setAskText(e.target.value)
-              }
-              placeholder="问他们一个问题…"
-              maxLength={200}
-              autoFocus
-              rows={4}
-            />
-
-            <div className="q-modal-footer">
-              <button
-                className="q-btn ghost"
-                onClick={() => setShowAskModal(false)}
-              >
-                取消
-              </button>
-              <button
-                className="q-btn"
-                onClick={submitUserQuestion}
-                disabled={!askText.trim()}
-              >
-                发布
-              </button>
-            </div>
-          </div>
-        </div>
+        <NewQuestionModal
+          onClose={() => setShowAskModal(false)}
+          onSubmitText={(text) =>
+            submitUserQuestionWith(text)
+          }
+          onSubmitChoice={(q, opts) =>
+            submitUserChoiceQuestion(q, opts)
+          }
+        />
       )}
 
       {/* 卡池编辑 */}
@@ -904,6 +1172,15 @@ export default function QuestionnaireApp({
             saveSQCards(next);
           }}
           onClose={() => setShowPoolEditor(false)}
+        />
+      )}
+
+      {/* ✦ 菜单 */}
+      {showSpawnMenu && (
+        <SpawnMenu
+          onClose={() => setShowSpawnMenu(false)}
+          onSpawnText={triggerCharacterQuestion}
+          onSpawnChoice={triggerCharacterChoiceQuestion}
         />
       )}
     </main>

@@ -28,6 +28,9 @@ export default function CallOverlay({
   const isRinging = phase === "incoming";
   const isConnected = phase === "connected";
 
+  /* 缩小键：正在呼叫 + 已接通时可点。来电时先让用户决定接不接 */
+  const showMinimize = isCalling || isConnected;
+
   let statusText = "";
   if (isCalling) statusText = "正在呼叫…";
   else if (isRinging)
@@ -48,6 +51,22 @@ export default function CallOverlay({
 
   return (
     <div className="call-overlay">
+      {/* 顶栏 */}
+      <div className="call-overlay-topbar">
+        {showMinimize ? (
+          <button
+            className="call-minimize-btn"
+            onClick={onMinimize}
+            type="button"
+            aria-label="缩小到悬浮窗"
+          >
+            <span className="call-minimize-icon">⌄</span>
+          </button>
+        ) : (
+          <span className="call-minimize-placeholder" />
+        )}
+      </div>
+
       <div className="call-overlay-content">
         <div className="call-avatar">{avatarText}</div>
 

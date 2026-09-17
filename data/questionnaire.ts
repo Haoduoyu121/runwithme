@@ -1,13 +1,23 @@
 export type QCharacter = "Levi" | "Erwin";
 export type QAuthor = "Yui" | QCharacter;
 
-export type QPostMode = "user-asked" | "character-asked" | "daily";
+export type QPostMode =
+  | "user-asked"
+  | "character-asked"
+  | "daily";
+
+export type QOption = {
+  id: string;
+  text: string;
+};
 
 export type QAnswer = {
   id: string;
   author: QAuthor;
   text: string;
   createdAt: number;
+  /* 如果是选项回答，记录选了哪个选项 */
+  optionId?: string;
 };
 
 export type QPendingAnswer = {
@@ -19,11 +29,15 @@ export type QPost = {
   id: string;
   mode: QPostMode;
   question: string;
+  /* 如果存在且非空，就是选项问卷 */
+  options?: QOption[];
   askedBy?: QCharacter;
   createdAt: number;
   answers: QAnswer[];
   pending: QPendingAnswer[];
   yuiAnswered?: boolean;
+  /* 角色准备中的问卷：到时间前显示"正在准备…" */
+  availableAt?: number;
 };
 
 /* 卡池类型 */
@@ -71,6 +85,12 @@ export function createQCardId(prefix: string): string {
     .slice(2, 6)}`;
 }
 
+export function createQOptionId(): string {
+  return `qopt-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 6)}`;
+}
+
 /* 时间显示 */
 export function formatQTimeAgo(ts: number): string {
   const diff = Date.now() - ts;
@@ -102,11 +122,29 @@ export function formatQFullTime(ts: number): string {
   });
 }
 
-/* 1 min ~ 3 h */
+/* 1 min ~ 3 h（文字问答的延迟） */
 export function pickAnswerDelay(): number {
   const min = 60 * 1000;
   const max = 3 * 60 * 60 * 1000;
   return Math.floor(Math.random() * (max - min)) + min;
+}
+
+/* 用户发的选项问卷：1~5 分钟延迟 */
+export function pickChoiceAnswerDelay(): number {
+  const min = 60 * 1000;
+  const max = 5 * 60 * 1000;
+  return (
+    Math.floor(Math.random() * (max - min)) + min
+  );
+}
+
+/* 角色发选项问卷前的"准备时间"：10~50 秒 */
+export function pickCharacterPrepDelay(): number {
+  const min = 10 * 1000;
+  const max = 50 * 1000;
+  return (
+    Math.floor(Math.random() * (max - min)) + min
+  );
 }
 
 export function pickRandomEnabled<
@@ -155,4 +193,9 @@ export function getModeLabel(mode: QPostMode): string {
   if (mode === "user-asked") return "From You";
   if (mode === "character-asked") return "From Them";
   return "Daily";
+}
+
+/* 判断是否是选项问卷 */
+export function isChoicePost(post: QPost): boolean {
+  return !!post.options && post.options.length > 0;
 }

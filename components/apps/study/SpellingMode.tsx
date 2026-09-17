@@ -8,7 +8,6 @@ type Props = {
   word: Word;
   onResult: (correct: boolean) => void;
   onPlay: () => void;
-  playing: boolean;
 };
 
 type Status = "idle" | "correct" | "wrong";
@@ -17,13 +16,11 @@ export default function SpellingMode({
   word,
   onResult,
   onPlay,
-  playing,
 }: Props) {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  /* 切词时复位 + 聚焦 */
   useEffect(() => {
     setInput("");
     setStatus("idle");
@@ -43,19 +40,16 @@ export default function SpellingMode({
     if (correct) {
       setStatus("correct");
       onPlay();
-      /* 正确：短暂展示后自动跳到下一个 */
       window.setTimeout(() => onResult(true), 800);
     } else {
       setStatus("wrong");
       onPlay();
-      /* 错误：不自动跳，等用户点"继续" */
     }
   }
 
   function skip() {
     setStatus("wrong");
     onPlay();
-    /* 同上，不自动跳 */
   }
 
   function goNext() {
@@ -73,12 +67,6 @@ export default function SpellingMode({
           <div className="study-spell-meaning">
             {word.meaning}
           </div>
-
-          {word.example && status === "idle" && (
-            <div className="study-spell-example">
-              {word.example}
-            </div>
-          )}
 
           {status === "wrong" && (
             <div className="study-spell-answer">

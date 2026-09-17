@@ -8,25 +8,23 @@ type Props = {
   word: Word;
   onKnown: () => void;
   onUnknown: () => void;
-  onPlay: () => void;
-  playing: boolean;
-  /* 上一个 / 下一个（未翻转时显示） */
   canPrev: boolean;
   onPrev: () => void;
+  playing: boolean;
+  onPlay: () => void;
 };
 
 export default function FlashcardMode({
   word,
   onKnown,
   onUnknown,
-  onPlay,
-  playing,
   canPrev,
   onPrev,
+  playing,
+  onPlay,
 }: Props) {
   const [flipped, setFlipped] = useState(false);
 
-  /* 切词时复位 */
   useEffect(() => {
     setFlipped(false);
   }, [word.id]);
@@ -43,44 +41,46 @@ export default function FlashcardMode({
             type="button"
             aria-label={flipped ? "显示单词" : "显示释义"}
           >
-            <div className="study-flip-face study-flip-front">
-              <div className="study-flip-word">
-                {word.text}
-              </div>
-
-              <span
-                className={`study-flip-play${
-                  playing ? " is-playing" : ""
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPlay();
-                }}
-                role="button"
-                tabIndex={0}
-                aria-label="播放发音"
-              >
-                {playing ? "❚❚" : "▶"}
-              </span>
-
-              <div className="study-flip-hint">
-                点一下看释义
-              </div>
-            </div>
-
-            <div className="study-flip-face study-flip-back">
-              <div className="study-flip-meaning">
-                {word.meaning}
-              </div>
-              {word.example && (
-                <div className="study-flip-example">
-                  {word.example}
+            {!flipped ? (
+              <div className="study-flip-face study-flip-front">
+                <div className="study-flip-word">
+                  {word.text}
                 </div>
-              )}
-              <div className="study-flip-hint">
-                点一下回到单词
+
+                <span
+                  className={`study-flip-play${
+                    playing ? " is-playing" : ""
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPlay();
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="播放发音"
+                >
+                  {playing ? "❚❚" : "▶"}
+                </span>
+
+                <div className="study-flip-hint">
+                  点一下看释义
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="study-flip-face study-flip-back">
+                <div className="study-flip-meaning">
+                  {word.meaning}
+                </div>
+                {word.example && (
+                  <div className="study-flip-example">
+                    {word.example}
+                  </div>
+                )}
+                <div className="study-flip-hint">
+                  点一下回到单词
+                </div>
+              </div>
+            )}
           </button>
         </div>
       </div>

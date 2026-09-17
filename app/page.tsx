@@ -13,6 +13,7 @@ import NotesApp from "@/components/apps/NotesApp";
 import QuestionnaireApp from "@/components/apps/QuestionnaireApp";
 import CheckInApp from "@/components/apps/CheckInApp";
 import LetterApp from "@/components/apps/LetterApp";
+import WatchApp from "@/components/apps/WatchApp";
 
 import {
   loadSystemSettings,
@@ -104,6 +105,18 @@ const apps = [
     id: "study" as AppId,
     name: "Study",
     icon: "✎",
+    color: "blue",
+  },
+    {
+    id: "study" as AppId,
+    name: "Study",
+    icon: "✎",
+    color: "blue",
+  },
+  {
+    id: "watch" as AppId,
+    name: "Watch",
+    icon: "▷",
     color: "blue",
   },
 ];
@@ -404,6 +417,7 @@ function AppWindow({
         <CollectionApp onBack={onBack} />
       )}
       {app === "study" && <StudyApp onBack={onBack} />}
+      {app === "watch" && <WatchApp onBack={onBack} />}
     </div>
   );
 }

@@ -176,7 +176,6 @@ button {
 }
 
 .lock-content {
-  margin-top: 130px;
   text-align: center;
 }
 
@@ -22849,11 +22848,6 @@ html[data-runwithme-theme="dark"]
   padding-top: calc(env(safe-area-inset-top) + 12px) !important;
 }
 
-/* 锁屏内容避开顶部 */
-.lock-screen .lock-content {
-  padding-top: calc(env(safe-area-inset-top) + 80px) !important;
-}
-
 /* 底部安全区只在各 dock 上生效 */
 .dock {
   bottom: 0 !important;
@@ -28710,4 +28704,3470 @@ html[data-runwithme-theme="dark"]
   .study-match-wrong-count {
   background: rgba(224, 93, 93, 0.2);
   color: #eb9090;
+}
+/* =========================================================================
+   Study · 翻转卡片清理 + 统计面板
+   ========================================================================= */
+
+/* 移除已删除的播放按钮残留（如果有） */
+.study-flip-play {
+  display: none !important;
+}
+
+/* 卡片切换的淡入动画 */
+.study-flip-front,
+.study-flip-back {
+  animation: studyFlipIn 0.25s ease;
+}
+
+/* ---------- 统计 ---------- */
+
+.study-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.study-stat-card {
+  padding: 18px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 4px 14px rgba(90, 60, 65, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+html[data-runwithme-theme="dark"] .study-stat-card {
+  background: rgba(48, 42, 47, 0.55);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.study-stat-value {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1;
+  color: #4f3940;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-runwithme-theme="dark"] .study-stat-value {
+  color: #fff2e9;
+}
+
+.study-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* ---------- Section ---------- */
+
+.study-stats-section {
+  margin-bottom: 22px;
+}
+
+.study-stats-section-label {
+  padding: 0 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* ---------- 今日 ---------- */
+
+.study-stats-today {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+html[data-runwithme-theme="dark"] .study-stats-today {
+  background: rgba(48, 42, 47, 0.55);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.study-stats-today-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.study-stats-today-row span {
+  opacity: 0.6;
+}
+
+.study-stats-today-row strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 7 天柱状 ---------- */
+
+.study-stats-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 16px 14px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  height: 160px;
+}
+
+html[data-runwithme-theme="dark"] .study-stats-chart {
+  background: rgba(48, 42, 47, 0.5);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.study-stats-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+
+.study-stats-bar-value {
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #8e656f;
+  min-height: 12px;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-stats-bar-value {
+  color: #d9bcc4;
+}
+
+.study-stats-bar {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px;
+  background: rgba(142, 101, 111, 0.08);
+  overflow: hidden;
+  min-height: 0;
+}
+
+html[data-runwithme-theme="dark"] .study-stats-bar {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.study-stats-bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #fcbec3, #8e656f);
+  border-radius: 6px;
+  transition: height 0.4s ease;
+  min-height: 2px;
+}
+
+.study-stats-bar-label {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.55;
+}
+
+/* ---------- 词书进度 ---------- */
+
+.study-stats-book-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.study-stats-book-item {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-stats-book-item {
+  background: rgba(48, 42, 47, 0.55);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.study-stats-book-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.study-stats-book-head strong {
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.study-stats-book-head span {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
+
+.study-stats-book-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(142, 101, 111, 0.1);
+  overflow: hidden;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-stats-book-bar {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.study-stats-book-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fcbec3, #8e656f);
+  transition: width 0.4s ease;
+}
+
+.study-stats-book-meta {
+  font-size: 10px;
+  opacity: 0.55;
+}
+/* =========================================================================
+   恢复卡片正面播放按钮
+   ========================================================================= */
+
+.study-flip-play {
+  display: flex !important;
+}
+/* =========================================================================
+   Study · 错题集入口
+   ========================================================================= */
+
+.study-mistakes-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(224, 93, 93, 0.12),
+    rgba(252, 190, 195, 0.18)
+  );
+  border: 1px solid rgba(224, 93, 93, 0.18);
+  box-shadow: 0 4px 14px rgba(90, 60, 65, 0.05);
+}
+
+html[data-runwithme-theme="dark"]
+  .study-mistakes-entry {
+  background: linear-gradient(
+    135deg,
+    rgba(224, 93, 93, 0.15),
+    rgba(252, 190, 195, 0.08)
+  );
+  border-color: rgba(224, 93, 93, 0.25);
+}
+
+.study-mistakes-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.study-mistakes-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #c94d4d;
+  opacity: 0.8;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-mistakes-label {
+  color: #eb9090;
+}
+
+.study-mistakes-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #4f3940;
+  line-height: 1.1;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-mistakes-title {
+  color: #fff2e9;
+}
+
+.study-mistakes-count {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.study-mistakes-btn {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #e05d5d;
+  color: #fff2e9;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(224, 93, 93, 0.24);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+.study-mistakes-btn:hover {
+  transform: translateY(-1px);
+  background: #eb7070;
+}
+
+.study-mistakes-btn:active {
+  transform: scale(0.96);
+}
+/* =========================================================================
+   Study · 每日一句
+   ========================================================================= */
+
+.study-daily {
+  position: relative;
+  padding: 24px 22px 22px;
+  border-radius: 22px;
+  background: linear-gradient(
+    160deg,
+    rgba(252, 190, 195, 0.32),
+    rgba(207, 222, 227, 0.28)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 8px 26px rgba(90, 60, 65, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+html[data-runwithme-theme="dark"] .study-daily {
+  background: linear-gradient(
+    160deg,
+    rgba(252, 190, 195, 0.12),
+    rgba(207, 222, 227, 0.08)
+  );
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 26px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.study-daily-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.study-daily-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #8e656f;
+  opacity: 0.7;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-daily-label {
+  color: #fcbec3;
+}
+
+.study-daily-collect {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #8e656f;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.55;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.study-daily-collect:hover {
+  opacity: 1;
+  background: rgba(142, 101, 111, 0.1);
+  transform: scale(1.06);
+}
+
+.study-daily-collect:active {
+  transform: scale(0.92);
+}
+
+.study-daily-collect.is-collected {
+  opacity: 1;
+  color: #d4a24a;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-daily-collect.is-collected {
+  color: #ffd47a;
+}
+
+.study-daily-text {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.005em;
+  color: #46323a;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-daily-text {
+  color: #fff2e9;
+}
+
+.study-daily-source {
+  font-size: 13px;
+  font-style: italic;
+  opacity: 0.6;
+  text-align: right;
+  font-family: "Cormorant Garamond", Georgia, serif;
+}
+/* =========================================================================
+   Study · 鼓励气泡 + 卡池编辑
+   ========================================================================= */
+
+.study-cheer-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(150px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 10px 10px;
+  border-radius: 999px;
+  background: rgba(255, 248, 245, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 14px 34px rgba(80, 50, 60, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  max-width: min(340px, calc(100% - 40px));
+  cursor: pointer;
+  animation: studyCheerIn 0.4s cubic-bezier(
+    0.34,
+    1.56,
+    0.64,
+    1
+  );
+}
+
+html[data-runwithme-theme="dark"]
+  .study-cheer-bubble {
+  background: rgba(45, 40, 44, 0.96);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+@keyframes studyCheerIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px)
+      scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+.study-cheer-bubble:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
+.study-cheer-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff2e9;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 2px 8px rgba(80, 50, 60, 0.15);
+}
+
+.study-cheer-avatar-levi {
+  background: linear-gradient(140deg, #b08a93, #8e656f);
+}
+
+.study-cheer-avatar-erwin {
+  background: linear-gradient(140deg, #b89aa0, #9b7f86);
+}
+
+.study-cheer-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.study-cheer-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(94, 70, 80, 0.6);
+}
+
+html[data-runwithme-theme="dark"]
+  .study-cheer-name {
+  color: rgba(255, 244, 239, 0.5);
+}
+
+.study-cheer-text {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #46323a;
+  word-break: break-word;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-cheer-text {
+  color: #fff2e9;
+}
+
+/* ---------- 设置里的"管理卡池"按钮 ---------- */
+
+.study-settings-manage-btn {
+  margin-top: 10px;
+  align-self: flex-start;
+  padding: 8px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.2);
+  border-radius: 999px;
+  background: transparent;
+  color: #8e656f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.study-settings-manage-btn:hover {
+  background: rgba(252, 190, 195, 0.2);
+  transform: translateY(-1px);
+}
+
+html[data-runwithme-theme="dark"]
+  .study-settings-manage-btn {
+  color: #f3dfe4;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ---------- 卡池编辑 ---------- */
+
+.study-cheer-pool-modal {
+  max-width: 480px;
+}
+
+.study-cheer-pool-hint {
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0.6;
+  margin-bottom: 14px;
+}
+
+.study-cheer-pool-add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  margin-top: 12px;
+}
+
+.study-cheer-pool-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-cheer-pool-add input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.study-cheer-pool-add button {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.study-cheer-pool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.study-cheer-pool-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(142, 101, 111, 0.06);
+}
+
+html[data-runwithme-theme="dark"]
+  .study-cheer-pool-item {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.study-cheer-pool-item.is-disabled {
+  opacity: 0.45;
+}
+
+.study-cheer-pool-item input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(142, 101, 111, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .study-cheer-pool-item input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.study-cheer-pool-toggle {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(142, 101, 111, 0.12);
+  color: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.study-cheer-pool-delete {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(224, 93, 93, 0.12);
+  color: #e05d5d;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.study-cheer-pool-empty {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.5;
+}
+/* =========================================================================
+   Study · Footer 左右布局
+   ========================================================================= */
+
+.study-modal-footer-split {
+  justify-content: space-between !important;
+}
+/* =========================================================================
+   Call Overlay · 顶栏缩小键
+   ========================================================================= */
+
+.call-overlay-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: calc(env(safe-area-inset-top) + 12px) 16px 0;
+  pointer-events: none;
+}
+
+.call-minimize-btn {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff2e9;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    opacity 0.15s ease;
+  opacity: 0.9;
+}
+
+.call-minimize-btn:hover {
+  background: rgba(255, 255, 255, 0.24);
+  transform: scale(1.05);
+  opacity: 1;
+}
+
+.call-minimize-btn:active {
+  transform: scale(0.94);
+}
+
+.call-minimize-icon {
+  display: block;
+  font-size: 24px;
+  line-height: 0.5;
+  margin-top: -6px;
+  font-weight: 300;
+}
+
+.call-minimize-placeholder {
+  width: 44px;
+  height: 44px;
+}
+/* =========================================================================
+   Q&A · 选项问卷
+   ========================================================================= */
+
+/* ---------- 弹窗内的 tab 切换 ---------- */
+
+.q-tab-segment {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: rgba(142, 101, 111, 0.08);
+}
+
+html[data-runwithme-theme="dark"] .q-tab-segment {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.q-tab-segment button {
+  flex: 1;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.q-tab-segment button.active {
+  background: #fcbec3;
+  color: #8e656f;
+  font-weight: 700;
+}
+
+html[data-runwithme-theme="dark"]
+  .q-tab-segment button.active {
+  background: rgba(252, 190, 195, 0.3);
+  color: #f3dfe4;
+}
+
+/* ---------- 选项问卷编辑 ---------- */
+
+.q-choice-question-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+html[data-runwithme-theme="dark"]
+  .q-choice-question-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.q-choice-question-input:focus {
+  border-color: rgba(142, 101, 111, 0.4);
+}
+
+.q-choice-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.q-choice-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.q-choice-option-label {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(252, 190, 195, 0.4);
+  color: #8e656f;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+html[data-runwithme-theme="dark"]
+  .q-choice-option-label {
+  background: rgba(252, 190, 195, 0.18);
+  color: #f3dfe4;
+}
+
+.q-choice-option-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .q-choice-option-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.q-choice-option-input:focus {
+  border-color: rgba(142, 101, 111, 0.4);
+}
+
+.q-choice-option-remove {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.08);
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.q-choice-option-remove:hover {
+  background: rgba(224, 93, 93, 0.18);
+  opacity: 1;
+}
+
+.q-choice-add-option {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px dashed rgba(142, 101, 111, 0.28);
+  border-radius: 10px;
+  background: transparent;
+  color: #8e656f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.q-choice-add-option:hover {
+  background: rgba(252, 190, 195, 0.15);
+  border-color: rgba(252, 190, 195, 0.5);
+}
+
+html[data-runwithme-theme="dark"]
+  .q-choice-add-option {
+  color: #f3dfe4;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ---------- 选项问卷卡片里的选项列表 ---------- */
+
+.q-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.q-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(142, 101, 111, 0.06);
+  font-size: 13px;
+  color: inherit;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+  border: 1px solid transparent;
+}
+
+html[data-runwithme-theme="dark"] .q-option {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.q-option.is-chosen {
+  background: rgba(252, 190, 195, 0.35);
+  border-color: rgba(142, 101, 111, 0.3);
+  font-weight: 600;
+}
+
+html[data-runwithme-theme="dark"]
+  .q-option.is-chosen {
+  background: rgba(252, 190, 195, 0.15);
+  border-color: rgba(252, 190, 195, 0.3);
+}
+
+.q-option-label {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(142, 101, 111, 0.12);
+  color: inherit;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.q-option.is-chosen .q-option-label {
+  background: #8e656f;
+  color: #fff2e9;
+  opacity: 1;
+}
+
+html[data-runwithme-theme="dark"]
+  .q-option.is-chosen
+  .q-option-label {
+  background: #fcbec3;
+  color: #4f3940;
+}
+
+.q-option-text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  line-height: 1.4;
+}
+/* =========================================================================
+   Q&A · ✦ 菜单 + 准备中占位 + 可点击选项
+   ========================================================================= */
+
+/* ---------- ✦ 菜单 ---------- */
+
+.q-spawn-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9200;
+  background: rgba(0, 0, 0, 0.32);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: calc(env(safe-area-inset-top) + 70px) 18px
+    18px;
+  animation: qSpawnFade 0.2s ease;
+}
+
+@keyframes qSpawnFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.q-spawn-menu {
+  width: min(280px, 88vw);
+  padding: 12px;
+  border-radius: 20px;
+  background: rgba(255, 248, 245, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 20px 50px rgba(60, 40, 45, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: qSpawnIn 0.22s cubic-bezier(
+    0.34,
+    1.3,
+    0.64,
+    1
+  );
+}
+
+html[data-runwithme-theme="dark"] .q-spawn-menu {
+  background: rgba(33, 28, 32, 0.98);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+@keyframes qSpawnIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.q-spawn-label {
+  padding: 2px 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.q-spawn-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.q-spawn-item:hover {
+  background: rgba(252, 190, 195, 0.22);
+}
+
+.q-spawn-item:active {
+  transform: scale(0.98);
+}
+
+.q-spawn-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(252, 190, 195, 0.4);
+  color: #8e656f;
+  font-size: 18px;
+}
+
+html[data-runwithme-theme="dark"] .q-spawn-icon {
+  background: rgba(252, 190, 195, 0.18);
+  color: #f3dfe4;
+}
+
+.q-spawn-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.q-spawn-info strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.q-spawn-info span {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ---------- 准备中占位卡片 ---------- */
+
+.q-post-preparing {
+  opacity: 0.85;
+  border-left: 3px solid #cfdee3;
+}
+
+.q-preparing-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+
+.q-preparing-text {
+  font-size: 13px;
+  font-style: italic;
+  opacity: 0.65;
+}
+
+.q-preparing-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+
+.q-preparing-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8e656f;
+  opacity: 0.35;
+  animation: qPreparingDot 1.2s ease-in-out infinite;
+}
+
+.q-preparing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.q-preparing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes qPreparingDot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+/* ---------- 可点击的选项 ---------- */
+
+.q-option-clickable {
+  border: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.12s ease;
+}
+
+.q-option-clickable:hover {
+  background: rgba(252, 190, 195, 0.3);
+  transform: translateY(-1px);
+}
+
+.q-option-clickable:active {
+  transform: scale(0.98);
+}
+
+html[data-runwithme-theme="dark"]
+  .q-option-clickable:hover {
+  background: rgba(252, 190, 195, 0.15);
+}
+
+/* "点一个选项回答" 提示 */
+.q-post-hint-choice {
+  margin-top: 4px;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+}
+/* =========================================================================
+   Watch App · L1 骨架
+   ========================================================================= */
+
+.watch-app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fff2e9;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"] .watch-app {
+  background: #17131a;
+  color: #fff2e9;
+}
+
+.watch-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 6px;
+}
+
+.watch-back {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.watch-back:hover {
+  background: rgba(142, 101, 111, 0.08);
+}
+
+.watch-header-center {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.watch-header-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.watch-header-sub {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  opacity: 0.55;
+  margin-top: 3px;
+}
+
+.watch-header-placeholder {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.watch-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 12px 16px
+    calc(40px + env(safe-area-inset-bottom));
+}
+
+.watch-empty {
+  padding: 80px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.watch-empty-icon {
+  font-size: 44px;
+  opacity: 0.4;
+  margin-bottom: 6px;
+  color: #8e656f;
+}
+
+html[data-runwithme-theme="dark"] .watch-empty-icon {
+  color: #fcbec3;
+}
+
+.watch-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.watch-empty-desc {
+  font-size: 12px;
+  opacity: 0.65;
+  max-width: 260px;
+  line-height: 1.6;
+}
+/* =========================================================================
+   Watch App · L2 导入（本地 mp4 + B 站链接）
+   ========================================================================= */
+
+/* ---------- Header 右上角 + 按钮 ---------- */
+
+.watch-import-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 14px rgba(142, 101, 111, 0.24);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+.watch-import-btn:hover {
+  background: #7a545e;
+  transform: translateY(-1px);
+}
+
+.watch-import-btn:active {
+  transform: scale(0.94);
+}
+
+/* ---------- Empty 状态的动作按钮 ---------- */
+
+.watch-empty-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.watch-empty-btn {
+  padding: 11px 20px;
+  border: 1px solid rgba(142, 101, 111, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.watch-empty-btn:hover {
+  background: rgba(252, 190, 195, 0.28);
+  border-color: rgba(252, 190, 195, 0.6);
+  transform: translateY(-1px);
+}
+
+.watch-empty-btn:active {
+  transform: scale(0.96);
+}
+
+html[data-runwithme-theme="dark"] .watch-empty-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-runwithme-theme="dark"] .watch-empty-btn:hover {
+  background: rgba(252, 190, 195, 0.12);
+}
+
+/* ---------- 已导入视频的信息卡 ---------- */
+
+.watch-source-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8px 24px rgba(90, 60, 65, 0.07);
+}
+
+html[data-runwithme-theme="dark"] .watch-source-card {
+  background: rgba(48, 42, 47, 0.6);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.watch-source-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.watch-source-tag {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(252, 190, 195, 0.4);
+  color: #8e656f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+html[data-runwithme-theme="dark"] .watch-source-tag {
+  background: rgba(252, 190, 195, 0.18);
+  color: #f3dfe4;
+}
+
+.watch-source-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watch-source-meta {
+  font-size: 11px;
+  line-height: 1.55;
+  opacity: 0.6;
+  word-break: break-all;
+}
+
+.watch-source-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.watch-source-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.watch-source-btn:hover {
+  background: rgba(252, 190, 195, 0.28);
+  border-color: rgba(252, 190, 195, 0.6);
+  transform: translateY(-1px);
+}
+
+.watch-source-btn:active {
+  transform: scale(0.97);
+}
+
+.watch-source-btn.danger {
+  background: rgba(224, 93, 93, 0.12);
+  border-color: rgba(224, 93, 93, 0.24);
+  color: #c94d4d;
+}
+
+.watch-source-btn.danger:hover {
+  background: rgba(224, 93, 93, 0.22);
+  border-color: rgba(224, 93, 93, 0.4);
+}
+
+html[data-runwithme-theme="dark"] .watch-source-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-runwithme-theme="dark"] .watch-source-btn.danger {
+  background: rgba(224, 93, 93, 0.15);
+  border-color: rgba(224, 93, 93, 0.3);
+  color: #eb9090;
+}
+
+.watch-source-preview-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0.5;
+  text-align: center;
+  font-style: italic;
+}
+
+/* ---------- 导入 Bottom Sheet ---------- */
+
+.watch-import-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9400;
+  background: rgba(0, 0, 0, 0.42);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: watchImportFade 0.2s ease;
+}
+
+@keyframes watchImportFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.watch-import-sheet {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  background: #fff8f3;
+  color: #4f3940;
+  padding: 8px 20px
+    calc(20px + env(safe-area-inset-bottom));
+  box-shadow: 0 -20px 50px rgba(60, 40, 45, 0.22);
+  animation: watchImportSheetIn 0.28s cubic-bezier(
+    0.34,
+    1.2,
+    0.64,
+    1
+  );
+}
+
+html[data-runwithme-theme="dark"] .watch-import-sheet {
+  background: #211c20;
+  color: #fff2e9;
+}
+
+@keyframes watchImportSheetIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.watch-import-handle {
+  width: 40px;
+  height: 4px;
+  margin: 6px auto 12px;
+  border-radius: 999px;
+  background: rgba(142, 101, 111, 0.28);
+  flex-shrink: 0;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-import-handle {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.watch-import-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(142, 101, 111, 0.08);
+  margin-bottom: 16px;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-import-tabs {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.watch-import-tab {
+  flex: 1;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.watch-import-tab.active {
+  background: #fcbec3;
+  color: #8e656f;
+  font-weight: 700;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-import-tab.active {
+  background: rgba(252, 190, 195, 0.3);
+  color: #f3dfe4;
+}
+
+.watch-import-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.watch-import-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  opacity: 0.62;
+  word-break: break-all;
+}
+
+.watch-import-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.75);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-import-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.watch-import-input:focus {
+  border-color: rgba(142, 101, 111, 0.42);
+}
+
+.watch-import-input::placeholder {
+  color: rgba(142, 101, 111, 0.42);
+  font-size: 12px;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-import-input::placeholder {
+  color: rgba(255, 244, 239, 0.3);
+}
+
+.watch-import-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(224, 93, 93, 0.12);
+  color: #c94d4d;
+  font-size: 12px;
+  line-height: 1.5;
+  animation: watchImportFade 0.2s ease;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-import-error {
+  background: rgba(224, 93, 93, 0.15);
+  color: #eb9090;
+}
+
+.watch-import-confirm {
+  padding: 13px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #8e656f;
+  color: #fff2e9;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(142, 101, 111, 0.24);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.watch-import-confirm:hover:not(:disabled) {
+  background: #7a545e;
+  transform: translateY(-1px);
+}
+
+.watch-import-confirm:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.watch-import-confirm:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.watch-import-cancel {
+  margin-top: 10px;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(142, 101, 111, 0.08);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.watch-import-cancel:hover {
+  background: rgba(142, 101, 111, 0.16);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-import-cancel {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- iOS 上传按钮（隐藏 input，用 label 触发） ---------- */
+
+.watch-file-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 20px;
+  border: 1px dashed rgba(142, 101, 111, 0.32);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+  color: #8e656f;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.watch-file-label:hover {
+  background: rgba(252, 190, 195, 0.2);
+  border-color: rgba(252, 190, 195, 0.6);
+}
+
+.watch-file-label:active {
+  transform: scale(0.98);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-file-label {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f3dfe4;
+}
+
+.watch-file-input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+/* =========================================================================
+   Watch App · L3 播放器（本地 video + B 站 iframe + 全屏旋转兜底）
+   ========================================================================= */
+
+.watch-play-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- 播放器容器 ---------- */
+
+.watch-player {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 8px 22px rgba(30, 20, 25, 0.18);
+}
+
+.watch-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+
+/* ---------- 全屏 ---------- */
+
+.watch-player.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.watch-player.is-fullscreen.is-rotated {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: 100vh;
+  height: 100vw;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center center;
+}
+
+/* ---------- 控制条 ---------- */
+
+.watch-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(20, 15, 20, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.watch-player.is-fullscreen .watch-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 16px
+    calc(18px + env(safe-area-inset-bottom));
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85),
+    rgba(0, 0, 0, 0.4) 60%,
+    transparent
+  );
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+
+.watch-player.is-fullscreen
+  .watch-controls.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+
+/* 进度条 */
+
+.watch-progress {
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.watch-progress::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff2e9;
+  border: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.watch-progress::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff2e9;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+/* 底部控制行 */
+
+.watch-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff2e9;
+}
+
+.watch-ctrl-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.watch-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.watch-ctrl-btn:active {
+  transform: scale(0.94);
+}
+
+.watch-time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.watch-time-sep {
+  opacity: 0.5;
+}
+
+/* 音量 */
+
+.watch-volume {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.watch-volume-slider {
+  width: 72px;
+  height: 3px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.watch-volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #fff2e9;
+  border: 0;
+}
+
+.watch-volume-slider::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff2e9;
+}
+
+/* 倍速 */
+
+.watch-rate-wrap {
+  position: relative;
+}
+
+.watch-rate-btn {
+  width: auto;
+  min-width: 46px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.watch-rate-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(30, 22, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  min-width: 68px;
+  animation: watchRateIn 0.16s ease;
+}
+
+@keyframes watchRateIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.watch-rate-option {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff2e9;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.12s ease;
+}
+
+.watch-rate-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.watch-rate-option.active {
+  background: #fcbec3;
+  color: #8e656f;
+  font-weight: 700;
+}
+
+/* ---------- B 站 iframe ---------- */
+
+.watch-bili-stage {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 8px 22px rgba(30, 20, 25, 0.18);
+}
+
+.watch-bili-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+/* =========================================================================
+   Watch App · L4 邀请流程
+   ========================================================================= */
+
+/* ---------- 邀请区域 ---------- */
+
+.watch-invite-zone {
+  margin-top: 4px;
+}
+
+/* 邀请按钮 */
+
+.watch-invite-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border: 1px solid rgba(142, 101, 111, 0.2);
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(252, 190, 195, 0.28),
+    rgba(207, 222, 227, 0.24)
+  );
+  color: #8e656f;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow:
+    0 4px 14px rgba(90, 60, 65, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.watch-invite-trigger:hover {
+  transform: translateY(-1px);
+  border-color: rgba(142, 101, 111, 0.35);
+  box-shadow:
+    0 10px 24px rgba(90, 60, 65, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.watch-invite-trigger:active {
+  transform: scale(0.98);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-trigger {
+  background: linear-gradient(
+    135deg,
+    rgba(252, 190, 195, 0.12),
+    rgba(207, 222, 227, 0.08)
+  );
+  color: #f3dfe4;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.watch-invite-trigger-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* ---------- 邀请状态条 ---------- */
+
+.watch-invite-status {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: 0 6px 18px rgba(90, 60, 65, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: watchInviteStatusIn 0.3s ease;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-status {
+  background: rgba(48, 42, 47, 0.6);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+@keyframes watchInviteStatusIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.watch-invite-status-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8e656f;
+  opacity: 0.75;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-status-title {
+  color: #fcbec3;
+}
+
+.watch-invite-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.watch-invite-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(142, 101, 111, 0.06);
+  transition: background 0.25s ease;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-status-row {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.watch-invite-status-row.is-accepted {
+  background: rgba(126, 209, 126, 0.18);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-status-row.is-accepted {
+  background: rgba(126, 209, 126, 0.14);
+}
+
+.watch-invite-status-row.is-rejected {
+  opacity: 0.65;
+}
+
+.watch-invite-status-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff2e9;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 2px 6px rgba(80, 50, 60, 0.1);
+}
+
+.watch-invite-status-row .watch-invite-status-avatar {
+  background: linear-gradient(140deg, #b08a93, #8e656f);
+}
+
+/* 用 partner 对应的颜色 */
+.watch-invite-status-row.is-pending
+  .watch-invite-status-avatar {
+  background: linear-gradient(140deg, #b08a93, #8e656f);
+}
+
+.watch-invite-status-row.is-accepted
+  .watch-invite-status-avatar {
+  background: linear-gradient(140deg, #90dd90, #4d9a4d);
+  color: #143c14;
+}
+
+.watch-invite-status-row.is-rejected
+  .watch-invite-status-avatar {
+  background: rgba(142, 101, 111, 0.35);
+  color: rgba(255, 242, 233, 0.75);
+}
+
+.watch-invite-status-name {
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.watch-invite-status-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.watch-invite-status-row.is-accepted
+  .watch-invite-status-text {
+  color: #2d6f2d;
+  opacity: 1;
+  font-weight: 600;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-status-row.is-accepted
+  .watch-invite-status-text {
+  color: #8fdc8f;
+}
+
+/* pending 三点动画 */
+
+.watch-invite-status-dots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding-bottom: 3px;
+  flex-shrink: 0;
+}
+
+.watch-invite-status-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8e656f;
+  opacity: 0.35;
+  animation: watchInviteDot 1.2s ease-in-out infinite;
+}
+
+.watch-invite-status-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.watch-invite-status-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes watchInviteDot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+/* 状态条底部动作 */
+
+.watch-invite-status-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.watch-invite-action-btn {
+  padding: 8px 16px;
+  border: 1px solid rgba(142, 101, 111, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.watch-invite-action-btn:hover {
+  background: rgba(252, 190, 195, 0.28);
+  border-color: rgba(252, 190, 195, 0.6);
+  transform: translateY(-1px);
+}
+
+.watch-invite-action-btn:active {
+  transform: scale(0.96);
+}
+
+.watch-invite-action-btn.primary {
+  background: #8e656f;
+  color: #fff2e9;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(142, 101, 111, 0.24);
+}
+
+.watch-invite-action-btn.primary:hover {
+  background: #7a545e;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-action-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-action-btn.primary {
+  background: #fcbec3;
+  color: #4f3940;
+  border-color: transparent;
+}
+
+.watch-invite-accepted-hint {
+  flex: 1;
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.55;
+  letter-spacing: 0.04em;
+  text-align: right;
+}
+
+/* ---------- 邀请 Sheet ---------- */
+
+.watch-invite-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9400;
+  background: rgba(0, 0, 0, 0.42);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: watchImportFade 0.2s ease;
+}
+
+.watch-invite-sheet {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  background: #fff8f3;
+  color: #4f3940;
+  padding: 8px 20px
+    calc(20px + env(safe-area-inset-bottom));
+  box-shadow: 0 -20px 50px rgba(60, 40, 45, 0.22);
+  animation: watchImportSheetIn 0.28s cubic-bezier(
+    0.34,
+    1.2,
+    0.64,
+    1
+  );
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-sheet {
+  background: #211c20;
+  color: #fff2e9;
+}
+
+.watch-invite-sheet-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.watch-invite-sheet-sub {
+  font-size: 11px;
+  text-align: center;
+  opacity: 0.55;
+  margin-bottom: 16px;
+}
+
+.watch-invite-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.watch-invite-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 8px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.55);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.watch-invite-option:hover {
+  transform: translateY(-2px);
+  border-color: rgba(252, 190, 195, 0.6);
+  background: rgba(252, 190, 195, 0.2);
+}
+
+.watch-invite-option:active {
+  transform: scale(0.97);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-invite-option {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.watch-invite-option-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff2e9;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 3px 10px rgba(80, 50, 60, 0.12);
+}
+
+.watch-invite-option-levi .watch-invite-option-avatar {
+  background: linear-gradient(140deg, #b08a93, #8e656f);
+}
+
+.watch-invite-option-erwin .watch-invite-option-avatar {
+  background: linear-gradient(140deg, #b89aa0, #9b7f86);
+}
+
+.watch-invite-option-both .watch-invite-option-avatar {
+  background: linear-gradient(
+    140deg,
+    #b08a93 0%,
+    #b08a93 49%,
+    #b89aa0 51%,
+    #b89aa0 100%
+  );
+  font-size: 13px;
+}
+
+.watch-invite-option-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.watch-invite-option-desc {
+  font-size: 10px;
+  opacity: 0.55;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* =========================================================================
+   Watch App · L5 一起看聊天
+   ========================================================================= */
+
+/* ---------- 聊天模式下的滚动容器与布局 ---------- */
+
+.watch-scroll.is-chat {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 env(safe-area-inset-bottom) 0;
+  overflow: hidden;
+}
+
+.watch-play-wrap.is-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 0;
+}
+
+.watch-play-wrap.is-chat .watch-player,
+.watch-play-wrap.is-chat .watch-bili-stage {
+  flex-shrink: 0;
+  border-radius: 0;
+  box-shadow: none;
+  aspect-ratio: 16 / 9;
+}
+
+/* ---------- 聊天容器 ---------- */
+
+.watch-chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff8f3;
+}
+
+html[data-runwithme-theme="dark"] .watch-chat {
+  background: #1a1518;
+}
+
+/* ---------- 聊天顶栏 ---------- */
+
+.watch-chat-topbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.08);
+  background: rgba(255, 248, 243, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html[data-runwithme-theme="dark"] .watch-chat-topbar {
+  background: rgba(33, 28, 32, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.watch-chat-topbar-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #8e656f;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-chat-topbar-label {
+  color: #f3dfe4;
+}
+
+.watch-chat-exit {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.watch-chat-exit:hover {
+  opacity: 1;
+  background: rgba(224, 93, 93, 0.15);
+  color: #c94d4d;
+}
+
+.watch-chat-exit:active {
+  transform: scale(0.92);
+}
+
+html[data-runwithme-theme="dark"] .watch-chat-exit {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- 消息区 ---------- */
+
+.watch-chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 14px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.watch-chat-system {
+  align-self: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+html[data-runwithme-theme="dark"] .watch-chat-system {
+  background: rgba(255, 255, 255, 0.06);
+  color: #d9bcc4;
+}
+
+/* 消息行 */
+
+.watch-chat-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 82%;
+  animation: watchChatIn 0.25s ease;
+}
+
+@keyframes watchChatIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.watch-chat-row.is-you {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.watch-chat-row.is-other {
+  align-self: flex-start;
+}
+
+/* 头像 */
+
+.watch-chat-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff2e9;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 2px 6px rgba(80, 50, 60, 0.12);
+}
+
+.watch-chat-avatar-levi {
+  background: linear-gradient(140deg, #b08a93, #8e656f);
+}
+
+.watch-chat-avatar-erwin {
+  background: linear-gradient(140deg, #b89aa0, #9b7f86);
+}
+
+/* 气泡 */
+
+.watch-chat-bubble-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.watch-chat-row.is-you .watch-chat-bubble-wrap {
+  align-items: flex-end;
+}
+
+.watch-chat-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #8e656f;
+  opacity: 0.7;
+  padding-left: 4px;
+}
+
+html[data-runwithme-theme="dark"] .watch-chat-name {
+  color: #d9bcc4;
+}
+
+.watch-chat-bubble {
+  display: inline-block;
+  max-width: 100%;
+  padding: 9px 13px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+  white-space: pre-wrap;
+  background: rgba(142, 101, 111, 0.1);
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"] .watch-chat-bubble {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff2e9;
+}
+
+.watch-chat-row.is-other .watch-chat-bubble {
+  border-bottom-left-radius: 5px;
+}
+
+.watch-chat-row.is-you .watch-chat-bubble {
+  background: #fcbec3;
+  color: #4f3940;
+  border-bottom-right-radius: 5px;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-chat-row.is-you
+  .watch-chat-bubble {
+  background: #8e656f;
+  color: #fff2e9;
+}
+
+.watch-chat-meta {
+  font-size: 9px;
+  opacity: 0.4;
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 打字指示 */
+
+.watch-chat-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 14px;
+  min-width: 54px;
+}
+
+.watch-chat-typing span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8e656f;
+  opacity: 0.5;
+  animation: watchChatTyping 1.2s ease-in-out infinite;
+}
+
+html[data-runwithme-theme="dark"] .watch-chat-typing span {
+  background: #d9bcc4;
+}
+
+.watch-chat-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.watch-chat-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes watchChatTyping {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+/* ---------- 输入框 ---------- */
+
+.watch-chat-composer {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid rgba(142, 101, 111, 0.08);
+  background: rgba(255, 248, 243, 0.98);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html[data-runwithme-theme="dark"] .watch-chat-composer {
+  background: rgba(33, 28, 32, 0.98);
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+.watch-chat-input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 16px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"] .watch-chat-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.watch-chat-input:focus {
+  border-color: rgba(142, 101, 111, 0.42);
+}
+
+.watch-chat-input::placeholder {
+  color: rgba(142, 101, 111, 0.42);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-chat-input::placeholder {
+  color: rgba(255, 244, 239, 0.32);
+}
+
+.watch-chat-send {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 14px rgba(142, 101, 111, 0.24);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.watch-chat-send:hover:not(:disabled) {
+  background: #7a545e;
+  transform: translateY(-1px);
+}
+
+.watch-chat-send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.watch-chat-send:disabled {
+  opacity: 0.35;
+  cursor: default;
+  box-shadow: none;
+}
+
+html[data-runwithme-theme="dark"] .watch-chat-send {
+  background: #fcbec3;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-chat-send:hover:not(:disabled) {
+  background: #ffd4d8;
+}
+/* =========================================================================
+   Watch App · L6 一起看设置
+   ========================================================================= */
+
+/* ---------- 聊天顶栏齿轮按钮 ---------- */
+
+.watch-chat-settings-btn {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    transform 0.2s ease;
+}
+
+.watch-chat-settings-btn:hover {
+  opacity: 1;
+  background: rgba(142, 101, 111, 0.2);
+  transform: rotate(30deg);
+}
+
+.watch-chat-settings-btn:active {
+  transform: rotate(30deg) scale(0.92);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-chat-settings-btn {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- 设置行 ---------- */
+
+.watch-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: rgba(142, 101, 111, 0.06);
+}
+
+html[data-runwithme-theme="dark"] .watch-settings-row {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.watch-settings-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.watch-settings-row-info strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.watch-settings-row-info small {
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0.6;
+}
+
+/* ---------- 开关 ---------- */
+
+.watch-settings-switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(142, 101, 111, 0.2);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.watch-settings-switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff2e9;
+  box-shadow: 0 2px 6px rgba(80, 50, 60, 0.2);
+  transition: transform 0.22s cubic-bezier(
+    0.34,
+    1.2,
+    0.64,
+    1
+  );
+}
+
+.watch-settings-switch.on {
+  background: #fcbec3;
+}
+
+.watch-settings-switch.on span {
+  transform: translateX(20px);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-settings-switch {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-settings-switch.on {
+  background: #fcbec3;
+}
+/* =========================================================================
+   Watch App · L6.5 卡池编辑器
+   ========================================================================= */
+
+.watch-card-editor-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  margin-right: 6px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.watch-card-editor-btn:hover {
+  background: rgba(142, 101, 111, 0.2);
+}
+
+.watch-card-editor-btn:active {
+  transform: scale(0.94);
+}
+
+html[data-runwithme-theme="dark"] .watch-card-editor-btn {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- Sheet ---------- */
+
+.watch-card-editor-sheet {
+  max-height: 85vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.watch-card-editor-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(142, 101, 111, 0.08);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-card-editor-tabs {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.watch-card-editor-tabs .watch-import-tab {
+  flex: 1;
+}
+
+/* ---------- 添加行 ---------- */
+
+.watch-card-editor-add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.watch-card-editor-add .watch-import-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.watch-card-editor-add-btn {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #8e656f;
+  color: #fff2e9;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.watch-card-editor-add-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---------- 列表 ---------- */
+
+.watch-card-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 14px;
+}
+
+.watch-card-editor-empty {
+  padding: 30px 12px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.watch-card-editor-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(142, 101, 111, 0.06);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-card-editor-item {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.watch-card-editor-item.is-disabled {
+  opacity: 0.45;
+}
+
+.watch-card-editor-text {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(142, 101, 111, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-card-editor-text {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.watch-card-editor-text:focus {
+  border-color: rgba(142, 101, 111, 0.4);
+}
+
+.watch-card-editor-toggle {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(142, 101, 111, 0.12);
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.watch-card-editor-delete {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(224, 93, 93, 0.12);
+  color: #e05d5d;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- footer ---------- */
+
+.watch-card-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.watch-card-editor-reset {
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(142, 101, 111, 0.7);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.watch-card-editor-reset:hover {
+  background: rgba(142, 101, 111, 0.08);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-card-editor-reset {
+  color: rgba(255, 244, 239, 0.6);
+}
+
+html[data-runwithme-theme="dark"]
+  .watch-card-editor-reset:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+/* =========================================================================
+   全局精修 · 第 1 轮
+   1. 锁屏时间栏上移（对齐真机锁屏视觉）
+   2. 所有 App 顶栏避让刘海 / 状态栏
+   ========================================================================= */
+
+/* ---------- 1. 锁屏：干掉旧的 margin-top + 太大的 padding-top ---------- */
+
+.lock-screen .lock-content {
+  /* 旧 CSS 里有一条 .lock-content { margin-top: 130px; }
+     它和 padding-top 叠加，导致时间栏整体偏下 */
+  margin-top: 0 !important;
+
+  /* 用 safe-area + 屏幕高度的 8% 定位，视觉上约等于真机锁屏 */
+  padding-top: calc(
+    env(safe-area-inset-top) + clamp(48px, 8vh, 96px)
+  ) !important;
+}
+
+/* ---------- 2. 所有 App 顶栏：统一避让刘海 ---------- */
+
+.chat-page .telegram-header,
+.icity-header,
+.icity-detail-header,
+.icity-profile-header,
+.calendar-header,
+.notes-header,
+.notes-editor-header,
+.checkin-header,
+.q-header,
+.music-v2-header,
+.photos-app-header,
+.letter-header,
+.letter-detail-header,
+.watch-header,
+.collection-header,
+.study-header,
+.study-subheader {
+  padding-top: calc(
+    env(safe-area-inset-top) + 12px
+  ) !important;
+  height: auto !important;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+/* ---------- 3. Studio / Home Studio / Settings ---------- */
+
+.studio-header {
+  padding-top: calc(
+    env(safe-area-inset-top) + 20px
+  ) !important;
+  box-sizing: border-box;
+}
+
+.studio-settings-page .studio-header {
+  padding-top: calc(
+    env(safe-area-inset-top) + 20px
+  ) !important;
+}
+
+.hs-page {
+  padding-top: calc(
+    env(safe-area-inset-top) + 24px
+  ) !important;
+  box-sizing: border-box;
+}
+
+/* ---------- 4. Home 主屏内容下移，避免贴顶 ---------- */
+
+.home-screen-v2 .home-v2-grid-wrap {
+  padding-top: calc(
+    env(safe-area-inset-top) + 12px
+  ) !important;
 }

@@ -3,13 +3,16 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
 import {
   createBookId,
   createWordId,
+  type DailySentence as DailySentenceType,
   type SessionPartner,
+  type StudyMistake,
   type StudySessionState,
   type StudySettings,
   type Word,
@@ -17,12 +20,28 @@ import {
 } from "@/data/study";
 
 import {
+  addMistake,
+  getTodaySentence,
+  hasSystemCollectedToday,
   loadBooks,
+  loadDailySentences,
+  loadMistakes,
   loadStudySettings,
   loadWords,
+  markSystemCollectedToday,
+  removeMistake,
   saveBooks,
+  saveMistakes,
   saveWords,
+  updateTodayRecord,
 } from "@/lib/studyStorage";
+
+import { useCollection } from "@/lib/CollectionContext";
+
+import {
+  loadCollectionNoteCards,
+  pickCollectionNoteCard,
+} from "@/lib/collectionNoteCardStorage";
 
 import BookList from "@/components/apps/study/BookList";
 import BookDetail from "@/components/apps/study/BookDetail";
@@ -30,6 +49,8 @@ import ImportCSVModal from "@/components/apps/study/ImportCSVModal";
 import StudyHome from "@/components/apps/study/StudyHome";
 import StudySession from "@/components/apps/study/StudySession";
 import StudySettingsPanel from "@/components/apps/study/StudySettingsPanel";
+import StatsPanel from "@/components/apps/study/StatsPanel";
+import DailySentence from "@/components/apps/study/DailySentence";
 
 import { initSpeech } from "@/lib/studyAudio";
 
@@ -51,13 +72,25 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 export default function StudyApp({
   onBack,
 }: StudyAppProps) {
+  const {
+    items: collectionItems,
+    add: addCollection,
+    remove: removeCollection,
+  } = useCollection();
+
   const [tab, setTab] = useState<Tab>("home");
+
+  const [todaySentence, setTodaySentence] =
+    useState<DailySentenceType | null>(null);
 
   const [books, setBooks] = useState<WordBook[]>([]);
   const [words, setWords] = useState<Word[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [settings, setSettings] =
     useState<StudySettings | null>(null);
+  const [mistakes, setMistakes] = useState<
+    StudyMistake[]
+  >([]);
 
   /* Library 里打开了哪本书 */
   const [openBookId, setOpenBookId] = useState<
@@ -81,9 +114,76 @@ export default function StudyApp({
     setBooks(loadBooks());
     setWords(loadWords());
     setSettings(loadStudySettings());
+    setMistakes(loadMistakes());
     initSpeech();
     setHydrated(true);
   }, []);
+
+  /* 加载今日一句 */
+  useEffect(() => {
+    if (!hydrated) return;
+    const all = loadDailySentences();
+    const s = getTodaySentence(all);
+    setTodaySentence(s);
+  }, [hydrated]);
+
+  /* 系统收藏判定（每天一次） */
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!todaySentence) return;
+    if (hasSystemCollectedToday()) return;
+
+    markSystemCollectedToday();
+
+    /* 抛硬币：4 种结果各 25% */
+    const r = Math.random();
+
+    let owners: ("levi" | "erwin")[] = [];
+    if (r < 0.25) {
+      /* 都不收藏 */
+      return;
+    } else if (r < 0.5) {
+      owners = ["levi"];
+    } else if (r < 0.75) {
+      owners = ["erwin"];
+    } else {
+      owners = ["levi", "erwin"];
+    }
+
+    /* 内容字符串 */
+    const content = `「${todaySentence.text}」${
+      todaySentence.source ? ` — ${todaySentence.source}` : ""
+    }`;
+
+    for (const owner of owners) {
+      /* 已存在同 owner + source + sourceId → 跳过 */
+      const exists = collectionItems.some(
+        (it) =>
+          it.owner === owner &&
+          it.source === "daily-sentence" &&
+          it.sourceId === todaySentence.id
+      );
+      if (exists) continue;
+
+      /* 从备注卡池抽一条 */
+      const cards = loadCollectionNoteCards();
+      const card = pickCollectionNoteCard(cards, owner);
+
+      addCollection({
+        owner,
+        source: "daily-sentence",
+        sourceId: todaySentence.id,
+        content,
+        note: card ? card.text : "",
+        originalAt: Date.now(),
+      });
+    }
+  }, [
+    hydrated,
+    todaySentence,
+    collectionItems,
+    addCollection,
+  ]);
 
   /* ---------- 提交 ---------- */
 
@@ -112,6 +212,74 @@ export default function StudyApp({
     },
     []
   );
+
+    const recordStudy = useCallback(
+    (wordIds: string[], correct: boolean) => {
+      updateTodayRecord(wordIds, correct);
+    },
+    []
+  );
+
+  const handleAddMistake = useCallback(
+    (wordId: string) => {
+      setMistakes((prev) => {
+        const next = addMistake(prev, wordId);
+        saveMistakes(next);
+        return next;
+      });
+    },
+    []
+  );
+
+  const handleRemoveMistake = useCallback(
+    (wordId: string) => {
+      setMistakes((prev) => {
+        const next = removeMistake(prev, wordId);
+        saveMistakes(next);
+        return next;
+      });
+    },
+    []
+  );
+
+    /* ---------- 每日一句：用户收藏 ---------- */
+
+  function toggleCollectTodaySentence() {
+    if (!todaySentence) return;
+
+    const existing = collectionItems.find(
+      (it) =>
+        it.owner === "user" &&
+        it.source === "daily-sentence" &&
+        it.sourceId === todaySentence.id
+    );
+
+    if (existing) {
+      removeCollection(existing.id);
+      return;
+    }
+
+    addCollection({
+      owner: "user",
+      source: "daily-sentence",
+      sourceId: todaySentence.id,
+      content: `「${todaySentence.text}」${
+        todaySentence.source
+          ? ` — ${todaySentence.source}`
+          : ""
+      }`,
+      originalAt: Date.now(),
+    });
+  }
+
+  const todaySentenceCollected = todaySentence
+    ? collectionItems.some(
+        (it) =>
+          it.owner === "user" &&
+          it.source === "daily-sentence" &&
+          it.sourceId === todaySentence.id
+      )
+    : false;
 
   /* ---------- 词书 CRUD ---------- */
 
@@ -370,8 +538,48 @@ export default function StudyApp({
       .map((w) => w.id);
 
     setSession({
+      kind: "normal",
       partner,
       bookId,
+      limit: settings.sessionSize,
+      wordIds,
+      index: 0,
+      startedAt: Date.now(),
+      studiedWordIds: [],
+    });
+  }
+
+  /* 错题集会话 */
+  function startMistakeSession(partner: SessionPartner) {
+    if (!settings) return;
+
+    /* 有效的错题 id */
+    const validIds = mistakes
+      .map((m) => m.wordId)
+      .filter((id) => words.some((w) => w.id === id));
+
+    if (validIds.length === 0) return;
+
+    /* 随机打乱 */
+    const shuffled = [...validIds];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [
+        shuffled[j],
+        shuffled[i],
+      ];
+    }
+
+    /* 只取前 sessionSize 个 */
+    const wordIds = shuffled.slice(
+      0,
+      settings.sessionSize
+    );
+
+    setSession({
+      kind: "mistakes",
+      partner,
+      bookId: "__mistakes__",
       limit: settings.sessionSize,
       wordIds,
       index: 0,
@@ -383,7 +591,11 @@ export default function StudyApp({
   /* 会话结束后"再来一轮"：同一个词书同一 partner，重新抽词 */
   function restartSession() {
     if (!session) return;
-    startSession(session.partner, session.bookId);
+    if (session.kind === "mistakes") {
+      startMistakeSession(session.partner);
+    } else {
+      startSession(session.partner, session.bookId);
+    }
   }
 
   function exitSession() {
@@ -401,13 +613,30 @@ export default function StudyApp({
     : [];
 
   /* 会话里的书 */
+  /* 错题集会话没有 book，用一个占位对象 */
   const sessionBook = session
-    ? books.find((b) => b.id === session.bookId) ?? null
+    ? session.kind === "mistakes"
+      ? ({
+          id: "__mistakes__",
+          name: "错题集",
+          description: "",
+          createdAt: 0,
+          updatedAt: 0,
+        } as WordBook)
+      : books.find((b) => b.id === session.bookId) ?? null
     : null;
 
-  const sessionWords = session
-    ? words.filter((w) => w.bookId === session.bookId)
-    : [];
+  /* 错题集会话：words 直接从 sessionWordIds 里取
+     普通会话：从 bookId 过滤 */
+  const sessionWords = useMemo(() => {
+    if (!session) return [];
+    if (session.kind === "mistakes") {
+      return words.filter((w) =>
+        session.wordIds.includes(w.id)
+      );
+    }
+    return words.filter((w) => w.bookId === session.bookId);
+  }, [session, words]);
 
   /* ---------- Render ---------- */
 
@@ -449,13 +678,20 @@ export default function StudyApp({
 
       {tab === "home" && (
         <div className="study-scroll">
-          <div className="study-empty">
-            <div className="study-empty-icon">☼</div>
-            <div className="study-empty-title">每日一句</div>
-            <div className="study-empty-desc">
-              每天一句文学摘抄，会显示在这里
+          {todaySentence ? (
+            <DailySentence
+              sentence={todaySentence}
+              collected={todaySentenceCollected}
+              onToggle={toggleCollectTodaySentence}
+            />
+          ) : (
+            <div className="study-empty">
+              <div className="study-empty-icon">☼</div>
+              <div className="study-empty-title">
+                还没有每日一句
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -499,7 +735,9 @@ export default function StudyApp({
           <StudyHome
             books={books}
             words={words}
+            mistakes={mistakes}
             onStart={startSession}
+            onStartMistakes={startMistakeSession}
           />
         )}
 
@@ -508,6 +746,7 @@ export default function StudyApp({
         sessionBook &&
         settings && (
           <StudySession
+            kind={session!.kind}
             partner={session!.partner}
             book={sessionBook}
             words={sessionWords}
@@ -516,19 +755,14 @@ export default function StudyApp({
             onExit={exitSession}
             onRestart={restartSession}
             onUpdateWord={patchWord}
+            onRecordStudy={recordStudy}
+            onAddMistake={handleAddMistake}
+            onRemoveMistake={handleRemoveMistake}
           />
         )}
 
       {tab === "stats" && (
-        <div className="study-scroll">
-          <div className="study-empty">
-            <div className="study-empty-icon">▦</div>
-            <div className="study-empty-title">统计</div>
-            <div className="study-empty-desc">
-              学习一些单词后，这里会显示数据
-            </div>
-          </div>
-        </div>
+        <StatsPanel books={books} words={words} />
       )}
 
       {!inSession && (

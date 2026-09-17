@@ -16,6 +16,8 @@ import {
   saveStudySettings,
 } from "@/lib/studyStorage";
 
+import CheerPoolEditor from "@/components/apps/study/CheerPoolEditor";
+
 type Props = {
   settings: StudySettings;
   onChange: (next: StudySettings) => void;
@@ -30,6 +32,7 @@ export default function StudySettingsPanel({
   const [voices, setVoices] = useState<
     SpeechSynthesisVoice[]
   >([]);
+  const [showCheerPool, setShowCheerPool] = useState(false);
 
   useEffect(() => {
     initSpeech();
@@ -305,6 +308,14 @@ export default function StudySettingsPanel({
               </button>
             ))}
           </div>
+
+          <button
+            type="button"
+            className="study-settings-manage-btn"
+            onClick={() => setShowCheerPool(true)}
+          >
+            管理鼓励卡池
+          </button>
         </div>
 
         <div className="study-modal-footer">
@@ -316,6 +327,12 @@ export default function StudySettingsPanel({
           </button>
         </div>
       </div>
+
+      {showCheerPool && (
+        <CheerPoolEditor
+          onClose={() => setShowCheerPool(false)}
+        />
+      )}
     </div>
   );
 }
