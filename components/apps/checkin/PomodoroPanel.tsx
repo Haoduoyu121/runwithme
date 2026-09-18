@@ -562,7 +562,7 @@ export default function PomodoroPanel({
               <input
                 ref={fileInputRef}
                 type="file"
-                className="ios-file-input"
+                className="ios-file-input-detached"
                 accept="image/*,video/*"
                 onChange={(e) => {
                   const files = e.target.files;
@@ -629,7 +629,7 @@ export default function PomodoroPanel({
               <input
                 ref={noiseInputRef}
                 type="file"
-                className="ios-file-input"
+                className="ios-file-input-detached"
                 accept="audio/*"
                 onChange={(e) => {
                   const files = e.target.files;

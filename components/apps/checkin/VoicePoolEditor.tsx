@@ -44,6 +44,11 @@ export default function VoicePoolEditor({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
 
+  /* 文件选择 */
+  const fileInputRef = useRef<HTMLInputElement | null>(
+    null
+  );
+
   /* 挂载时清理 */
   useEffect(() => {
     return () => {
@@ -246,13 +251,17 @@ export default function VoicePoolEditor({
           </div>
 
           <div className="voice-add-row voice-add-file-row">
-            <label className="voice-add-file">
+            <label
+              className="voice-add-file"
+              onClick={() => fileInputRef.current?.click()}
+            >
               {draftFile
                 ? draftFile.name
                 : "选择 mp3 / m4a"}
               <input
+                ref={fileInputRef}
                 type="file"
-                className="ios-file-input"
+                className="ios-file-input-detached"
                 accept="audio/*"
                 onChange={(e) => {
                   pickFile(e.target.files);

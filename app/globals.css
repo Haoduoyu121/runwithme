@@ -33723,3 +33723,23 @@ html[data-runwithme-theme="dark"] .music-upload-file-value {
   position: relative;
   z-index: 200;
 }
+/* =========================================================================
+   iOS 文件上传修复 v2 · 屏幕外隐藏
+   -------------------------------------------------------------------------
+   适用于"用 ref.click() 手动触发"的场景。
+   不要铺满父容器（否则会拦截父容器内所有点击）。
+   ========================================================================= */
+
+.ios-file-input-detached {
+  position: fixed !important;
+  left: -9999px !important;
+  top: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
