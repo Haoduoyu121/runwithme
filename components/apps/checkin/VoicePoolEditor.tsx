@@ -65,8 +65,22 @@ export default function VoicePoolEditor({
     if (!files || files.length === 0) return;
     const file = files[0];
 
-    if (!file.type.startsWith("audio/")) {
-      alert("请上传音频文件（mp3 / m4a / ogg 等）。");
+    const nameLower = (file.name || "").toLowerCase();
+    const isAudioByName =
+      nameLower.endsWith(".mp3") ||
+      nameLower.endsWith(".m4a") ||
+      nameLower.endsWith(".wav") ||
+      nameLower.endsWith(".aac") ||
+      nameLower.endsWith(".ogg") ||
+      nameLower.endsWith(".opus");
+    const isAudioByType =
+      typeof file.type === "string" &&
+      file.type.toLowerCase().startsWith("audio/");
+
+    if (!isAudioByName && !isAudioByType) {
+      alert(
+        "请上传音频文件（mp3 / m4a / wav / aac / ogg / opus）。"
+      );
       return;
     }
 
@@ -262,7 +276,7 @@ export default function VoicePoolEditor({
                 ref={fileInputRef}
                 type="file"
                 className="ios-file-input-detached"
-                accept="audio/*"
+                accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a"
                 onChange={(e) => {
                   pickFile(e.target.files);
                   e.target.value = "";

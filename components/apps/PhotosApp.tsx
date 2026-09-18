@@ -610,9 +610,7 @@ export default function PhotosApp({
 
             <button
               className="photos-app-upload"
-              onClick={() =>
-                requestAnimationFrame(() => fileInputRef.current?.click())
-              }
+              onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               aria-label="上传照片"
             >
@@ -622,29 +620,20 @@ export default function PhotosApp({
         )}
       </header>
 
- <input
-  ref={fileInputRef}
-  type="file"
-  accept="image/*"
-  multiple
-  style={{
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: 1,
-    height: 1,
-    opacity: 0,
-    overflow: "hidden",
-    zIndex: -1,
-  }}
-  onChange={(e) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      void handleUpload(files);
-    }
-    e.target.value = "";
-  }}
-/>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="ios-file-input-detached"
+        accept="image/*"
+        multiple
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files.length > 0) {
+            void handleUpload(files);
+          }
+          e.target.value = "";
+        }}
+      />
       {/* 分类 tabs */}
       {!selectionMode && (
         <div className="photos-app-tabs">
@@ -731,9 +720,7 @@ export default function PhotosApp({
 
             <button
               className="photos-app-empty-btn"
-              onClick={() =>
-                requestAnimationFrame(() => fileInputRef.current?.click())
-              }
+              onClick={() => fileInputRef.current?.click()}
             >
               上传照片
             </button>
