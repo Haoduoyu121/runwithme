@@ -33627,3 +33627,78 @@ html[data-runwithme-theme="dark"]
 .home-widget-collection-star {
   font-size: 11px;
 }
+/* =========================================================================
+   iOS 文件上传统一修复
+   =========================================================================
+   关键：不用 zIndex: -1（会让 iOS 拒绝弹出选择器）
+   用法：<label class="X" style="position: relative"> 里面放 <input class="ios-file-input" />
+   ========================================================================= */
+
+.ios-file-input {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  /* 不要 z-index，不要 pointer-events: none */
+}
+
+/* 已有的上传按钮 label 加相对定位 */
+.chat-settings-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-settings-avatar-actions label {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Music 封面按钮（改成 label 后） */
+.music-v2-panel-item-cover-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Music 音频文件上传（新样式） */
+.music-upload-file-label {
+  position: relative;
+  overflow: hidden;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.music-upload-file-value {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-runwithme-theme="dark"] .music-upload-file-value {
+  background: rgba(255, 255, 255, 0.06);
+}
+/* =========================================================================
+   Chat 长按修复 · iOS
+   ========================================================================= */
+
+.chat-message-longpress-target {
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}

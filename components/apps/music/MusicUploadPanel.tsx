@@ -25,16 +25,6 @@ type MusicUploadPanelProps = {
   onClose: () => void;
 };
 
-const IOS_SAFE_FILE_STYLE: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  width: 1,
-  height: 1,
-  opacity: 0,
-  overflow: "hidden",
-  zIndex: -1,
-};
 
 export default function MusicUploadPanel({
   onClose,
@@ -52,8 +42,6 @@ export default function MusicUploadPanel({
   const [coverUrls, setCoverUrls] = useState<
     Record<string, string>
   >({});
-  const coverInputRef = useRef<HTMLInputElement | null>(null);
-  const coverTargetRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMusic(loadMusic(defaultMusic));
@@ -215,38 +203,27 @@ export default function MusicUploadPanel({
     );
   }
 
-  /* ★ 封面管理 */
-  function handleCoverClick(itemId: string) {
-    coverTargetRef.current = itemId;
-    coverInputRef.current?.click();
-  }
-
-  async function handleCoverFile(file: File) {
-    const targetId = coverTargetRef.current;
-    coverTargetRef.current = null;
-    if (!targetId) return;
-
+  /* ★ 封面管理（直接接收 itemId，不再用 ref 中转） */
+  async function handleCoverFile(itemId: string, file: File) {
     if (!file.type.startsWith("image/")) {
       alert("请选择图片文件。");
       return;
     }
 
-    const coverId = `cover-${targetId}`;
+    const coverId = `cover-${itemId}`;
 
     try {
       await saveMusicCover(coverId, file);
 
       const next = music.map((m) =>
-        m.id === targetId
-          ? { ...m, coverId }
-          : m
+        m.id === itemId ? { ...m, coverId } : m
       );
       updateList(next);
 
       const u = URL.createObjectURL(file);
       setCoverUrls((prev) => ({
         ...prev,
-        [targetId]: u,
+        [itemId]: u,
       }));
     } catch (e) {
       console.error("保存封面失败:", e);
@@ -345,10 +322,14 @@ export default function MusicUploadPanel({
             </label>
 
             {source === "file" ? (
-              <label>
-                音频文件
+              <label className="music-upload-file-label">
+                <span>音频文件</span>
+                <span className="music-upload-file-value">
+                  {file ? file.name : "选择文件"}
+                </span>
                 <input
                   type="file"
+                  className="ios-file-input"
                   accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus"
                   onChange={(e) =>
                     setFile(e.target.files?.[0] ?? null)
@@ -413,15 +394,22 @@ export default function MusicUploadPanel({
                       </small>
                     </div>
 
-                    <button
+                    <label
                       className="music-v2-panel-item-cover-btn"
-                      onClick={() =>
-                        handleCoverClick(item.id)
-                      }
                       title="设置封面"
                     >
                       {item.coverId ? "换封面" : "设封面"}
-                    </button>
+                      <input
+                        type="file"
+                        className="ios-file-input"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void handleCoverFile(item.id, f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
 
                     {item.coverId && (
                       <button
@@ -457,18 +445,6 @@ export default function MusicUploadPanel({
           </div>
         )}
 
-        {/* ★ 隐藏的封面 file input */}
-        <input
-          ref={coverInputRef}
-          type="file"
-          accept="image/*"
-          style={IOS_SAFE_FILE_STYLE}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleCoverFile(file);
-            e.target.value = "";
-          }}
-        />
       </div>
     </div>
   );

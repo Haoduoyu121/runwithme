@@ -40,16 +40,7 @@ const AVATAR_KEYS = [
   { key: "erwin" as const, label: "Erwin", fallback: "E" },
 ];
 
-const IOS_SAFE_FILE_STYLE: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  width: 1,
-  height: 1,
-  opacity: 0,
-  overflow: "hidden",
-  zIndex: -1,
-};
+
 
 const COMPRESS_KEEP = 100;
 
@@ -808,8 +799,8 @@ export default function ChatSettingsPanel({
                   ＋ 添加表情
                   <input
                     type="file"
+                    className="ios-file-input"
                     accept="image/*"
-                    style={IOS_SAFE_FILE_STYLE}
                     onChange={(event) => {
                       const file =
                         event.target.files?.[0];
@@ -929,8 +920,8 @@ export default function ChatSettingsPanel({
                   上传背景
                   <input
                     type="file"
+                    className="ios-file-input"
                     accept="image/*"
-                    style={IOS_SAFE_FILE_STYLE}
                     onChange={(event) => {
                       const file =
                         event.target.files?.[0];
@@ -1042,8 +1033,8 @@ export default function ChatSettingsPanel({
                         上传
                         <input
                           type="file"
+                          className="ios-file-input"
                           accept="image/*"
-                          style={IOS_SAFE_FILE_STYLE}
                           onChange={(event) => {
                             const file =
                               event.target.files?.[0];

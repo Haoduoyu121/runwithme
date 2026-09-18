@@ -536,6 +536,10 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     ReturnType<typeof setTimeout> | null
   >(null);
   const longPressTriggered = useRef(false);
+  const longPressStart = useRef<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -908,17 +912,32 @@ export default function ChatApp({ onBack }: ChatAppProps) {
      长按 / 点击
      ------------------------------------------------------- */
 
-  function startLongPress(messageId: string) {
+  function startLongPress(
+    messageId: string,
+    x: number,
+    y: number
+  ) {
     if (selectionMode) return;
     longPressTriggered.current = false;
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
     }
+    longPressStart.current = { x, y };
     longPressTimer.current = setTimeout(() => {
       longPressTriggered.current = true;
       setSelectedMessageId(messageId);
       setShowPlusMenu(false);
     }, LONG_PRESS_DURATION);
+  }
+
+  /* 手指移动超过 10px 才取消（iOS 长按会被误判为滑动） */
+  function moveLongPress(x: number, y: number) {
+    if (!longPressTimer.current) return;
+    const dx = x - longPressStart.current.x;
+    const dy = y - longPressStart.current.y;
+    if (dx * dx + dy * dy > 100) {
+      cancelLongPress();
+    }
   }
 
   function cancelLongPress() {
@@ -1014,12 +1033,17 @@ export default function ChatApp({ onBack }: ChatAppProps) {
           <div className="chat-pat-wrapper">
             <div
               className="chat-message-longpress-target"
-              onPointerDown={() =>
-                startLongPress(message.id)
+              onPointerDown={(e) =>
+                startLongPress(
+                  message.id,
+                  e.clientX,
+                  e.clientY
+                )
+              }
+              onPointerMove={(e) =>
+                moveLongPress(e.clientX, e.clientY)
               }
               onPointerUp={cancelLongPress}
-              onPointerCancel={cancelLongPress}
-              onPointerLeave={cancelLongPress}
               onClick={() =>
                 handleMessageClick(message.id)
               }
@@ -1171,12 +1195,17 @@ export default function ChatApp({ onBack }: ChatAppProps) {
 
           <div
             className="chat-message-longpress-target"
-            onPointerDown={() =>
-              startLongPress(message.id)
+            onPointerDown={(e) =>
+              startLongPress(
+                message.id,
+                e.clientX,
+                e.clientY
+              )
+            }
+            onPointerMove={(e) =>
+              moveLongPress(e.clientX, e.clientY)
             }
             onPointerUp={cancelLongPress}
-            onPointerCancel={cancelLongPress}
-            onPointerLeave={cancelLongPress}
             onClick={() =>
               handleMessageClick(message.id)
             }
