@@ -3757,9 +3757,9 @@ body {
    ========================================================= */
 .chat-message-longpress-target {
   touch-action: manipulation;
-  user-select: none;
   -webkit-user-select: none;
-  -webkit-touch-callout: none;
+  user-select: none;
+  /* 不要 -webkit-touch-callout: none */
 }
 .message-selected
   .chat-message-longpress-target
@@ -5027,7 +5027,6 @@ body {
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
-  -webkit-touch-callout: none;
 }
 
 .chat-message-context {
@@ -17633,7 +17632,6 @@ html[data-runwithme-theme="dark"]
     opacity 0.15s ease;
   user-select: none;
   -webkit-user-select: none;
-  -webkit-touch-callout: none;
 }
 
 .home-grid-item.is-large {
@@ -24793,7 +24791,6 @@ html[data-runwithme-theme="dark"] .photo-naming-skip {
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
-  -webkit-touch-callout: none;
   cursor: pointer;
   animation: focusOverlayIn 0.3s ease;
   touch-action: none;
@@ -33698,7 +33695,6 @@ html[data-runwithme-theme="dark"] .music-upload-file-value {
 
 .chat-message-longpress-target {
   touch-action: pan-y;
-  -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -33713,4 +33709,17 @@ html[data-runwithme-theme="dark"] .music-upload-file-value {
   border: 0;
   padding: 0;
   margin: 0;
+}
+/* =========================================================================
+   修复 · Chat 长按菜单被后续消息遮挡
+   content-visibility: auto 会创建独立 stacking context，
+   导致 menu 的 z-index 无法跨越兄弟行比较。
+   给选中行强制可见 + 高 z-index。
+   ========================================================================= */
+
+.chat-page .chat-messages > .message-row.message-selected,
+.chat-page .chat-messages > .chat-pat-row.message-selected {
+  content-visibility: visible;
+  position: relative;
+  z-index: 200;
 }

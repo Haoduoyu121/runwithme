@@ -8,6 +8,7 @@ import {
 type CallOverlayProps = {
   call: ActiveCall;
   seconds: number;
+  dialSeconds: number;
   onAccept: () => void;
   onDecline: () => void;
   onHangup: () => void;
@@ -17,6 +18,7 @@ type CallOverlayProps = {
 export default function CallOverlay({
   call,
   seconds,
+  dialSeconds,
   onAccept,
   onDecline,
   onHangup,
@@ -32,12 +34,18 @@ export default function CallOverlay({
   const showMinimize = isCalling || isConnected;
 
   let statusText = "";
-  if (isCalling) statusText = "正在呼叫…";
-  else if (isRinging)
+  if (isCalling) {
+    statusText = `正在呼叫 · ${formatCallDuration(
+      dialSeconds
+    )}`;
+  } else if (isRinging) {
     statusText =
-      direction === "incoming" ? "来电" : "正在响铃…";
-  else if (isConnected)
+      direction === "incoming"
+        ? `来电 · ${formatCallDuration(dialSeconds)}`
+        : `正在响铃 · ${formatCallDuration(dialSeconds)}`;
+  } else if (isConnected) {
     statusText = formatCallDuration(seconds);
+  }
 
   const displayName =
     target === "Both" ? "Levi & Erwin" : target;

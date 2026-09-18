@@ -492,6 +492,13 @@ export function ChatProvider({
     triggerIncomingCall,
   ]);
 
+  /* 通话开始时清空生成状态，避免通话结束后 typing 卡住 */
+  useEffect(() => {
+    if (activeCall) {
+      setGeneratingCount(0);
+    }
+  }, [activeCall]);
+
   /* 后台自动回复计时器 */
   useEffect(() => {
     if (!autoReplyEnabled) return;

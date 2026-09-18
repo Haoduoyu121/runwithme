@@ -19,10 +19,10 @@ const TYPE_WEIGHTS: Record<
   Exclude<CardType, "emoji">,
   number
 > = {
-  sticker: 33,
-  voice: 22,
-  pat: 11,
-  text: 55,
+  sticker: 16,
+  voice: 16,
+  pat: 8,   
+  text: 60,
 };
 
 /* 文本卡附加 emoji 的概率 */

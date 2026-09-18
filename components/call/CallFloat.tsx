@@ -19,6 +19,7 @@ type Pos = { x: number; y: number };
 type CallFloatProps = {
   call: ActiveCall;
   seconds: number;
+  dialSeconds: number;
   onExpand: () => void;
   onHangup: () => void;
 };
@@ -56,6 +57,7 @@ function savePos(pos: Pos) {
 export default function CallFloat({
   call,
   seconds,
+  dialSeconds,
   onExpand,
   onHangup,
 }: CallFloatProps) {
@@ -250,6 +252,21 @@ export default function CallFloat({
         ? "L"
         : "E";
 
+  /* 真实阶段（minimized 是 UI 态） */
+  const rp =
+    call.phase === "minimized"
+      ? (call.minimizedFrom ?? "connected")
+      : call.phase;
+
+  let timerText: string;
+  if (rp === "outgoing") {
+    timerText = `正在呼叫 · ${formatCallDuration(dialSeconds)}`;
+  } else if (rp === "incoming") {
+    timerText = `来电 · ${formatCallDuration(dialSeconds)}`;
+  } else {
+    timerText = formatCallDuration(seconds);
+  }
+
   return (
     <div
       ref={floatRef}
@@ -275,9 +292,7 @@ export default function CallFloat({
           {displayName}
         </div>
 
-        <div className="call-float-timer">
-          {formatCallDuration(seconds)}
-        </div>
+        <div className="call-float-timer">{timerText}</div>
       </div>
 
       <button

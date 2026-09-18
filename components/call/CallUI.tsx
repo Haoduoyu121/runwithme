@@ -16,6 +16,7 @@ export default function CallUI() {
   const {
     activeCall,
     seconds,
+    dialSeconds,
     acceptIncomingCall,
     declineIncomingCall,
     hangUpCall,
@@ -30,6 +31,7 @@ export default function CallUI() {
       <CallFloat
         call={activeCall}
         seconds={seconds}
+        dialSeconds={dialSeconds}
         onExpand={expandCall}
         onHangup={hangUpCall}
       />
@@ -40,6 +42,7 @@ export default function CallUI() {
     <CallOverlay
       call={activeCall}
       seconds={seconds}
+      dialSeconds={dialSeconds}
       onAccept={acceptIncomingCall}
       onDecline={declineIncomingCall}
       onHangup={hangUpCall}

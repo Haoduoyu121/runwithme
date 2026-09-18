@@ -562,15 +562,8 @@ export default function PomodoroPanel({
               <input
                 ref={fileInputRef}
                 type="file"
+                className="ios-file-input"
                 accept="image/*,video/*"
-                style={{
-                  position: "absolute",
-                  width: 1,
-                  height: 1,
-                  opacity: 0,
-                  overflow: "hidden",
-                  pointerEvents: "none",
-                }}
                 onChange={(e) => {
                   const files = e.target.files;
                   if (files) void handlePickWallpaper(files);
@@ -636,15 +629,8 @@ export default function PomodoroPanel({
               <input
                 ref={noiseInputRef}
                 type="file"
+                className="ios-file-input"
                 accept="audio/*"
-                style={{
-                  position: "absolute",
-                  width: 1,
-                  height: 1,
-                  opacity: 0,
-                  overflow: "hidden",
-                  pointerEvents: "none",
-                }}
                 onChange={(e) => {
                   const files = e.target.files;
                   if (files) void handlePickNoise(files);

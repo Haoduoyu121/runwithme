@@ -252,15 +252,8 @@ export default function VoicePoolEditor({
                 : "选择 mp3 / m4a"}
               <input
                 type="file"
+                className="ios-file-input"
                 accept="audio/*"
-                style={{
-                  position: "absolute",
-                  width: 1,
-                  height: 1,
-                  opacity: 0,
-                  overflow: "hidden",
-                  pointerEvents: "none",
-                }}
                 onChange={(e) => {
                   pickFile(e.target.files);
                   e.target.value = "";

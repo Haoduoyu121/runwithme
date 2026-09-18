@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -27,6 +28,8 @@ export type ActiveCall = {
   phase: CallPhase;
   startedAt: number;
   connectedAt: number | null;
+  /* 缩小前处于哪个阶段（只有 phase="minimized" 时有意义） */
+  minimizedFrom?: Exclude<CallPhase, "minimized">;
 };
 
 export type CallEndRecord = {
@@ -72,6 +75,7 @@ const PARAMS = {
 type CallContextValue = {
   activeCall: ActiveCall | null;
   seconds: number;
+  dialSeconds: number;
   startOutgoingCall: (target: CallTarget) => void;
   triggerIncomingCall: (target?: CallTarget) => void;
   acceptIncomingCall: () => void;
@@ -90,6 +94,17 @@ const CallContext = createContext<CallContextValue | null>(
 
 function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/* 取真实阶段：minimized 是 UI 态，不是逻辑态 */
+function realPhase(
+  call: ActiveCall | null
+): Exclude<CallPhase, "minimized"> | null {
+  if (!call) return null;
+  if (call.phase === "minimized") {
+    return call.minimizedFrom ?? "connected";
+  }
+  return call.phase;
 }
 
 function pickRandomCharacter(): Character {
@@ -113,7 +128,7 @@ export function CallProvider({
 }) {
   const [activeCall, setActiveCall] =
     useState<ActiveCall | null>(null);
-  const [seconds, setSeconds] = useState(0);
+  const [tickNow, setTickNow] = useState(() => Date.now());
 
   const activeCallRef = useRef<ActiveCall | null>(null);
   useEffect(() => {
@@ -175,32 +190,38 @@ export function CallProvider({
     };
   }, []);
 
-  /* 通话计时 */
+  /* 全局 ticker：有通话时每秒刷新一次 tickNow */
   useEffect(() => {
-    const phase = activeCall?.phase;
-    const connectedAt = activeCall?.connectedAt;
+    if (!activeCall) return;
 
-    if (
-      !connectedAt ||
-      (phase !== "connected" && phase !== "minimized")
-    ) {
-      setSeconds(0);
-      return;
-    }
+    setTickNow(Date.now());
+    const id = window.setInterval(() => {
+      setTickNow(Date.now());
+    }, 1000);
 
-    const tick = () => {
-      setSeconds(
-        Math.max(
-          0,
-          Math.floor((Date.now() - connectedAt) / 1000)
-        )
-      );
-    };
+    return () => window.clearInterval(id);
+  }, [activeCall]);
 
-    tick();
-    const t = window.setInterval(tick, 1000);
-    return () => window.clearInterval(t);
-  }, [activeCall?.phase, activeCall?.connectedAt]);
+  /* 派生：通话时长 / 拨号时长 */
+  const seconds = useMemo(() => {
+    if (!activeCall) return 0;
+    if (realPhase(activeCall) !== "connected") return 0;
+    if (!activeCall.connectedAt) return 0;
+    return Math.max(
+      0,
+      Math.floor((tickNow - activeCall.connectedAt) / 1000)
+    );
+  }, [activeCall, tickNow]);
+
+  const dialSeconds = useMemo(() => {
+    if (!activeCall) return 0;
+    const rp = realPhase(activeCall);
+    if (rp !== "outgoing" && rp !== "incoming") return 0;
+    return Math.max(
+      0,
+      Math.floor((tickNow - activeCall.startedAt) / 1000)
+    );
+  }, [activeCall, tickNow]);
 
   function getConnectedSeconds(call: ActiveCall): number {
     if (!call.connectedAt) return 0;
@@ -238,12 +259,7 @@ export function CallProvider({
 
       const current = activeCallRef.current;
       if (!current) return;
-      if (
-        current.phase !== "connected" &&
-        current.phase !== "minimized"
-      ) {
-        return;
-      }
+      if (realPhase(current) !== "connected") return;
 
       endCall(
         current.target,
@@ -277,17 +293,24 @@ export function CallProvider({
         outgoingTimerRef.current = null;
 
         const current = activeCallRef.current;
-        if (!current || current.phase !== "outgoing") return;
+        if (!current) return;
+        if (realPhase(current) !== "outgoing") return;
 
-        setActiveCall((prev) =>
-          prev
-            ? {
-                ...prev,
-                phase: "connected",
-                connectedAt: Date.now(),
-              }
-            : null
-        );
+        setActiveCall((prev) => {
+          if (!prev) return null;
+          const wasMinimized =
+            prev.phase === "minimized";
+          return {
+            ...prev,
+            phase: wasMinimized
+              ? "minimized"
+              : "connected",
+            minimizedFrom: wasMinimized
+              ? "connected"
+              : undefined,
+            connectedAt: Date.now(),
+          };
+        });
 
         scheduleRandomHangup();
       }, answerAfter);
@@ -309,7 +332,8 @@ export function CallProvider({
       outgoingTimerRef.current = null;
 
       const current = activeCallRef.current;
-      if (!current || current.phase !== "outgoing") return;
+      if (!current) return;
+      if (realPhase(current) !== "outgoing") return;
 
       endCall(
         current.target,
@@ -337,7 +361,8 @@ export function CallProvider({
       incomingTimerRef.current = null;
 
       const current = activeCallRef.current;
-      if (!current || current.phase !== "incoming") return;
+      if (!current) return;
+      if (realPhase(current) !== "incoming") return;
 
       endCall(current.target, "incoming", "missed", 0);
     }, PARAMS.INCOMING_RING_MS);
@@ -345,29 +370,36 @@ export function CallProvider({
 
   function acceptIncomingCall() {
     const current = activeCallRef.current;
-    if (!current || current.phase !== "incoming") return;
+    if (!current) return;
+    if (realPhase(current) !== "incoming") return;
 
     if (incomingTimerRef.current) {
       clearTimeout(incomingTimerRef.current);
       incomingTimerRef.current = null;
     }
 
-    setActiveCall((prev) =>
-      prev
-        ? {
-            ...prev,
-            phase: "connected",
-            connectedAt: Date.now(),
-          }
-        : null
-    );
+    setActiveCall((prev) => {
+      if (!prev) return null;
+      const wasMinimized = prev.phase === "minimized";
+      return {
+        ...prev,
+        phase: wasMinimized
+          ? "minimized"
+          : "connected",
+        minimizedFrom: wasMinimized
+          ? "connected"
+          : undefined,
+        connectedAt: Date.now(),
+      };
+    });
 
     scheduleRandomHangup();
   }
 
   function declineIncomingCall() {
     const current = activeCallRef.current;
-    if (!current || current.phase !== "incoming") return;
+    if (!current) return;
+    if (realPhase(current) !== "incoming") return;
 
     endCall(current.target, "incoming", "declined", 0);
   }
@@ -376,20 +408,19 @@ export function CallProvider({
     const current = activeCallRef.current;
     if (!current) return;
 
-    if (current.phase === "outgoing") {
+    const rp = realPhase(current);
+
+    if (rp === "outgoing") {
       endCall(current.target, "outgoing", "cancelled", 0);
       return;
     }
 
-    if (current.phase === "incoming") {
+    if (rp === "incoming") {
       endCall(current.target, "incoming", "declined", 0);
       return;
     }
 
-    if (
-      current.phase === "connected" ||
-      current.phase === "minimized"
-    ) {
+    if (rp === "connected") {
       endCall(
         current.target,
         current.direction,
@@ -400,15 +431,27 @@ export function CallProvider({
   }
 
   function minimizeCall() {
-    setActiveCall((prev) =>
-      prev ? { ...prev, phase: "minimized" } : null
-    );
+    setActiveCall((prev) => {
+      if (!prev) return null;
+      if (prev.phase === "minimized") return prev;
+      return {
+        ...prev,
+        phase: "minimized",
+        minimizedFrom: prev.phase,
+      };
+    });
   }
 
   function expandCall() {
-    setActiveCall((prev) =>
-      prev ? { ...prev, phase: "connected" } : null
-    );
+    setActiveCall((prev) => {
+      if (!prev) return null;
+      if (prev.phase !== "minimized") return prev;
+      return {
+        ...prev,
+        phase: prev.minimizedFrom ?? "connected",
+        minimizedFrom: undefined,
+      };
+    });
   }
 
   return (
@@ -416,6 +459,7 @@ export function CallProvider({
       value={{
         activeCall,
         seconds,
+        dialSeconds,
         startOutgoingCall,
         triggerIncomingCall,
         acceptIncomingCall,
