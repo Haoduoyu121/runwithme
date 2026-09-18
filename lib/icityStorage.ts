@@ -105,9 +105,9 @@ export function loadProfiles(): ICityProfiles {
     }
 
     return {
-      Yui: normalize("Yui"),
-      Levi: normalize("Levi"),
-      Erwin: normalize("Erwin"),
+      Yui: { name: "...", handle: "...", bio: "", lastBioUpdate: 0 },
+      Levi: { name: "...", handle: "...", bio: "", lastBioUpdate: 0 },
+      Erwin: { name: "...", handle: "...", bio: "", lastBioUpdate: 0 },
     };
   } catch {
     return DEFAULT_PROFILES;
