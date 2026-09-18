@@ -4,9 +4,9 @@ export type ICityProfile = {
   name: string;
   handle: string;
   /** 个人简介 */
-  bio: string;
+  bio?: string;
   /** 上次被自动刷新的时间戳（ms）。0 = 从未刷新 */
-  lastBioUpdate: number;
+  lastBioUpdate?: number;
 };
 
 export type ICityProfiles = Record<

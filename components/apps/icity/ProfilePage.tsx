@@ -63,7 +63,9 @@ export default function ProfilePage({
   );
 
   const [editingBio, setEditingBio] = useState(false);
-  const [bioDraft, setBioDraft] = useState(profile.bio);
+  const [bioDraft, setBioDraft] = useState(
+    profile.bio ?? ""
+  );
 
   const [showBioPool, setShowBioPool] = useState(false);
 
@@ -82,7 +84,7 @@ export default function ProfilePage({
   }, [profile.handle]);
 
   useEffect(() => {
-    setBioDraft(profile.bio);
+    setBioDraft(profile.bio ?? "");
   }, [profile.bio]);
 
   const authorPosts = posts
@@ -130,7 +132,7 @@ export default function ProfilePage({
 
   function saveBio() {
     const trimmed = bioDraft.trim();
-    if (trimmed !== profile.bio) {
+    if (trimmed !== (profile.bio ?? "")) {
       updateProfile(author, { bio: trimmed });
     } else {
       setBioDraft(profile.bio);
