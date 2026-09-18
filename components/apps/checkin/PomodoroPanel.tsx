@@ -95,6 +95,13 @@ export default function PomodoroPanel({
   const [bubbleFrequency, setBubbleFrequency] =
     useState<BubbleFrequency>("medium");
 
+
+    /* 每次打开卡池编辑器时，从 storage 重新加载一遍 */
+  useEffect(() => {
+    if (!showVoicePool) return;
+    setVoiceCards(loadVoiceCards());
+  }, [showVoicePool]);
+  
   /* 载入信息 */
   useEffect(() => {
     if (!showSettings) return;
@@ -312,8 +319,27 @@ export default function PomodoroPanel({
   /* ---------- 语音卡池 ---------- */
 
   function commitVoiceCards(next: VoiceCard[]) {
-    setVoiceCards(next);
     saveVoiceCards(next);
+
+    /* 立即回读，确认写入的内容没有被 isValid 过滤掉 */
+    const reread = loadVoiceCards();
+
+    if (reread.length !== next.length) {
+      console.warn(
+        "[VoicePool] ⚠️ 保存后回读长度不一致\n" +
+          "  写入: " + next.length + "\n" +
+          "  读回: " + reread.length + "\n" +
+          "  可能被 isValid 过滤，请把这个日志发给我"
+      );
+      console.warn("  写入内容:", next);
+      console.warn("  读回内容:", reread);
+    } else {
+      console.log(
+        "[VoicePool] ✓ 保存成功，卡池共 " + reread.length + " 张"
+      );
+    }
+
+    setVoiceCards(reread);
   }
 
   return (
