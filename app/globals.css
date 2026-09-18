@@ -48003,3 +48003,94 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"]
   p {
   color: #a0a0a0 !important;
 }
+/* =========================================================================
+   Study / Photos 顶栏压缩 · 最终版
+   -------------------------------------------------------------------------
+   覆盖之前所有零散的 padding 补丁。
+   只保留 safe-area 避让 + 极小呼吸空间。
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   Study
+   ------------------------------------------------------------------------- */
+
+html body .study-header,
+html body .study-subheader {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: max(env(safe-area-inset-top), 8px) 12px 4px !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border-bottom: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+html body .study-back,
+html body .study-header-settings,
+html body .study-subheader-add {
+  width: 34px !important;
+  height: 34px !important;
+  flex-shrink: 0;
+}
+
+html body .study-header-title {
+  font-size: 16px !important;
+  line-height: 1.1 !important;
+}
+
+html body .study-header-sub {
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+  margin-top: 1px !important;
+}
+
+/* 顶栏下面的滚动区贴近顶栏 */
+html body .study-scroll {
+  padding-top: 4px !important;
+}
+
+/* -------------------------------------------------------------------------
+   Photos
+   ------------------------------------------------------------------------- */
+
+html body .photos-app-header {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: max(env(safe-area-inset-top), 8px) 12px 6px !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.06) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+html body .photos-app-back,
+html body .photos-app-upload {
+  width: 34px !important;
+  height: 34px !important;
+  flex-shrink: 0;
+}
+
+html body .photos-app-title-main {
+  font-size: 15px !important;
+  line-height: 1.1 !important;
+}
+
+html body .photos-app-title-sub {
+  font-size: 9px !important;
+  margin-top: 1px !important;
+}
+
+/* 分类 tabs 条也压一压 */
+html body .photos-app-tabs {
+  padding: 6px 12px 8px !important;
+  background: transparent !important;
+}
+
+html body .photos-app-tab {
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+}
