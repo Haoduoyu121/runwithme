@@ -31,10 +31,31 @@ export async function saveVoiceFile(
 ): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
+    let settled = false;
+
     const tx = db.transaction(STORE, "readwrite");
     tx.objectStore(STORE).put(blob, id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+
+    tx.oncomplete = () => {
+      if (settled) return;
+      settled = true;
+      try { db.close(); } catch {}
+      resolve();
+    };
+
+    tx.onerror = () => {
+      if (settled) return;
+      settled = true;
+      try { db.close(); } catch {}
+      reject(tx.error ?? new Error("IndexedDB 写入失败"));
+    };
+
+    tx.onabort = () => {
+      if (settled) return;
+      settled = true;
+      try { db.close(); } catch {}
+      reject(new Error("IndexedDB 事务被中止"));
+    };
   });
 }
 

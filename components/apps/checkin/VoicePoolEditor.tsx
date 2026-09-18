@@ -95,7 +95,39 @@ export default function VoicePoolEditor({
       return;
     }
 
-    setDraftFile(file);
+    /* ★ iOS PWA 关键：File 是临时引用，必须立即读进内存 */
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const buf = reader.result as ArrayBuffer;
+
+      let mime = file.type;
+      if (!mime) {
+        if (nameLower.endsWith(".mp3")) mime = "audio/mpeg";
+        else if (nameLower.endsWith(".m4a")) mime = "audio/mp4";
+        else if (nameLower.endsWith(".wav")) mime = "audio/wav";
+        else if (nameLower.endsWith(".aac")) mime = "audio/aac";
+        else if (nameLower.endsWith(".ogg")) mime = "audio/ogg";
+        else if (nameLower.endsWith(".opus")) mime = "audio/opus";
+        else mime = "audio/mpeg";
+      }
+
+      const fresh = new File(
+        [buf],
+        file.name || "voice.mp3",
+        { type: mime }
+      );
+
+      setDraftFile(fresh);
+    };
+
+    reader.onerror = () => {
+      console.error("读取文件失败:", reader.error);
+      alert("读取文件失败，请重试。");
+      setDraftFile(null);
+    };
+
+    reader.readAsArrayBuffer(file);
   }
 
   async function handleAdd() {

@@ -32123,20 +32123,20 @@ html[data-runwithme-theme="dark"]
 .notes-editor-header,
 .checkin-header,
 .q-header,
-.music-v2-header,
 .photos-app-header,
 .letter-header,
 .letter-detail-header,
 .watch-header,
 .collection-header,
 .study-header,
-.study-subheader {
-  padding-top: calc(
-    env(safe-area-inset-top) + 12px
-  ) !important;
-  height: auto !important;
-  min-height: 56px;
-  box-sizing: border-box;
+.study-subheader,
+.studio-header,
+.hs-header {
+  background: var(--ios-glass-bg) !important;
+  border-bottom: 1px solid var(--ios-glass-border) !important;
+  backdrop-filter: var(--ios-glass-blur) !important;
+  -webkit-backdrop-filter: var(--ios-glass-blur) !important;
+  box-shadow: var(--ios-glass-shadow) !important;
 }
 
 /* ---------- 3. Studio / Home Studio / Settings ---------- */
@@ -34698,3 +34698,248 @@ html[data-runwithme-theme="dark"] .photo-naming-skip {
     rgba(255, 255, 255, 0.08)
   );
 }
+/* =========================================================================
+   iOS26 拟态玻璃 · 全 App 顶栏底栏统一
+   -------------------------------------------------------------------------
+   只改材质（background / border / backdrop-filter / box-shadow），
+   不改任何布局属性（padding / height / width / gap）。
+   ========================================================================= */
+
+:root {
+  --ios-glass-bg: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.46) 48%,
+    rgba(255, 255, 255, 0.58) 100%
+  );
+  --ios-glass-border: rgba(255, 255, 255, 0.72);
+  --ios-glass-shadow:
+    0 6px 22px rgba(90, 60, 65, 0.07),
+    0 2px 6px rgba(90, 60, 65, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.025);
+  --ios-glass-blur: blur(26px) saturate(1.9);
+}
+
+html[data-runwithme-theme="dark"] {
+  --ios-glass-bg: linear-gradient(
+    135deg,
+    rgba(70, 60, 68, 0.74) 0%,
+    rgba(44, 38, 44, 0.6) 48%,
+    rgba(60, 50, 58, 0.68) 100%
+  );
+  --ios-glass-border: rgba(255, 255, 255, 0.12);
+  --ios-glass-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.42),
+    0 2px 6px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ---------- 1. 顶栏统一 ---------- */
+
+.chat-page .telegram-header,
+.icity-header,
+.icity-detail-header,
+.icity-profile-header,
+.calendar-header,
+.notes-header,
+.notes-editor-header,
+.checkin-header,
+.q-header,
+.photos-app-header,
+.letter-header,
+.letter-detail-header,
+.watch-header,
+.collection-header,
+.study-header,
+.study-subheader,
+.studio-header,
+.hs-header,
+.collection-header {
+  background: var(--ios-glass-bg) !important;
+  border-bottom: 1px solid var(--ios-glass-border) !important;
+  backdrop-filter: var(--ios-glass-blur) !important;
+  -webkit-backdrop-filter: var(--ios-glass-blur) !important;
+  box-shadow: var(--ios-glass-shadow) !important;
+}
+
+/* ---------- 2. Chat / Watch / Music 输入区 ---------- */
+
+.chat-page .chat-composer,
+.watch-chat-composer,
+.music-chat-input-row {
+  background: var(--ios-glass-bg) !important;
+  border-top: 1px solid var(--ios-glass-border) !important;
+  backdrop-filter: var(--ios-glass-blur) !important;
+  -webkit-backdrop-filter: var(--ios-glass-blur) !important;
+  box-shadow: var(--ios-glass-shadow) !important;
+}
+
+/* Chat 多选操作条 */
+.chat-selection-bar {
+  background: var(--ios-glass-bg) !important;
+  border-top: 1px solid var(--ios-glass-border) !important;
+  backdrop-filter: var(--ios-glass-blur) !important;
+  -webkit-backdrop-filter: var(--ios-glass-blur) !important;
+  box-shadow: var(--ios-glass-shadow) !important;
+}
+
+/* ---------- 3. iCity / Calendar / Check-in / Study Dock ---------- */
+
+.icity-dock-inner,
+.calendar-dock-inner,
+.checkin-dock-inner,
+.study-dock-inner {
+  background: var(--ios-glass-bg) !important;
+  border: 1px solid var(--ios-glass-border) !important;
+  backdrop-filter: var(--ios-glass-blur) !important;
+  -webkit-backdrop-filter: var(--ios-glass-blur) !important;
+  box-shadow: var(--ios-glass-shadow) !important;
+}
+
+/* ---------- 4. 其他底部条 / Tabs ---------- */
+
+.photos-app-selection-bar,
+.letter-tabs,
+.collection-tabs {
+  background: var(--ios-glass-bg) !important;
+  border-color: var(--ios-glass-border) !important;
+  backdrop-filter: var(--ios-glass-blur) !important;
+  -webkit-backdrop-filter: var(--ios-glass-blur) !important;
+  box-shadow: var(--ios-glass-shadow) !important;
+}
+
+/* ---------- 5. 保留深色模式文字可读性 ---------- */
+
+html[data-runwithme-theme="dark"] .telegram-name,
+html[data-runwithme-theme="dark"] .icity-title-main,
+html[data-runwithme-theme="dark"] .calendar-header-year,
+html[data-runwithme-theme="dark"] .notes-header-title,
+html[data-runwithme-theme="dark"] .checkin-header-title,
+html[data-runwithme-theme="dark"] .q-header-title,
+html[data-runwithme-theme="dark"] .music-v2-title,
+html[data-runwithme-theme="dark"] .photos-app-title-main,
+html[data-runwithme-theme="dark"] .letter-header-title,
+html[data-runwithme-theme="dark"] .watch-header-title,
+html[data-runwithme-theme="dark"] .collection-header-title,
+html[data-runwithme-theme="dark"] .study-header-title {
+  color: #fff2e9;
+}
+/* =========================================================================
+   Music · 面板 / 弹窗脱离 Home 壁纸
+   -------------------------------------------------------------------------
+   原因：这些元素用了 var(--rw-bg)（= 当前壁纸），
+   换成固定的液态玻璃，和 Music 界面一致。
+   ========================================================================= */
+
+.music-v2-panel,
+.music-v2-picker,
+.music-v2-drawer,
+.music-chat-settings,
+.music-chat-panel,
+.music-add-to-playlist {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 250, 248, 0.92) 0%,
+    rgba(255, 242, 233, 0.88) 48%,
+    rgba(255, 248, 243, 0.9) 100%
+  ) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(28px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.9) !important;
+  box-shadow:
+    0 20px 50px rgba(90, 60, 65, 0.18),
+    0 4px 12px rgba(90, 60, 65, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+html[data-runwithme-theme="dark"] .music-v2-panel,
+html[data-runwithme-theme="dark"] .music-v2-picker,
+html[data-runwithme-theme="dark"] .music-v2-drawer,
+html[data-runwithme-theme="dark"] .music-chat-settings,
+html[data-runwithme-theme="dark"] .music-chat-panel,
+html[data-runwithme-theme="dark"] .music-add-to-playlist {
+  background: linear-gradient(
+    135deg,
+    rgba(70, 60, 68, 0.94) 0%,
+    rgba(44, 38, 44, 0.92) 48%,
+    rgba(60, 50, 58, 0.92) 100%
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 抽屉背景稍微加深，玻璃对比更明显 */
+.music-v2-drawer-backdrop {
+  background: rgba(30, 22, 28, 0.32) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.music-v2-panel-backdrop,
+.music-v2-picker-backdrop,
+.music-add-to-playlist-backdrop {
+  background: rgba(30, 22, 28, 0.32) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* 上传音乐表单里的输入框也换掉 var(--rw-bg) */
+.music-v2-panel-form input,
+.music-v2-panel-form select,
+.music-v2-panel-header,
+.music-v2-panel-tabs,
+.music-v2-drawer-header,
+.music-playlist-name-input,
+.music-chat-settings-add textarea,
+.music-chat-input {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html[data-runwithme-theme="dark"] .music-v2-panel-form input,
+html[data-runwithme-theme="dark"] .music-v2-panel-form select,
+html[data-runwithme-theme="dark"] .music-v2-panel-header,
+html[data-runwithme-theme="dark"] .music-v2-panel-tabs,
+html[data-runwithme-theme="dark"] .music-v2-drawer-header,
+html[data-runwithme-theme="dark"] .music-playlist-name-input,
+html[data-runwithme-theme="dark"] .music-chat-settings-add textarea,
+html[data-runwithme-theme="dark"] .music-chat-input {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+/* =========================================================================
+   全 App 返回按钮 · 视觉垂直居中修正
+   -------------------------------------------------------------------------
+   ‹ 字符的视觉重心偏下，用 padding-bottom 强制上推。
+   只改这一个属性，不影响点击区域和布局。
+   ========================================================================= */
+
+.chat-page .telegram-back,
+.icity-back,
+.icity-detail-back,
+.icity-profile-header .icity-back,
+.calendar-back,
+.notes-back,
+.notes-editor-back,
+.checkin-back,
+.q-back,
+.music-v2-back,
+.photos-app-back,
+.letter-back,
+.letter-detail-back,
+.watch-back,
+.collection-back,
+.study-back,
+.study-session-exit {
+  padding-bottom: 5px !important;
+  box-sizing: border-box;
+  line-height: 1 !important;
+}
+
+/* 小屏和大屏都不动 font-size / width / height，只微调位置 */
