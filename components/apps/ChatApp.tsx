@@ -973,13 +973,12 @@ export default function ChatApp({ onBack }: ChatAppProps) {
       return;
     }
     if (action === "image") {
+      /* ★ iOS 要求 click() 在用户手势的同步链里，不能用 rAF */
+      const el = document.getElementById(
+        "chat-image-input"
+      ) as HTMLInputElement | null;
+      el?.click();
       setShowPlusMenu(false);
-      requestAnimationFrame(() => {
-        const el = document.getElementById(
-          "chat-image-input"
-        ) as HTMLInputElement | null;
-        el?.click();
-      });
       return;
     }
   }
@@ -1640,17 +1639,8 @@ export default function ChatApp({ onBack }: ChatAppProps) {
             <input
               id="chat-image-input"
               type="file"
+              className="chat-image-input-hidden"
               accept="image/*"
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: 1,
-                height: 1,
-                opacity: 0,
-                overflow: "hidden",
-                zIndex: -1,
-              }}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
