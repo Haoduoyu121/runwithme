@@ -34943,3 +34943,58 @@ html[data-runwithme-theme="dark"] .music-chat-input {
 }
 
 /* 小屏和大屏都不动 font-size / width / height，只微调位置 */
+/* =========================================================================
+   回滚：非 Chat 顶栏恢复透明
+   -------------------------------------------------------------------------
+   上一轮的 iOS26 玻璃顶栏太抢戏，除了 Chat 全部去掉。
+   底栏 / 输入框 / Dock 的玻璃保留。
+   ========================================================================= */
+
+.icity-header,
+.icity-detail-header,
+.icity-profile-header,
+.calendar-header,
+.notes-header,
+.notes-editor-header,
+.checkin-header,
+.q-header,
+.photos-app-header,
+.letter-header,
+.letter-detail-header,
+.watch-header,
+.collection-header,
+.study-header,
+.study-subheader,
+.studio-header,
+.hs-header {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* iCity / Photos 原来有细分割线，保留 */
+.icity-header,
+.photos-app-header {
+  border-bottom: 1px solid rgba(142, 101, 111, 0.06) !important;
+}
+
+html[data-runwithme-theme="dark"] .icity-header,
+html[data-runwithme-theme="dark"] .photos-app-header {
+  border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* 其他 App 顶栏没有分割线，也去掉 */
+.calendar-header,
+.notes-header,
+.notes-editor-header,
+.checkin-header,
+.q-header,
+.letter-header,
+.letter-detail-header,
+.watch-header,
+.collection-header,
+.study-header,
+.study-subheader {
+  border-bottom: none !important;
+}
