@@ -48094,3 +48094,224 @@ html body .photos-app-tab {
   padding: 5px 10px !important;
   font-size: 11px !important;
 }
+/* =========================================================================
+   Photo Viewer · 沉浸式看图
+   -------------------------------------------------------------------------
+   1. 顶部按钮（关闭 / 日期 / 删除）改为悬浮覆盖，不占布局
+   2. 图片区域占满整个屏幕，长图可以上下滑动
+   3. 短图居中显示，长图从顶开始
+   4. safe-area 避让，不遮刘海
+   ========================================================================= */
+
+/* ---------- 1. 容器 ---------- */
+
+html body .photo-viewer {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: #000 !important;
+  overflow: hidden !important;
+}
+
+/* ---------- 2. 顶部按钮：悬浮覆盖 ---------- */
+
+html body .photo-viewer-top {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 5 !important;
+
+  padding: calc(env(safe-area-inset-top) + 12px) 14px
+    16px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+
+  /* 顶部轻微渐暗，让按钮和图片分开 */
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.2) 60%,
+    transparent 100%
+  ) !important;
+
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+html body .photo-viewer-top > * {
+  pointer-events: auto;
+}
+
+html body .photo-viewer-top.is-hidden {
+  opacity: 0 !important;
+  transform: translateY(-8px) !important;
+}
+
+html body .photo-viewer-btn {
+  width: 42px !important;
+  height: 42px !important;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #fff !important;
+  backdrop-filter: blur(20px) saturate(1.6) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.6) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+  font-size: 15px !important;
+}
+
+html body .photo-viewer-btn:hover {
+  background: rgba(255, 255, 255, 0.26) !important;
+}
+
+html body .photo-viewer-btn-danger:hover {
+  background: rgba(224, 93, 93, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+html body .photo-viewer-date {
+  flex: 1;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 12px !important;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 3. 图片区域：全屏 + 可上下滚动 ---------- */
+
+html body .photo-viewer-image {
+  position: relative !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  width: 100% !important;
+
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+
+  /* 给顶部按钮和底部面板留出视觉空间，
+     但滚动时图片可以穿过这些区域 */
+  padding: calc(env(safe-area-inset-top) + 68px) 10px
+    calc(env(safe-area-inset-bottom) + 20px) !important;
+  box-sizing: border-box !important;
+
+  display: grid !important;
+  place-items: center !important;
+}
+
+/* ---------- 4. 图片：短图居中，长图从顶开始 ---------- */
+
+html body .photo-viewer-image > img {
+  max-width: 100% !important;
+  max-height: none !important;
+  height: auto !important;
+  width: auto !important;
+
+  /* 关键一行：短图居中、长图从顶开始、都能滚动 */
+  margin: auto !important;
+
+  object-fit: contain !important;
+  display: block !important;
+}
+
+/* ---------- 5. 左右切换按钮：固定在图片区域两侧 ---------- */
+
+html body .photo-viewer-image .photo-viewer-nav {
+  position: sticky !important;
+  top: 50% !important;
+  z-index: 3 !important;
+
+  width: 44px !important;
+  height: 44px !important;
+
+  background: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(16px) saturate(1.6) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+html body .photo-viewer-image .photo-viewer-nav.prev {
+  justify-self: start !important;
+  align-self: center !important;
+  margin-left: 4px;
+  transform: none !important;
+}
+
+html body .photo-viewer-image .photo-viewer-nav.next {
+  justify-self: end !important;
+  align-self: center !important;
+  margin-right: 4px;
+  transform: none !important;
+}
+
+/* ---------- 6. 底部面板：改成半透明玻璃悬浮层 ---------- */
+
+html body .photo-viewer-bottom {
+  position: relative !important;
+  flex-shrink: 0 !important;
+  z-index: 4 !important;
+
+  padding: 12px 16px
+    calc(14px + env(safe-area-inset-bottom)) !important;
+
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.4) 70%,
+    transparent 100%
+  ) !important;
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+html body .photo-viewer-bottom.is-hidden {
+  opacity: 0 !important;
+  transform: translateY(8px) !important;
+}
+
+/* 描述输入框：半透明玻璃 */
+html body .photo-viewer-textarea {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+html body .photo-viewer-textarea:focus {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* ---------- 7. 小屏保护 ---------- */
+
+@media (max-height: 700px) {
+  html body .photo-viewer-image {
+    padding-top: calc(env(safe-area-inset-top) + 58px) !important;
+  }
+
+  html body .photo-viewer-top {
+    padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+    padding-bottom: 10px !important;
+  }
+}
