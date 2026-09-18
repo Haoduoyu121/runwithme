@@ -18,7 +18,6 @@ export default function LetterWidget() {
       );
       setUnread(unreadList.length);
 
-      /* 最近一封 */
       const sorted = [...list]
         .filter((l) => l.from !== "You")
         .sort((a, b) => b.createdAt - a.createdAt);
@@ -32,7 +31,6 @@ export default function LetterWidget() {
 
     refresh();
 
-    /* 每 20 秒刷新 + 收到广播立即刷新 */
     const timer = window.setInterval(refresh, 20000);
     window.addEventListener("runwithme:letters-updated", refresh);
 
@@ -45,35 +43,29 @@ export default function LetterWidget() {
     };
   }, []);
 
+  const hasUnread = unread > 0 && lastSender;
+
   return (
-    <div className="home-widget-letter">
-      <div className="home-widget-letter-label">
-        LETTERS
-      </div>
+    <div className="letter-widget-v2">
+      {/* 信封主体 */}
+      <div className="letter-widget-v2-envelope">
+        {/* 翻盖 */}
+        <div className="letter-widget-v2-flap" />
 
-      <div className="home-widget-letter-number">
-        {unread}
-      </div>
-
-      <div className="home-widget-letter-status">
-        {unread === 0
-          ? "都读过了"
-          : unread === 1
-            ? "unread"
-            : "unread"}
-      </div>
-
-      {unread > 0 && lastSender && (
-        <div className="home-widget-letter-from">
-          <span
-            className={
-              "home-widget-letter-dot home-widget-letter-dot-" +
-              lastSender.toLowerCase()
-            }
-          />
-          <span>最近一封 · {lastSender}</span>
+        {/* 右下角：来信人 */}
+        <div className="letter-widget-v2-from">
+          {hasUnread ? (
+            <>
+              <span className="letter-widget-v2-dot" />
+              <span>{lastSender}</span>
+            </>
+          ) : (
+            <span className="letter-widget-v2-idle">
+              暂时没有来信
+            </span>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

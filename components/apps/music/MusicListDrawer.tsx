@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+import {
+  ChevronLeft,
+  Ellipsis,
+  Folder,
+  Music2,
+  Plus,
+  X,
+} from "lucide-react";
+
 import { useMusic } from "@/lib/MusicContext";
 import { getMusicCover } from "@/lib/musicCoverFiles";
 
@@ -31,19 +40,13 @@ export default function MusicListDrawer({
     Record<string, string>
   >({});
 
-  /* 单首歌：添加到歌单的菜单 */
   const [addToPlaylistFor, setAddToPlaylistFor] = useState<
     string | null
   >(null);
 
-  /* 当前进入的歌单详情 */
   const [openedPlaylistId, setOpenedPlaylistId] = useState<
     string | null
   >(null);
-
-  /* -------------------------------------------------------
-     加载
-     ------------------------------------------------------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -82,10 +85,6 @@ export default function MusicListDrawer({
     setPlaylists(next);
     savePlaylists(next);
   }
-
-  /* -------------------------------------------------------
-     歌单操作
-     ------------------------------------------------------- */
 
   function createPlaylist(name: string) {
     const trimmed = name.trim();
@@ -148,10 +147,6 @@ export default function MusicListDrawer({
     );
   }
 
-  /* -------------------------------------------------------
-     渲染辅助
-     ------------------------------------------------------- */
-
   function renderCover(
     item: { id: string; coverId?: string },
     idx: number
@@ -166,16 +161,18 @@ export default function MusicListDrawer({
         />
       );
     }
+    const isCurrent =
+      idx === currentIndex && isPlaying;
     return (
       <div className="music-v2-drawer-item-cover">
-        {idx === currentIndex && isPlaying ? "♫" : "♪"}
+        <Music2
+          size={16}
+          strokeWidth={2}
+          style={{ opacity: isCurrent ? 1 : 0.7 }}
+        />
       </div>
     );
   }
-
-  /* -------------------------------------------------------
-     全部 tab
-     ------------------------------------------------------- */
 
   function renderAllTab() {
     if (music.length === 0) {
@@ -213,17 +210,13 @@ export default function MusicListDrawer({
               onClick={() => setAddToPlaylistFor(item.id)}
               aria-label="添加到歌单"
             >
-              ⋯
+              <Ellipsis size={18} strokeWidth={2} />
             </button>
           </div>
         ))}
       </>
     );
   }
-
-  /* -------------------------------------------------------
-     歌单 tab
-     ------------------------------------------------------- */
 
   function renderPlaylistsTab() {
     if (openedPlaylistId) {
@@ -246,7 +239,8 @@ export default function MusicListDrawer({
             if (name) createPlaylist(name);
           }}
         >
-          ＋ 新建歌单
+          <Plus size={14} strokeWidth={2.6} />
+          新建歌单
         </button>
 
         {playlists.length === 0 ? (
@@ -264,7 +258,7 @@ export default function MusicListDrawer({
                 onClick={() => setOpenedPlaylistId(pl.id)}
               >
                 <div className="music-playlist-item-icon">
-                  📁
+                  <Folder size={18} strokeWidth={1.8} />
                 </div>
                 <div className="music-playlist-item-info">
                   <strong>{pl.name}</strong>
@@ -277,7 +271,7 @@ export default function MusicListDrawer({
                 onClick={() => deletePlaylist(pl.id)}
                 aria-label="删除歌单"
               >
-                ×
+                <X size={16} strokeWidth={2.2} />
               </button>
             </div>
           ))
@@ -286,10 +280,6 @@ export default function MusicListDrawer({
     );
   }
 
-  /* -------------------------------------------------------
-     歌单详情
-     ------------------------------------------------------- */
-
   function renderPlaylistDetail(pl: Playlist) {
     return (
       <>
@@ -297,7 +287,8 @@ export default function MusicListDrawer({
           className="music-playlist-back"
           onClick={() => setOpenedPlaylistId(null)}
         >
-          ‹ 返回歌单
+          <ChevronLeft size={14} strokeWidth={2.6} />
+          返回歌单
         </button>
 
         <div className="music-playlist-detail-header">
@@ -353,7 +344,7 @@ export default function MusicListDrawer({
                   }
                   aria-label="从歌单移除"
                 >
-                  ×
+                  <X size={16} strokeWidth={2.2} />
                 </button>
               </div>
             );
@@ -369,10 +360,6 @@ export default function MusicListDrawer({
       </>
     );
   }
-
-  /* -------------------------------------------------------
-     添加到歌单菜单
-     ------------------------------------------------------- */
 
   function renderAddToPlaylistMenu() {
     if (!addToPlaylistFor) return null;
@@ -417,7 +404,20 @@ export default function MusicListDrawer({
                         : "music-add-to-playlist-check"
                     }
                   >
-                    {included ? "✓" : ""}
+                    {included && (
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
                   </span>
                   <span>{pl.name}</span>
                 </button>
@@ -432,7 +432,8 @@ export default function MusicListDrawer({
               if (name) createPlaylist(name);
             }}
           >
-            ＋ 新建歌单
+            <Plus size={14} strokeWidth={2.6} />
+            新建歌单
           </button>
 
           <button
@@ -446,10 +447,6 @@ export default function MusicListDrawer({
     );
   }
 
-  /* -------------------------------------------------------
-     Render
-     ------------------------------------------------------- */
-
   return (
     <div
       className="music-v2-drawer-backdrop"
@@ -461,7 +458,9 @@ export default function MusicListDrawer({
       >
         <div className="music-v2-drawer-header">
           <h2>音乐库</h2>
-          <button onClick={onClose}>×</button>
+          <button onClick={onClose} aria-label="关闭">
+            <X size={16} strokeWidth={2.2} />
+          </button>
         </div>
 
         <div className="music-v2-drawer-tabs">

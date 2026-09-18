@@ -9,6 +9,8 @@ import type {
   WordBook,
 } from "@/data/study";
 
+import { useCharacterAvatars } from "@/lib/useCharacterAvatars";
+
 type Props = {
   books: WordBook[];
   words: Word[];
@@ -53,10 +55,12 @@ export default function StudyHome({
   onStart,
   onStartMistakes,
 }: Props) {
+  /* ★ 统一头像 */
+  const avatars = useCharacterAvatars();
+
   const [partner, setPartner] =
     useState<SessionPartner | null>(null);
 
-  /* 错题集里有效的（词还存在） */
   const validMistakeIds = mistakes
     .map((m) => m.wordId)
     .filter((id) => words.some((w) => w.id === id));
@@ -69,6 +73,49 @@ export default function StudyHome({
   const booksWithWords = books.filter(
     (b) => wordCountFor(b.id) > 0
   );
+
+  /* ★ 渲染单个 partner 头像 */
+  function renderPartnerAvatar(key: SessionPartner) {
+    if (key === "both") {
+      const hasBoth = avatars.levi && avatars.erwin;
+      return (
+        <div
+          className={`study-partner-avatar${
+            hasBoth ? " has-image" : ""
+          }`}
+        >
+          {hasBoth ? (
+            <span className="study-partner-avatar-both">
+              <img src={avatars.levi!} alt="Levi" />
+              <img src={avatars.erwin!} alt="Erwin" />
+            </span>
+          ) : (
+            "L&E"
+          )}
+        </div>
+      );
+    }
+
+    const url = avatars[key];
+    return (
+      <div
+        className={`study-partner-avatar${
+          url ? " has-image" : ""
+        }`}
+      >
+        {url ? (
+          <img
+            src={url}
+            alt={key === "levi" ? "Levi" : "Erwin"}
+          />
+        ) : key === "levi" ? (
+          "L"
+        ) : (
+          "E"
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="study-scroll">
@@ -111,9 +158,7 @@ export default function StudyHome({
             onClick={() => setPartner(p.key)}
             type="button"
           >
-            <div className="study-partner-avatar">
-              {p.initial}
-            </div>
+            {renderPartnerAvatar(p.key)}
             <div className="study-partner-info">
               <strong>{p.name}</strong>
               <span>{p.sub}</span>

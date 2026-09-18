@@ -1,4 +1,5 @@
 export type RunwithmeTheme = "light" | "dark";
+export type RunwithmeVisualStyle = "macaron" | "mono";
 
 /* ---------- App ---------- */
 
@@ -30,23 +31,14 @@ export type DockSlotId =
 /* ---------- Chat 回复配置 ---------- */
 
 export type ChatReplySettings = {
-  /* 一次生成几条回复 */
   replyCountMin: number;
   replyCountMax: number;
-
-  /* 多条回复之间的间隔（秒） */
   replyIntervalMin: number;
   replyIntervalMax: number;
-
-  /* 用户发消息后多久开始回复（秒） */
   userReplyDelayMin: number;
   userReplyDelayMax: number;
-
-  /* 后台自动发消息的间隔（分钟） */
   autoReplyMin: number;
   autoReplyMax: number;
-
-  /* 引用用户消息的概率（0~1） */
   quoteChance: number;
 };
 
@@ -62,6 +54,9 @@ export type CharacterNames = {
 
 export type SystemSettings = {
   theme: RunwithmeTheme;
+  /** ★ 视觉风格：马卡龙粉 or 灰黑白 */
+  visualStyle: RunwithmeVisualStyle;
+
   lockScreenWallpaper: string;
   homeWallpaper: string;
   avatars: {
@@ -74,22 +69,17 @@ export type SystemSettings = {
   chatName: string;
   chatBackground: string | null;
 
-  /* 字体缩放（0.85 ~ 1.3） */
   fontScale: number;
 
-  /* 拍一拍内容 */
   patMessages: {
     levi: string[];
     erwin: string[];
   };
 
-  /* 角色显示名 */
   characterNames: CharacterNames;
 
-  /* Chat 回复配置 */
   chatReply: ChatReplySettings;
 
-    /* Chat 自定义 CSS */
   chatCustomCSS: string;
 };
 
@@ -97,6 +87,8 @@ const SETTINGS_KEY = "runwithme_system_settings";
 
 const defaultSettings: SystemSettings = {
   theme: "light",
+  visualStyle: "macaron",
+
   lockScreenWallpaper: "default-rose",
   homeWallpaper: "default-rose",
   avatars: {
@@ -158,7 +150,7 @@ const defaultSettings: SystemSettings = {
     autoReplyMax: 30,
     quoteChance: 0.25,
   },
-    chatCustomCSS: "",
+  chatCustomCSS: "",
 };
 
 export function loadSystemSettings(): SystemSettings {
@@ -182,6 +174,12 @@ export function loadSystemSettings(): SystemSettings {
     return {
       ...defaultSettings,
       ...parsed,
+
+      visualStyle:
+        parsed.visualStyle === "mono"
+          ? "mono"
+          : "macaron",
+
       avatars: {
         ...defaultSettings.avatars,
         ...(parsed.avatars ?? {}),
@@ -218,7 +216,7 @@ export function loadSystemSettings(): SystemSettings {
         ...defaultSettings.chatReply,
         ...(parsed.chatReply ?? {}),
       },
-            chatCustomCSS:
+      chatCustomCSS:
         typeof parsed.chatCustomCSS === "string"
           ? parsed.chatCustomCSS
           : "",
@@ -232,10 +230,17 @@ export function saveSystemSettings(
   settings: SystemSettings
 ): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    SETTINGS_KEY,
-    JSON.stringify(settings)
-  );
+  try {
+    window.localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify(settings)
+    );
+  } catch (e) {
+    console.error(
+      "[systemStorage] 保存设置失败:",
+      e
+    );
+  }
 }
 
 export function updateSystemSettings(

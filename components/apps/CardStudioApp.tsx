@@ -8,6 +8,18 @@ import {
 } from "react";
 
 import {
+  ChevronLeft,
+  Heart,
+  Image as ImageIcon,
+  Mic,
+  Pause,
+  Play,
+  Plus,
+  Settings,
+  X,
+} from "lucide-react";
+
+import {
   cards as defaultCards,
   type CharacterCard,
   type CardCharacter,
@@ -155,8 +167,12 @@ export default function CardStudioApp({
   }, []);
 
   function updateCards(nextCards: CharacterCard[]) {
+    const ok = saveCards(nextCards);
+    if (!ok) {
+      /* 保存失败 → 不更新内存，保持与 localStorage 一致 */
+      return;
+    }
     setCardPool(nextCards);
-    saveCards(nextCards);
   }
 
   function updateCategories(next: string[]) {
@@ -178,7 +194,6 @@ export default function CardStudioApp({
 
   /* -------------------------------------------------------
      媒体预览加载
-     ★ 修复：每次重新加载时，先把旧的 URL 全部 revoke
      ------------------------------------------------------- */
 
   useEffect(() => {
@@ -226,7 +241,6 @@ export default function CardStudioApp({
         return;
       }
 
-      /* ★ 替换前先 revoke 旧 URL，避免内存泄漏 */
       setMediaUrls((prev) => {
         Object.values(prev).forEach((url) => {
           if (
@@ -753,7 +767,7 @@ export default function CardStudioApp({
   ).length;
 
   /* -------------------------------------------------------
-     ★ 播放语音（带诊断日志）
+     播放语音
      ------------------------------------------------------- */
 
   function playVoice(card: CharacterCard) {
@@ -768,7 +782,6 @@ export default function CardStudioApp({
       return;
     }
 
-    /* 点同一张卡：切换暂停/播放 */
     if (playingId === card.id && audioElement) {
       if (audioElement.paused) {
         void audioElement.play().catch((e) => {
@@ -781,7 +794,6 @@ export default function CardStudioApp({
       return;
     }
 
-    /* 其它情况：换一张卡播放 */
     if (audioElement) {
       audioElement.pause();
       audioElement.currentTime = 0;
@@ -877,7 +889,8 @@ export default function CardStudioApp({
             className="studio-back-link"
             onClick={onBack}
           >
-            ← Home
+            <ChevronLeft size={14} strokeWidth={2.4} />
+            Home
           </button>
         </div>
       </header>
@@ -957,7 +970,8 @@ export default function CardStudioApp({
           className="studio-select-button"
           onClick={() => setShowCategoryEditor(true)}
         >
-          ⚙ 分类
+          <Settings size={13} strokeWidth={2.2} />
+          分类
         </button>
       </section>
 
@@ -969,7 +983,8 @@ export default function CardStudioApp({
             setShowAddPanel((prev) => !prev)
           }
         >
-          ＋ 添加 Card
+          <Plus size={14} strokeWidth={2.6} />
+          添加 Card
         </button>
 
         <button
@@ -1151,7 +1166,16 @@ export default function CardStudioApp({
 
               {addFile && (
                 <div className="studio-file-name">
-                  🎙️ {addFile.name} ·{" "}
+                  <Mic
+                    size={13}
+                    strokeWidth={2}
+                    style={{
+                      display: "inline-block",
+                      verticalAlign: "-2px",
+                      marginRight: 4,
+                    }}
+                  />
+                  {addFile.name} ·{" "}
                   {(addFile.size / 1024).toFixed(1)} KB
                   {addFile.type &&
                     ` · ${addFile.type}`}
@@ -1185,7 +1209,16 @@ export default function CardStudioApp({
 
               {addFile && (
                 <div className="studio-file-name">
-                  🧸 {addFile.name}
+                  <ImageIcon
+                    size={13}
+                    strokeWidth={2}
+                    style={{
+                      display: "inline-block",
+                      verticalAlign: "-2px",
+                      marginRight: 4,
+                    }}
+                  />
+                  {addFile.name}
                 </div>
               )}
 
@@ -1289,7 +1322,9 @@ export default function CardStudioApp({
       <section className="studio-card-list">
         {filteredCards.length === 0 ? (
           <div className="studio-empty">
-            <div>♡</div>
+            <div className="studio-empty-icon">
+              <Heart size={40} strokeWidth={1.4} />
+            </div>
             <p>这里还没有 Card。</p>
           </div>
         ) : (
@@ -1368,14 +1403,33 @@ export default function CardStudioApp({
                         className="studio-voice-play"
                         onClick={() => playVoice(card)}
                       >
-                        {playingId === card.id
-                          ? "Ⅱ"
-                          : "▶"}
+                        {playingId === card.id ? (
+                          <Pause
+                            size={14}
+                            strokeWidth={2.2}
+                            fill="currentColor"
+                          />
+                        ) : (
+                          <Play
+                            size={14}
+                            strokeWidth={2.2}
+                            fill="currentColor"
+                          />
+                        )}
                       </button>
 
                       <div>
                         <div className="studio-file-name">
-                          🎙️ {card.fileName}
+                          <Mic
+                            size={12}
+                            strokeWidth={2}
+                            style={{
+                              display: "inline-block",
+                              verticalAlign: "-2px",
+                              marginRight: 4,
+                            }}
+                          />
+                          {card.fileName}
                         </div>
 
                         <div className="studio-card-text">
@@ -1396,13 +1450,25 @@ export default function CardStudioApp({
                             }
                           />
                         ) : (
-                          <span>🧸</span>
+                          <ImageIcon
+                            size={24}
+                            strokeWidth={1.6}
+                          />
                         )}
                       </div>
 
                       <div>
                         <div className="studio-file-name">
-                          🧸 {card.fileName}
+                          <ImageIcon
+                            size={12}
+                            strokeWidth={2}
+                            style={{
+                              display: "inline-block",
+                              verticalAlign: "-2px",
+                              marginRight: 4,
+                            }}
+                          />
+                          {card.fileName}
                         </div>
 
                         {card.text && (
@@ -1480,8 +1546,9 @@ export default function CardStudioApp({
               <button
                 className="studio-modal-close"
                 onClick={closeEdit}
+                aria-label="关闭"
               >
-                ×
+                <X size={16} strokeWidth={2.2} />
               </button>
             </div>
 
@@ -1567,7 +1634,16 @@ export default function CardStudioApp({
 
               {editingCard.type === "voice" && (
                 <div className="studio-modal-file studio-modal-file-voice">
-                  🎙️ {editingCard.fileName}
+                  <Mic
+                    size={14}
+                    strokeWidth={2}
+                    style={{
+                      display: "inline-block",
+                      verticalAlign: "-3px",
+                      marginRight: 6,
+                    }}
+                  />
+                  {editingCard.fileName}
                   <div className="studio-modal-file-hint">
                     音频文件暂时不能在编辑窗口中更换
                   </div>
@@ -1576,7 +1652,16 @@ export default function CardStudioApp({
 
               {editingCard.type === "sticker" && (
                 <div className="studio-modal-file studio-modal-file-sticker">
-                  🧸 {editingCard.fileName}
+                  <ImageIcon
+                    size={14}
+                    strokeWidth={2}
+                    style={{
+                      display: "inline-block",
+                      verticalAlign: "-3px",
+                      marginRight: 6,
+                    }}
+                  />
+                  {editingCard.fileName}
                   <div className="studio-modal-file-hint">
                     图片文件暂时不能在编辑窗口中更换
                   </div>

@@ -57,6 +57,16 @@ import {
 
 import { collectInteractions } from "@/lib/icityNotificationHelper";
 
+/* ★ Bio 调度 */
+import {
+  loadBioCards,
+  pickRandomBio,
+} from "@/lib/icityBioStorage";
+import {
+  BIO_CHECK_INTERVAL_MS,
+  shouldRefreshBio,
+} from "@/lib/icityBioScheduler";
+
 /* -------------------------------------------------------
    时间参数
    ------------------------------------------------------- */
@@ -115,10 +125,8 @@ type ICityContextValue = {
   deleteComment: (commentId: string) => void;
   getCommentsForPost: (postId: string) => ICityComment[];
 
-  /* 立即触发一次随机互动（发帖/点赞/评论） */
   forceInteraction: () => void;
 
-  /* ★ 通知 */
   notifications: ICityNotification[];
   unreadCount: number;
   markAllNotificationsRead: () => void;
@@ -193,6 +201,34 @@ function pickCommentText(
   ].text.trim();
 }
 
+/* 兼容旧数据：确保每个 profile 都有 bio / lastBioUpdate */
+function normalizeProfiles(
+  raw: ICityProfiles
+): ICityProfiles {
+  const next: ICityProfiles = { ...raw };
+  for (const a of [
+    "Yui",
+    "Levi",
+    "Erwin",
+  ] as ICityAuthor[]) {
+    const base = DEFAULT_PROFILES[a];
+    const cur = raw[a];
+    next[a] = {
+      name: cur?.name ?? base.name,
+      handle: cur?.handle ?? base.handle,
+      bio:
+        typeof cur?.bio === "string"
+          ? cur.bio
+          : base.bio,
+      lastBioUpdate:
+        typeof cur?.lastBioUpdate === "number"
+          ? cur.lastBioUpdate
+          : base.lastBioUpdate,
+    };
+  }
+  return next;
+}
+
 /* -------------------------------------------------------
    Provider
    ------------------------------------------------------- */
@@ -225,7 +261,6 @@ export function ICityProvider({
     Record<string, string>
   >({});
 
-  /* ★ 通知 */
   const [notifications, setNotifications] = useState<
     ICityNotification[]
   >([]);
@@ -249,7 +284,9 @@ export function ICityProvider({
   useEffect(() => {
     const savedPosts = loadPosts();
     const savedComments = loadComments();
-    const savedProfiles = loadProfiles();
+    const savedProfiles = normalizeProfiles(
+      loadProfiles()
+    );
 
     setProfiles(savedProfiles);
 
@@ -290,6 +327,58 @@ export function ICityProvider({
       setPosts(savedPosts);
       setComments(savedComments);
     }
+  }, []);
+
+  /* -------------------------------------------------------
+     ★ Bio 自动刷新调度
+     ------------------------------------------------------- */
+
+  useEffect(() => {
+    function tick() {
+      const cards = loadBioCards();
+      const now = Date.now();
+
+      setProfiles((prev) => {
+        let changed = false;
+        const next: ICityProfiles = { ...prev };
+
+        for (const author of [
+          "Levi",
+          "Erwin",
+        ] as const) {
+          const profile = prev[author];
+
+          if (!shouldRefreshBio(profile.lastBioUpdate)) {
+            continue;
+          }
+
+          const picked = pickRandomBio(cards, author);
+          if (!picked) continue;
+
+          next[author] = {
+            ...profile,
+            bio: picked,
+            lastBioUpdate: now,
+          };
+          changed = true;
+        }
+
+        if (!changed) return prev;
+
+        saveProfiles(next);
+        return next;
+      });
+    }
+
+    /* 挂载立刻跑一次（处理首次/长期未打开的情况） */
+    tick();
+
+    /* 之后每 30 分钟跑一次 */
+    const t = window.setInterval(
+      tick,
+      BIO_CHECK_INTERVAL_MS
+    );
+    return () => window.clearInterval(t);
   }, []);
 
   /* 加载头像 / 背景图 */
@@ -433,7 +522,6 @@ export function ICityProvider({
 
     const events = collectInteractions(posts, comments);
 
-    /* 首次加载：所有现有事件静默标记为"已见" */
     if (!notificationsInitializedRef.current) {
       notificationsInitializedRef.current = true;
 
@@ -455,7 +543,6 @@ export function ICityProvider({
       return;
     }
 
-    /* 之后：只处理新事件 */
     const seen = seenIdsRef.current;
     const newOnes: ICityNotification[] = [];
     const newSeen = new Set(seen);
@@ -687,7 +774,7 @@ export function ICityProvider({
   );
 
   /* -------------------------------------------------------
-     立即触发一次互动（用于「刷新」按钮）
+     立即触发一次互动
      ------------------------------------------------------- */
 
   const forceInteraction = useCallback(() => {
@@ -772,14 +859,24 @@ export function ICityProvider({
       patch: Partial<ICityProfile>
     ) => {
       setProfiles((prev) => {
+        const current = prev[author];
+
         const next: ICityProfiles = {
           ...prev,
           [author]: {
-            name: patch.name?.trim() || prev[author].name,
+            name: patch.name?.trim() || current.name,
             handle:
               patch.handle !== undefined
                 ? patch.handle.trim()
-                : prev[author].handle,
+                : current.handle,
+            bio:
+              patch.bio !== undefined
+                ? patch.bio
+                : current.bio,
+            lastBioUpdate:
+              patch.lastBioUpdate !== undefined
+                ? patch.lastBioUpdate
+                : current.lastBioUpdate,
           },
         };
         saveProfiles(next);
@@ -1080,7 +1177,6 @@ export function ICityProvider({
         getCommentsForPost,
         forceInteraction,
 
-        /* ★ 通知 */
         notifications,
         unreadCount: notifications.filter((n) => !n.read)
           .length,

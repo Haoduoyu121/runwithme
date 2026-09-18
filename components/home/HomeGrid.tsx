@@ -15,7 +15,7 @@ import CountdownWidget from "@/components/home/widgets/CountdownWidget";
 import LetterWidget from "@/components/home/widgets/LetterWidget";
 import StudyWidget from "@/components/home/widgets/StudyWidget";
 import DailyQuoteWidget from "@/components/home/widgets/DailyQuoteWidget";
-import CollectionWidget from "@/components/home/widgets/CollectionWidget";
+import MusicWidget from "@/components/home/widgets/MusicWidget";
 
 type AppMeta = {
   id: AppId;
@@ -54,7 +54,6 @@ type Dragging = {
   height: number;
 };
 
-/* 边缘触发翻页 */
 const EDGE_PX = 44;
 const EDGE_HOLD_MS = 550;
 
@@ -83,17 +82,10 @@ export default function HomeGrid({
     Record<string, HTMLDivElement | null>
   >({});
 
-  /* 边缘翻页的计时器 */
   const edgeTimerRef = useRef<number | null>(null);
   const edgeDirRef = useRef<"left" | "right" | null>(
     null
   );
-
-  function getAppMeta(appId: AppId): AppMeta | undefined {
-    return apps.find((a) => a.id === appId);
-  }
-
-  /* ---------- Drag start ---------- */
 
   function handlePointerDown(
     item: HomeItem,
@@ -123,8 +115,6 @@ export default function HomeGrid({
     e.preventDefault();
   }
 
-  /* ---------- Global pointer move / up ---------- */
-
   useEffect(() => {
     if (!dragging) return;
 
@@ -145,14 +135,12 @@ export default function HomeGrid({
       );
       setHoveredId(target);
 
-      /* ---- 边缘翻页检测 ---- */
       let dir: "left" | "right" | null = null;
       if (e.clientX < EDGE_PX) dir = "left";
       else if (e.clientX > window.innerWidth - EDGE_PX) {
         dir = "right";
       }
 
-      /* 边界处理 */
       if (dir === "left" && currentPage <= 0) dir = null;
       if (dir === "right" && currentPage >= pageCount - 1) {
         dir = null;
@@ -187,7 +175,6 @@ export default function HomeGrid({
       );
 
       if (fromIdx !== -1) {
-        /* ---------- 同页重排 ---------- */
         if (targetId && targetId !== dragItemId) {
           const toIdx = items.findIndex(
             (it) => it.id === targetId
@@ -200,7 +187,6 @@ export default function HomeGrid({
           }
         }
       } else {
-        /* ---------- 跨页放置 ---------- */
         const toIdx =
           targetId !== null
             ? items.findIndex((it) => it.id === targetId)
@@ -214,7 +200,6 @@ export default function HomeGrid({
         );
       }
 
-      /* 清掉边缘状态 */
       if (edgeTimerRef.current !== null) {
         window.clearTimeout(edgeTimerRef.current);
         edgeTimerRef.current = null;
@@ -278,8 +263,6 @@ export default function HomeGrid({
     return result;
   }
 
-  /* ---------- 渲染 ---------- */
-
   const visibleItems = useMemo(() => {
     if (!dragging) return items;
     return items.filter((it) => it.id !== dragging.item.id);
@@ -311,7 +294,6 @@ export default function HomeGrid({
         />
       ))}
 
-      {/* 拖动中的 floating 层 */}
       {dragging && (
         <div
           className="home-grid-drag-layer"
@@ -333,7 +315,6 @@ export default function HomeGrid({
         </div>
       )}
 
-      {/* 拖动跨越页时的暗色提示 */}
       {isCrossPageDrag && (
         <div className="home-grid-crosspage-hint">
           松手放到第 {currentPage + 1} 页
@@ -373,7 +354,9 @@ function GridItem({
   registerRef: (el: HTMLDivElement | null) => void;
 }) {
   const isWidget = item.content.kind === "widget";
-  const sizeClass = item.size === "2x2" ? " is-large" : "";
+  const sizeClass = item.size
+    ? ` size-${item.size}`
+    : " size-1x1";
 
   function handleClick() {
     if (editing) return;
@@ -490,8 +473,8 @@ function WidgetContent({ item }: { item: HomeItem }) {
     return <DailyQuoteWidget />;
   }
 
-  if (w.type === "collection") {
-    return <CollectionWidget />;
+  if (w.type === "music") {
+    return <MusicWidget />;
   }
 
   return (
@@ -515,7 +498,9 @@ function FloatingItem({
   apps: AppMeta[];
   iconUrls: Partial<Record<AppId, string>>;
 }) {
-  const sizeClass = item.size === "2x2" ? " is-large" : "";
+  const sizeClass = item.size
+    ? ` size-${item.size}`
+    : " size-1x1";
 
   return (
     <div

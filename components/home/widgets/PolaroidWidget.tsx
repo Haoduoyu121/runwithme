@@ -6,15 +6,11 @@ import { getHomeFile } from "@/lib/homeFiles";
 
 type Props = {
   imageId: string;
-  caption: string;
-  dateLabel: string;
+  caption?: string;
+  dateLabel?: string;
 };
 
-export default function PolaroidWidget({
-  imageId,
-  caption,
-  dateLabel,
-}: Props) {
+export default function PolaroidWidget({ imageId }: Props) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,24 +45,12 @@ export default function PolaroidWidget({
   }, [imageId]);
 
   return (
-    <div className="home-widget-polaroid">
-      <div className="home-widget-polaroid-photo">
-        {url ? (
-          <img src={url} alt={caption} draggable={false} />
-        ) : (
-          <div className="home-widget-polaroid-loading">
-            …
-          </div>
-        )}
-      </div>
-
-      <div className="home-widget-polaroid-caption">
-        {caption || "Untitled"}
-      </div>
-
-      <div className="home-widget-polaroid-date">
-        {dateLabel}
-      </div>
+    <div className="polaroid-widget">
+      {url ? (
+        <img src={url} alt="" draggable={false} />
+      ) : (
+        <div className="polaroid-widget-loading">…</div>
+      )}
     </div>
   );
 }

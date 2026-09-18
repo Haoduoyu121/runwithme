@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { Music2, Plus, X } from "lucide-react";
+
 import {
   defaultMusic,
   type MusicItem,
@@ -25,7 +27,6 @@ type MusicUploadPanelProps = {
   onClose: () => void;
 };
 
-
 export default function MusicUploadPanel({
   onClose,
 }: MusicUploadPanelProps) {
@@ -38,7 +39,6 @@ export default function MusicUploadPanel({
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
-  /* ★ 管理面板封面 */
   const [coverUrls, setCoverUrls] = useState<
     Record<string, string>
   >({});
@@ -47,7 +47,6 @@ export default function MusicUploadPanel({
     setMusic(loadMusic(defaultMusic));
   }, []);
 
-  /* 加载所有封面缩略图 */
   useEffect(() => {
     let cancelled = false;
     const created: string[] = [];
@@ -181,7 +180,6 @@ export default function MusicUploadPanel({
       }
     }
 
-    /* ★ 同时删除封面 */
     if (item.coverId) {
       try {
         await deleteMusicCover(item.coverId);
@@ -203,7 +201,6 @@ export default function MusicUploadPanel({
     );
   }
 
-  /* ★ 封面管理（直接接收 itemId，不再用 ref 中转） */
   async function handleCoverFile(itemId: string, file: File) {
     if (!file.type.startsWith("image/")) {
       alert("请选择图片文件。");
@@ -267,7 +264,9 @@ export default function MusicUploadPanel({
         <div className="music-v2-panel-header">
           <h2>音乐管理</h2>
 
-          <button onClick={onClose}>×</button>
+          <button onClick={onClose} aria-label="关闭">
+            <X size={16} strokeWidth={2.2} />
+          </button>
         </div>
 
         <div className="music-v2-panel-tabs">
@@ -352,6 +351,7 @@ export default function MusicUploadPanel({
               className="music-v2-panel-primary"
               onClick={() => void handleAdd()}
             >
+              <Plus size={14} strokeWidth={2.6} />
               添加到播放列表
             </button>
           </div>
@@ -380,7 +380,7 @@ export default function MusicUploadPanel({
                       />
                     ) : (
                       <div className="music-v2-panel-item-cover music-v2-panel-item-cover-empty">
-                        ♪
+                        <Music2 size={18} strokeWidth={1.8} />
                       </div>
                     )}
 

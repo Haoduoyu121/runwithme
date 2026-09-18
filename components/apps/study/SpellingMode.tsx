@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { Check, X } from "lucide-react";
+
 import type { Word } from "@/data/study";
 
 type Props = {
@@ -104,12 +106,12 @@ export default function SpellingMode({
 
           {status === "correct" && (
             <span className="study-spell-icon study-spell-icon-correct">
-              ✓
+              <Check size={22} strokeWidth={3} />
             </span>
           )}
           {status === "wrong" && (
             <span className="study-spell-icon study-spell-icon-wrong">
-              ✕
+              <X size={22} strokeWidth={3} />
             </span>
           )}
         </div>

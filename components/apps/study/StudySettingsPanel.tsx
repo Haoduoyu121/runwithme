@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { X } from "lucide-react";
+
 import type {
   AudioSource,
   StudySettings,
@@ -12,9 +14,7 @@ import {
   initSpeech,
 } from "@/lib/studyAudio";
 
-import {
-  saveStudySettings,
-} from "@/lib/studyStorage";
+import { saveStudySettings } from "@/lib/studyStorage";
 
 import CheerPoolEditor from "@/components/apps/study/CheerPoolEditor";
 
@@ -38,7 +38,6 @@ export default function StudySettingsPanel({
     initSpeech();
     setVoices(getEnglishVoices());
 
-    /* iOS 是异步加载的，稍等再取一次 */
     const t = window.setTimeout(() => {
       setVoices(getEnglishVoices());
     }, 300);
@@ -65,8 +64,9 @@ export default function StudySettingsPanel({
           <button
             className="study-modal-close"
             onClick={onClose}
+            aria-label="关闭"
           >
-            ×
+            <X size={16} strokeWidth={2.4} />
           </button>
         </div>
 
@@ -179,7 +179,7 @@ export default function StudySettingsPanel({
           )}
         </div>
 
-        {/* 默认 voice（决定用哪个目录的 mp3） */}
+        {/* 默认 voice */}
         <div className="study-settings-section">
           <div className="study-settings-label">
             自定义 mp3 目录

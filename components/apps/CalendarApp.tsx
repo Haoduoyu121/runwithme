@@ -7,6 +7,17 @@ import {
 } from "react";
 
 import {
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  Pencil,
+  Plus,
+  Settings,
+  X,
+} from "lucide-react";
+
+import {
   buildMonthGrid,
   buildWeekGrid,
   createAnniversaryId,
@@ -63,6 +74,10 @@ import {
 
 import SchedulePoolEditor from "@/components/apps/calendar/SchedulePoolEditor";
 import { useCollection } from "@/lib/CollectionContext";
+import {
+  useCharacterAvatars,
+  toAvatarKey,
+} from "@/lib/useCharacterAvatars";
 
 type CalendarAppProps = {
   onBack: () => void;
@@ -70,68 +85,6 @@ type CalendarAppProps = {
 
 type Tab = "calendar" | "anniversary";
 type ViewMode = "month" | "week";
-
-/* =========================================================
-   图标
-   ========================================================= */
-
-function CalendarTabIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="5" width="18" height="16" rx="3" />
-      <path d="M3 10h18" />
-      <path d="M8 3v4" />
-      <path d="M16 3v4" />
-    </svg>
-  );
-}
-
-function HeartTabIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 7 3.5C19 15.65 12 20 12 20z" />
-    </svg>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
 
 /* =========================================================
    系统备注条件
@@ -223,6 +176,7 @@ export default function CalendarApp({
   onBack,
 }: CalendarAppProps) {
   const { tryAutoCollect } = useCollection();
+  const avatars = useCharacterAvatars();
 
   const today = new Date();
 
@@ -340,7 +294,6 @@ export default function CalendarApp({
     }
   }, []);
 
-  /* 选中日期字符串 */
   const selectedDateStr = useMemo(() => {
     if (selectedDay === null) return null;
     return toDateStr(year, month, selectedDay);
@@ -354,7 +307,6 @@ export default function CalendarApp({
     setEditingUserSchedule(false);
   }, [selectedDateStr, userSchedules]);
 
-  /* 月历 / 周历 */
   const monthGrid = useMemo(
     () => buildMonthGrid(year, month),
     [year, month]
@@ -373,7 +325,6 @@ export default function CalendarApp({
 
   const weekdays = useMemo(() => getWeekdayNames(), []);
 
-  /* 选中日期相关 */
   const selectedPeriod = useMemo(() => {
     if (!selectedDateStr) return null;
     return (
@@ -483,7 +434,6 @@ export default function CalendarApp({
     saveUserSchedules(next);
     setEditingUserSchedule(false);
 
-    /* 系统自动收藏判定（1%~5%）—— 仅在首次写入非空行程时触发 */
     if (!prevText && text) {
       tryAutoCollect({
         source: "schedule",
@@ -582,7 +532,6 @@ export default function CalendarApp({
       setAnniversaries(next);
       saveAnniversaries(next);
 
-      /* 系统自动收藏判定（1%~5%）—— 仅新建时触发 */
       tryAutoCollect({
         source: "anniversary",
         sourceId: created.id,
@@ -836,7 +785,7 @@ export default function CalendarApp({
           onClick={onBack}
           aria-label="返回"
         >
-          ‹
+          <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
 
         <div className="calendar-header-center">
@@ -867,14 +816,15 @@ export default function CalendarApp({
             onClick={() => setShowPoolEditor(true)}
             aria-label="行程卡池"
           >
-            <GearIcon />
+            <Settings size={18} strokeWidth={2} />
           </button>
         ) : (
           <button
-            className="calendar-today-btn"
+            className="calendar-icon-btn"
             onClick={openNewAnn}
+            aria-label="添加纪念日"
           >
-            ＋ 添加
+            <Plus size={20} strokeWidth={2.4} />
           </button>
         )}
       </header>
@@ -882,14 +832,13 @@ export default function CalendarApp({
       {/* ============== Calendar Tab ============== */}
       {tab === "calendar" && (
         <div className="calendar-scroll">
-          {/* 视图切换 + 导航 */}
           <div className="calendar-nav">
             <button
               className="calendar-nav-btn"
               onClick={prevMonth}
               aria-label="上一页"
             >
-              ‹
+              <ChevronLeft size={22} strokeWidth={2.4} />
             </button>
 
             <div className="calendar-view-switch">
@@ -916,11 +865,10 @@ export default function CalendarApp({
               onClick={nextMonth}
               aria-label="下一页"
             >
-              ›
+              <ChevronRight size={22} strokeWidth={2.4} />
             </button>
           </div>
 
-          {/* Today 按钮（视图切换下方单独一行） */}
           <div className="calendar-today-row">
             <button
               className="calendar-today-btn"
@@ -934,7 +882,6 @@ export default function CalendarApp({
             </button>
           </div>
 
-          {/* 月视图 */}
           {view === "month" && (
             <>
               <div className="calendar-weekdays">
@@ -954,7 +901,6 @@ export default function CalendarApp({
             </>
           )}
 
-          {/* 周视图 */}
           {view === "week" && (
             <>
               <div className="calendar-week-strip">
@@ -968,7 +914,6 @@ export default function CalendarApp({
             </>
           )}
 
-          {/* 当天详情 */}
           <section className="calendar-detail">
             <div className="calendar-detail-head">
               <div className="calendar-detail-date">
@@ -984,35 +929,54 @@ export default function CalendarApp({
               </div>
             ) : (
               <>
-                {selectedNote && (
-                  <div className="calendar-note-card">
-                    <div className="calendar-note-top">
-                      <span className="calendar-note-avatar">
-                        {selectedNote.character ===
-                        "Levi"
-                          ? "L"
-                          : "E"}
-                      </span>
+                {selectedNote && (() => {
+                  const key = toAvatarKey(
+                    selectedNote.character
+                  );
+                  const url = key ? avatars[key] : null;
 
-                      <div className="calendar-note-body">
-                        <div className="calendar-note-name">
-                          {selectedNote.character}
+                  return (
+                    <div className="calendar-note-card">
+                      <div className="calendar-note-top">
+                        <span
+                          className={
+                            "calendar-note-avatar" +
+                            (url ? " has-image" : "")
+                          }
+                        >
+                          {url ? (
+                            <img
+                              src={url}
+                              alt={selectedNote.character}
+                            />
+                          ) : selectedNote.character ===
+                            "Levi" ? (
+                            "L"
+                          ) : (
+                            "E"
+                          )}
+                        </span>
+
+                        <div className="calendar-note-body">
+                          <div className="calendar-note-name">
+                            {selectedNote.character}
+                          </div>
+                          <div className="calendar-note-text">
+                            {selectedNote.text}
+                          </div>
                         </div>
-                        <div className="calendar-note-text">
-                          {selectedNote.text}
-                        </div>
+
+                        <button
+                          className="calendar-anniv-action danger"
+                          onClick={deleteDailyNote}
+                          aria-label="删除"
+                        >
+                          <X size={16} strokeWidth={2.2} />
+                        </button>
                       </div>
-
-                      <button
-                        className="calendar-anniv-action danger"
-                        onClick={deleteDailyNote}
-                        aria-label="删除"
-                      >
-                        ×
-                      </button>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {selectedPeriod ? (
                   <div className="calendar-period-card">
@@ -1039,7 +1003,10 @@ export default function CalendarApp({
                         }
                         aria-label="编辑"
                       >
-                        ✎
+                        <Pencil
+                          size={16}
+                          strokeWidth={2}
+                        />
                       </button>
 
                       <button
@@ -1049,7 +1016,7 @@ export default function CalendarApp({
                         }
                         aria-label="删除"
                       >
-                        ×
+                        <X size={16} strokeWidth={2.2} />
                       </button>
                     </div>
 
@@ -1097,7 +1064,8 @@ export default function CalendarApp({
                     className="calendar-add-period-btn"
                     onClick={openNewPeriod}
                   >
-                    ＋ 记录经期
+                    <Plus size={14} strokeWidth={2.6} />
+                    <span>记录经期</span>
                   </button>
                 )}
 
@@ -1185,8 +1153,22 @@ export default function CalendarApp({
 
                       {selectedSchedule.levi && (
                         <div className="calendar-schedule-row">
-                          <span className="calendar-note-avatar">
-                            L
+                          <span
+                            className={
+                              "calendar-note-avatar" +
+                              (avatars.levi
+                                ? " has-image"
+                                : "")
+                            }
+                          >
+                            {avatars.levi ? (
+                              <img
+                                src={avatars.levi}
+                                alt="Levi"
+                              />
+                            ) : (
+                              "L"
+                            )}
                           </span>
                           <div className="calendar-schedule-info">
                             <div className="calendar-schedule-name">
@@ -1201,8 +1183,22 @@ export default function CalendarApp({
 
                       {selectedSchedule.erwin && (
                         <div className="calendar-schedule-row">
-                          <span className="calendar-note-avatar">
-                            E
+                          <span
+                            className={
+                              "calendar-note-avatar" +
+                              (avatars.erwin
+                                ? " has-image"
+                                : "")
+                            }
+                          >
+                            {avatars.erwin ? (
+                              <img
+                                src={avatars.erwin}
+                                alt="Erwin"
+                              />
+                            ) : (
+                              "E"
+                            )}
                           </span>
                           <div className="calendar-schedule-info">
                             <div className="calendar-schedule-name">
@@ -1235,7 +1231,7 @@ export default function CalendarApp({
           {sortedAnniversaries.length === 0 ? (
             <div className="calendar-anniv-empty">
               <div className="calendar-anniv-empty-icon">
-                ♡
+                <Heart size={40} strokeWidth={1.4} />
               </div>
               <div className="calendar-anniv-empty-title">
                 还没有纪念日
@@ -1289,7 +1285,7 @@ export default function CalendarApp({
                       onClick={() => openEditAnn(a)}
                       aria-label="编辑"
                     >
-                      ✎
+                      <Pencil size={16} strokeWidth={2} />
                     </button>
 
                     <button
@@ -1297,7 +1293,7 @@ export default function CalendarApp({
                       onClick={() => deleteAnn(a.id)}
                       aria-label="删除"
                     >
-                      ×
+                      <X size={16} strokeWidth={2.2} />
                     </button>
                   </li>
                 );
@@ -1315,7 +1311,7 @@ export default function CalendarApp({
             }`}
             onClick={() => setTab("calendar")}
           >
-            <CalendarTabIcon />
+            <CalendarIcon size={22} strokeWidth={1.8} />
             <span>Calendar</span>
           </button>
 
@@ -1325,7 +1321,7 @@ export default function CalendarApp({
             }`}
             onClick={() => setTab("anniversary")}
           >
-            <HeartTabIcon />
+            <Heart size={22} strokeWidth={1.8} />
             <span>Anniversary</span>
           </button>
         </div>
@@ -1347,8 +1343,9 @@ export default function CalendarApp({
               <button
                 className="calendar-modal-close"
                 onClick={closeAnnForm}
+                aria-label="关闭"
               >
-                ×
+                <X size={16} strokeWidth={2.4} />
               </button>
             </div>
 
@@ -1518,8 +1515,9 @@ export default function CalendarApp({
               <button
                 className="calendar-modal-close"
                 onClick={closePeriodForm}
+                aria-label="关闭"
               >
-                ×
+                <X size={16} strokeWidth={2.4} />
               </button>
             </div>
 

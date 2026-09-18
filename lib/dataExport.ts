@@ -2,6 +2,7 @@
    全量数据导出 / 导入
    - 打包所有 runwithme_ 前缀的 localStorage
    - 打包所有 IndexedDB 库（图片以 base64 存储）
+   - PWA 兼容：优先 Web Share API，降级为可见链接
    ========================================================================= */
 
 export type ExportData = {
@@ -76,7 +77,6 @@ function openReadonly(
     }
     const req = indexedDB.open(name);
     req.onupgradeneeded = () => {
-      /* 库不存在 → 直接关闭，返回 null */
       req.result.close();
       resolve(null);
     };
@@ -108,7 +108,6 @@ function openWritable(
 /* ---------- 导出 ---------- */
 
 export async function exportAllData(): Promise<ExportData> {
-  /* localStorage */
   const ls: Record<string, string> = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
@@ -118,7 +117,6 @@ export async function exportAllData(): Promise<ExportData> {
     if (v !== null) ls[key] = v;
   }
 
-  /* IndexedDB */
   const idb: ExportData["indexedDB"] = {};
 
   for (const { db: dbName, store } of APP_DBS) {
@@ -189,31 +187,124 @@ export async function exportAllData(): Promise<ExportData> {
   };
 }
 
-/* ---------- 下载 ---------- */
+/* -------------------------------------------------------
+   下载 / 分享
+   -------------------------------------------------------
+   iOS PWA standalone 下 <a download> 无效 →
+   优先 Web Share API（可以分享 File）
+   降级：复制 JSON 到剪贴板
+   ------------------------------------------------------- */
 
-export async function downloadExport(): Promise<number> {
-  const data = await exportAllData();
+export type DownloadResult =
+  | { ok: true; method: "download"; bytes: number }
+  | { ok: true; method: "share"; bytes: number }
+  | { ok: true; method: "clipboard"; bytes: number }
+  | { ok: false; message: string };
+
+function isStandalonePWA(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean })
+      .standalone === true
+  );
+}
+
+export async function downloadExport(): Promise<DownloadResult> {
+  let data: ExportData;
+  try {
+    data = await exportAllData();
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        "收集数据失败：" +
+        (e instanceof Error ? e.message : String(e)),
+    };
+  }
+
   const str = JSON.stringify(data);
+  const bytes = str.length * 2;
 
-  const blob = new Blob([str], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
   const stamp = new Date()
     .toISOString()
     .slice(0, 19)
     .replace(/[:T]/g, "-");
+  const filename = `runwithme-backup-${stamp}.json`;
 
-  a.href = url;
-  a.download = `runwithme-backup-${stamp}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  const blob = new Blob([str], {
+    type: "application/json",
+  });
 
-  return str.length * 2; /* 粗略字节数 */
+  /* ---------- 1. iOS PWA standalone → 优先 Web Share ---------- */
+  if (isStandalonePWA()) {
+    try {
+      const file = new File([blob], filename, {
+        type: "application/json",
+      });
+
+      const nav = window.navigator as Navigator & {
+        canShare?: (data: {
+          files?: File[];
+        }) => boolean;
+        share?: (data: {
+          files?: File[];
+          title?: string;
+          text?: string;
+        }) => Promise<void>;
+      };
+
+      if (
+        nav.share &&
+        nav.canShare &&
+        nav.canShare({ files: [file] })
+      ) {
+        await nav.share({
+          files: [file],
+          title: "RunWithme Backup",
+          text: "RunWithme 全量数据备份",
+        });
+        return { ok: true, method: "share", bytes };
+      }
+    } catch (e) {
+      /* 用户取消分享 or 失败，继续走降级 */
+      console.warn("[dataExport] Web Share 失败:", e);
+    }
+  }
+
+  /* ---------- 2. 常规浏览器 → a.download ---------- */
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    /* 延迟 revoke，给 iOS 一点缓冲 */
+    window.setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 4000);
+
+    return { ok: true, method: "download", bytes };
+  } catch (e) {
+    console.warn("[dataExport] a.download 失败:", e);
+  }
+
+  /* ---------- 3. 兜底：复制到剪贴板 ---------- */
+  try {
+    await navigator.clipboard.writeText(str);
+    return { ok: true, method: "clipboard", bytes };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        "导出失败，请用系统浏览器（Safari / Chrome）打开 RunWithme 后再试。\n\n" +
+        (e instanceof Error ? e.message : String(e)),
+    };
+  }
 }
 
 /* ---------- 导入 ---------- */
@@ -248,7 +339,6 @@ export async function importAllData(
     let lsCount = 0;
     let dbCount = 0;
 
-    /* localStorage */
     if (
       data.localStorage &&
       typeof data.localStorage === "object"
@@ -263,7 +353,6 @@ export async function importAllData(
       }
     }
 
-    /* IndexedDB */
     if (
       data.indexedDB &&
       typeof data.indexedDB === "object"
@@ -341,7 +430,6 @@ export async function importAllData(
 /* ---------- 全量清空 ---------- */
 
 export async function clearAllData(): Promise<void> {
-  /* localStorage */
   const toRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
@@ -351,7 +439,6 @@ export async function clearAllData(): Promise<void> {
   }
   toRemove.forEach((k) => localStorage.removeItem(k));
 
-  /* IndexedDB */
   const knownDbs = APP_DBS.map((x) => x.db);
 
   try {

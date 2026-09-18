@@ -226,7 +226,12 @@ function HomeScreen({
   /* 保存：hydrate 完成后才允许保存，避免覆盖 */
   useEffect(() => {
     if (!hydrated) return;
-    saveHomePages(pages);
+    const ok = saveHomePages(pages);
+    if (!ok) {
+      console.warn(
+        "[Home] 布局保存失败，本次改动可能丢失"
+      );
+    }
   }, [pages, hydrated]);
 
   /* 修改当前页 */

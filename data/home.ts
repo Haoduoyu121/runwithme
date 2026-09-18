@@ -1,6 +1,11 @@
 import type { AppId } from "@/lib/systemStorage";
 
-export type HomeItemSize = "1x1" | "2x2";
+export type HomeItemSize =
+  | "1x1"
+  | "2x2"
+  | "4x2"
+  | "2x4"
+  | "4x4";
 
 export type PolaroidWidget = {
   id: string;
@@ -15,6 +20,10 @@ export type CountdownWidget = {
   type: "countdown";
   title: string;
   targetDate: string;
+  backgroundImageId?: string;
+  leftAvatarId?: string;
+  centerAvatarId?: string;
+  rightAvatarId?: string;
 };
 
 export type LetterWidget = {
@@ -25,6 +34,8 @@ export type LetterWidget = {
 export type StudyWidget = {
   id: string;
   type: "study";
+  avatarId?: string;
+  bubbleText?: string;
 };
 
 export type DailyQuoteWidget = {
@@ -32,9 +43,9 @@ export type DailyQuoteWidget = {
   type: "daily-quote";
 };
 
-export type CollectionWidget = {
+export type MusicWidget = {
   id: string;
-  type: "collection";
+  type: "music";
 };
 
 export type Widget =
@@ -43,7 +54,7 @@ export type Widget =
   | LetterWidget
   | StudyWidget
   | DailyQuoteWidget
-  | CollectionWidget;
+  | MusicWidget;
 
 export type HomeItemContent =
   | { kind: "app"; appId: AppId }
@@ -74,26 +85,56 @@ export function createWidgetId(): string {
     .slice(2, 8)}`;
 }
 
-/* 倒计时天数 */
-export function daysUntilDate(targetDate: string): number {
-  const [y, m, d] = targetDate.split("-").map(Number);
+/* -------------------------------------------------------
+   倒数日计算（防御性 —— 应对历史脏数据）
+   ------------------------------------------------------- */
+
+export function daysUntilDate(
+  targetDate: string | undefined | null
+): number {
+  if (!targetDate || typeof targetDate !== "string") {
+    return 0;
+  }
+
+  const parts = targetDate.split("-");
+  if (parts.length !== 3) return 0;
+
+  const [y, m, d] = parts.map(Number);
+
+  if (
+    !Number.isFinite(y) ||
+    !Number.isFinite(m) ||
+    !Number.isFinite(d)
+  ) {
+    return 0;
+  }
+
   const target = new Date(y, m - 1, d);
+  if (Number.isNaN(target.getTime())) return 0;
+
   const now = new Date();
   const today = new Date(
     now.getFullYear(),
     now.getMonth(),
     now.getDate()
   );
+
   return Math.round(
     (target.getTime() - today.getTime()) /
       (24 * 60 * 60 * 1000)
   );
 }
 
-export function formatCountdown(targetDate: string): {
+export function formatCountdown(
+  targetDate: string | undefined | null
+): {
   days: number;
   label: string;
 } {
+  if (!targetDate) {
+    return { days: 0, label: "—" };
+  }
+
   const days = daysUntilDate(targetDate);
 
   if (days === 0) return { days: 0, label: "Today" };
@@ -109,7 +150,6 @@ export function todayDateStr(): string {
   return `${y}-${m}-${dd}`;
 }
 
-/* 从 app 列表生成默认布局（单页） */
 export function buildDefaultLayout(
   appIds: AppId[]
 ): HomeItem[] {
@@ -119,13 +159,6 @@ export function buildDefaultLayout(
     content: { kind: "app", appId },
   }));
 }
-
-/* =========================================================
-   分页合并
-   - 保留用户已有所有页的 item（顺序、位置、小组件都保留）
-   - 只把 saved 里缺失的 App 追加到**第一页**
-   - Widget 不主动补，由用户手动添加
-   ========================================================= */
 
 export function mergeHomePages(
   saved: HomePages,
@@ -147,14 +180,12 @@ export function mergeHomePages(
     missing.push(def);
   }
 
-  /* saved 为空：直接返回一页默认 */
   if (saved.length === 0) {
     return [missing.length > 0 ? missing : defaultItems];
   }
 
   if (missing.length === 0) return saved;
 
-  /* 追加到第一页 */
   const [first, ...rest] = saved;
   return [[...first, ...missing], ...rest];
 }

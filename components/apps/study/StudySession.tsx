@@ -8,6 +8,14 @@ import {
 } from "react";
 
 import {
+  Check,
+  Grid2x2,
+  Pencil,
+  SquareStack,
+  X,
+} from "lucide-react";
+
+import {
   nextMastery,
   pickCheerInterval,
   pickRandomEnabled,
@@ -47,7 +55,6 @@ type Props = {
     wordIds: string[],
     correct: boolean
   ) => void;
-  /* 错题集 */
   onAddMistake: (wordId: string) => void;
   onRemoveMistake: (wordId: string) => void;
 };
@@ -61,11 +68,14 @@ const PARTNER_LABELS: Record<SessionPartner, string> = {
 const MODES: {
   key: StudyMode;
   label: string;
-  icon: string;
+  Icon: React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+  }>;
 }[] = [
-  { key: "card", label: "卡片", icon: "❏" },
-  { key: "spell", label: "拼写", icon: "✎" },
-  { key: "match", label: "连连看", icon: "⊞" },
+  { key: "card", label: "卡片", Icon: SquareStack },
+  { key: "spell", label: "拼写", Icon: Pencil },
+  { key: "match", label: "连连看", Icon: Grid2x2 },
 ];
 
 export default function StudySession({
@@ -88,7 +98,6 @@ export default function StudySession({
   const [finished, setFinished] = useState(false);
   const [batchIndex, setBatchIndex] = useState(0);
 
-  /* 鼓励气泡 */
   const [cheerBubble, setCheerBubble] =
     useState<StudyCheerCard | null>(null);
   const cheerCounterRef = useRef(0);
@@ -121,13 +130,9 @@ export default function StudySession({
     [currentBatchIds, words]
   );
 
-  /* ---------- 卸载时停止音频 ---------- */
-
   useEffect(() => {
     return () => stopCurrentAudio();
   }, []);
-
-  /* ---------- 播放 ---------- */
 
   function pickVoice(): "levi" | "erwin" {
     if (partner === "levi") return "levi";
@@ -150,8 +155,6 @@ export default function StudySession({
     window.setTimeout(() => setPlaying(false), 1500);
   }
 
-    /* ---------- 鼓励气泡计数 ---------- */
-
   function recordStudied(count: number) {
     if (finished) return;
     cheerCounterRef.current += count;
@@ -170,15 +173,11 @@ export default function StudySession({
     }
   }
 
-  /* ---------- 导航 ---------- */
-
   function goPrev() {
     if (index <= 0) return;
     stopCurrentAudio();
     setIndex(index - 1);
   }
-
-  /* ---------- 判定 ---------- */
 
   function applyResult(correct: boolean) {
     if (!current) return;
@@ -199,7 +198,6 @@ export default function StudySession({
     onRecordStudy([current.id], correct);
     recordStudied(1);
 
-    /* 错题集逻辑 */
     if (correct) {
       if (kind === "mistakes") {
         onRemoveMistake(current.id);
@@ -214,8 +212,6 @@ export default function StudySession({
       setFinished(true);
     }
   }
-
-  /* ---------- 连连看完成一批 ---------- */
 
   function handleBatchComplete(wrong: number) {
     const correct = wrong === 0;
@@ -237,7 +233,6 @@ export default function StudySession({
         lastReviewedAt: Date.now(),
       });
 
-      /* 错题集逻辑 */
       if (correct) {
         if (kind === "mistakes") {
           onRemoveMistake(id);
@@ -257,8 +252,6 @@ export default function StudySession({
     }
   }
 
-  /* ---------- 完成弹窗 ---------- */
-
   function handleContinue() {
     setFinished(false);
     setIndex(0);
@@ -274,13 +267,13 @@ export default function StudySession({
     onExit();
   }
 
-  /* ---------- 空状态 ---------- */
-
   if (!current && !finished) {
     return (
       <div className="study-scroll">
         <div className="study-empty">
-          <div className="study-empty-icon">∅</div>
+          <div className="study-empty-icon">
+            <X size={36} strokeWidth={1.4} />
+          </div>
           <div className="study-empty-title">
             {kind === "mistakes"
               ? "错题集是空的"
@@ -298,8 +291,6 @@ export default function StudySession({
       </div>
     );
   }
-
-  /* ---------- 进度 ---------- */
 
   const isMatching = mode === "match";
 
@@ -334,7 +325,7 @@ export default function StudySession({
           aria-label="退出"
           type="button"
         >
-          ✕
+          <X size={18} strokeWidth={2.4} />
         </button>
         <div className="study-session-title">
           {sessionLabel}
@@ -352,22 +343,25 @@ export default function StudySession({
       </div>
 
       <div className="study-mode-segment">
-        {MODES.map((m) => (
-          <button
-            key={m.key}
-            type="button"
-            className={mode === m.key ? "active" : ""}
-            onClick={() => {
-              stopCurrentAudio();
-              setMode(m.key);
-            }}
-          >
-            <span className="study-mode-segment-icon">
-              {m.icon}
-            </span>
-            <span>{m.label}</span>
-          </button>
-        ))}
+        {MODES.map((m) => {
+          const Icon = m.Icon;
+          return (
+            <button
+              key={m.key}
+              type="button"
+              className={mode === m.key ? "active" : ""}
+              onClick={() => {
+                stopCurrentAudio();
+                setMode(m.key);
+              }}
+            >
+              <span className="study-mode-segment-icon">
+                <Icon size={16} strokeWidth={2} />
+              </span>
+              <span>{m.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {current && mode === "card" && (
@@ -398,7 +392,6 @@ export default function StudySession({
         />
       )}
 
-              {/* 鼓励气泡（完成弹窗时不显示） */}
       {cheerBubble && !finished && (
         <CheerBubble
           card={cheerBubble}
@@ -409,7 +402,9 @@ export default function StudySession({
       {finished && (
         <div className="study-modal-backdrop">
           <div className="study-modal study-finish-modal">
-            <div className="study-finish-icon">✓</div>
+            <div className="study-finish-icon">
+              <Check size={30} strokeWidth={2.4} />
+            </div>
             <div className="study-finish-title">
               {kind === "mistakes"
                 ? "错题练完了"

@@ -2,6 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import {
+  ArrowUp,
+  Check,
+  ChevronLeft,
+  Ellipsis,
+  Hand,
+  ImagePlus,
+  Pause,
+  Phone,
+  PhoneOff,
+  Play,
+  Plus,
+  Smile,
+  Sparkles,
+  X,
+} from "lucide-react";
+
 import { saveImageFile } from "@/lib/imageFiles";
 
 import type { Character } from "@/data/cards";
@@ -286,7 +303,19 @@ function VoiceMessage({
         disabled={!message.mediaUrl}
       >
         <span className="chat-voice-play">
-          {playing ? "❚❚" : "▶"}
+          {playing ? (
+            <Pause
+              size={12}
+              strokeWidth={2.4}
+              fill="currentColor"
+            />
+          ) : (
+            <Play
+              size={12}
+              strokeWidth={2.4}
+              fill="currentColor"
+            />
+          )}
         </span>
         <span className="chat-voice-wave">
           {WAVE.map((h, i) => (
@@ -404,11 +433,17 @@ function CallMessage({
     subtitle = "未接来电";
   }
 
-  const icon = status === "completed" ? "♫" : "✕";
+  const isCompleted = status === "completed";
 
   return (
     <div className="chat-call-bubble">
-      <div className="chat-call-icon">{icon}</div>
+      <div className="chat-call-icon">
+        {isCompleted ? (
+          <Phone size={14} strokeWidth={2} />
+        ) : (
+          <PhoneOff size={14} strokeWidth={2} />
+        )}
+      </div>
       <div className="chat-call-info">
         <strong>{title}</strong>
         <span>{subtitle}</span>
@@ -434,7 +469,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     scheduleAutoReplyAfterUserMessage,
   } = useChat();
 
-    const {
+  const {
     items: collectionItems,
     add: addCollection,
     remove: removeCollection,
@@ -713,7 +748,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
       if (!detail) return;
       if (detail.inset <= 0) return;
 
-      /* 让浏览器先完成布局，再滚 */
       requestAnimationFrame(() => {
         messagesEndRef.current?.scrollIntoView({
           behavior: "auto",
@@ -761,7 +795,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     setSelectedMessageId(null);
     scheduleAutoReplyAfterUserMessage();
 
-    /* 系统自动收藏判定（1%~5%） */
     tryAutoCollect({
       source: "chat",
       sourceId: messageId,
@@ -930,7 +963,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     }, LONG_PRESS_DURATION);
   }
 
-  /* 手指移动超过 10px 才取消（iOS 长按会被误判为滑动） */
   function moveLongPress(x: number, y: number) {
     if (!longPressTimer.current) return;
     const dx = x - longPressStart.current.x;
@@ -973,7 +1005,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
       return;
     }
     if (action === "image") {
-      /* ★ iOS 要求 click() 在用户手势的同步链里，不能用 rAF */
       const el = document.getElementById(
         "chat-image-input"
       ) as HTMLInputElement | null;
@@ -1059,11 +1090,13 @@ export default function ChatApp({ onBack }: ChatAppProps) {
 
             {selectionMode && selectable && (
               <span className="chat-pick-indicator">
-                {isSelected ? "✓" : ""}
+                {isSelected ? (
+                  <Check size={12} strokeWidth={3} />
+                ) : null}
               </span>
             )}
 
-                       {!selectionMode &&
+            {!selectionMode &&
               selectedMessageId === message.id && (
                 <div className="chat-message-context">
                   <MessageActions
@@ -1263,16 +1296,23 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               <span className="message-time">
                 {formatTime(message.timestamp)}
               </span>
+              {isYou && (
+                <span className="message-status">
+                  已送达
+                </span>
+              )}
             </div>
           )}
 
           {selectionMode && selectable && (
             <span className="chat-pick-indicator">
-              {isSelected ? "✓" : ""}
+              {isSelected ? (
+                <Check size={12} strokeWidth={3} />
+              ) : null}
             </span>
           )}
 
-                   {!selectionMode &&
+          {!selectionMode &&
             selectedMessageId === message.id && (
               <div className="chat-message-context">
                 <MessageActions
@@ -1364,7 +1404,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               onClick={exitSelectionMode}
               aria-label="取消"
             >
-              ✕
+              <X size={22} strokeWidth={2.4} />
             </button>
 
             <div className="telegram-contact">
@@ -1397,7 +1437,10 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               }}
               aria-label="返回桌面"
             >
-              ‹
+              <ChevronLeft
+                size={26}
+                strokeWidth={2.4}
+              />
             </button>
 
             <div className="telegram-contact">
@@ -1425,7 +1468,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               }}
               aria-label="Chat 设置"
             >
-              •••
+              <Ellipsis size={22} strokeWidth={2} />
             </button>
           </>
         )}
@@ -1479,19 +1522,28 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                   setShowCallPicker(true);
                 }}
               >
-                <span>☎</span>
+                <span>
+                  <Phone size={20} strokeWidth={1.9} />
+                </span>
                 <small>通话</small>
               </button>
               <button
                 onClick={() => handlePlusAction("sticker")}
               >
-                <span>🧸</span>
+                <span>
+                  <Smile size={20} strokeWidth={1.9} />
+                </span>
                 <small>表情包</small>
               </button>
               <button
                 onClick={() => handlePlusAction("image")}
               >
-                <span>🖼</span>
+                <span>
+                  <ImagePlus
+                    size={20}
+                    strokeWidth={1.9}
+                  />
+                </span>
                 <small>图片</small>
               </button>
               <button
@@ -1501,7 +1553,9 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                   )
                 }
               >
-                <span>👋</span>
+                <span>
+                  <Hand size={20} strokeWidth={1.9} />
+                </span>
                 <small>拍一拍</small>
               </button>
             </div>
@@ -1598,7 +1652,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 onClick={clearQuote}
                 aria-label="取消引用"
               >
-                ×
+                <X size={14} strokeWidth={2.4} />
               </button>
             </div>
           )}
@@ -1613,7 +1667,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               }}
               aria-label="更多功能"
             >
-              +
+              <Plus size={22} strokeWidth={2.2} />
             </button>
 
             <input
@@ -1664,7 +1718,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               }}
               aria-label="表情包"
             >
-              🧸
+              <Smile size={20} strokeWidth={1.9} />
             </button>
 
             <button
@@ -1672,7 +1726,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               onClick={() => void generateResponse()}
               aria-label="随机生成回复"
             >
-              ✦
+              <Sparkles size={20} strokeWidth={1.9} />
             </button>
 
             <button
@@ -1680,7 +1734,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               onClick={() => sendMessage()}
               aria-label="发送"
             >
-              ↑
+              <ArrowUp size={20} strokeWidth={2.6} />
             </button>
           </div>
         </div>

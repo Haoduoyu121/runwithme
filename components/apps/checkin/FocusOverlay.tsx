@@ -27,6 +27,11 @@ import {
   type FocusWallpaperType,
 } from "@/lib/focusStorage";
 
+import {
+  useCharacterAvatars,
+  toAvatarKey,
+} from "@/lib/useCharacterAvatars";
+
 const LONG_PRESS_MS = 1500;
 
 type VoiceCardWithUrl = VoiceCard & { audioUrl: string };
@@ -48,6 +53,9 @@ export default function FocusOverlay() {
     finishEarly,
     onFocusComplete,
   } = usePomodoro();
+
+  /* ★ 统一头像 */
+  const avatars = useCharacterAvatars();
 
   const [wallpaperUrl, setWallpaperUrl] = useState<
     string | null
@@ -103,7 +111,6 @@ export default function FocusOverlay() {
   /* ---------- 打开/关闭时初始化 ---------- */
   useEffect(() => {
     if (!focusOverlayOpen) {
-      /* 关闭：清空所有状态 */
       noiseAudioRef.current?.pause();
       noiseAudioRef.current = null;
       if (noiseUrlRef.current) {
@@ -119,7 +126,6 @@ export default function FocusOverlay() {
       setCompletionOpen(false);
       setCompletionCard(null);
 
-      /* 语音池清理 */
       voicePool.forEach((c) => URL.revokeObjectURL(c.audioUrl));
       setVoicePool([]);
 
@@ -236,7 +242,7 @@ export default function FocusOverlay() {
     };
   }, [focusOverlayOpen]);
 
-    /* 诊断：看 voicePool 是否加载成功 */
+  /* 诊断：看 voicePool 是否加载成功 */
   useEffect(() => {
     console.log(
       "[FocusOverlay] voicePool:",
@@ -244,7 +250,6 @@ export default function FocusOverlay() {
       voicePool
     );
   }, [voicePool]);
-
 
   /* 卸载清理 */
   useEffect(() => {
@@ -271,7 +276,6 @@ export default function FocusOverlay() {
     if (!focusOverlayOpen) return;
 
     const unsub = onFocusComplete(() => {
-      /* 抽一张 comments 卡 */
       const cards = loadCommentCards();
       const picked = pickRandomEnabled(cards);
 
@@ -279,7 +283,6 @@ export default function FocusOverlay() {
         setCompletionCard(picked);
         setCompletionOpen(true);
       } else {
-        /* 卡池为空：直接关闭专注层 */
         closeFocusOverlay();
       }
     });
@@ -312,7 +315,6 @@ export default function FocusOverlay() {
       setBubble(picked);
       setBubblePlaying(false);
 
-      /* 随机位置：左 6%~48%，上 32%~66% */
       setBubblePos({
         leftPct: 6 + Math.random() * 42,
         topPct: 32 + Math.random() * 34,
@@ -404,7 +406,6 @@ export default function FocusOverlay() {
   }
 
   /* ---------- 提前完成 ---------- */
-  /* 只触发 finishEarly，弹窗由 onFocusComplete 监听器处理 */
 
   function handleFinish() {
     finishEarly();
@@ -471,6 +472,30 @@ export default function FocusOverlay() {
           ((totalSeconds - remaining) / totalSeconds) * 100
         )
       : 0;
+
+  /* ★ 语音气泡头像 */
+  const bubbleKey = bubble
+    ? toAvatarKey(bubble.character)
+    : null;
+  const bubbleAvatarUrl = bubbleKey
+    ? avatars[bubbleKey]
+    : null;
+
+  /* ★ 阻止卡头像 */
+  const blockKey = blockCard
+    ? toAvatarKey(blockCard.character)
+    : null;
+  const blockAvatarUrl = blockKey
+    ? avatars[blockKey]
+    : null;
+
+  /* ★ 完成弹窗头像 */
+  const completionKey = completionCard
+    ? toAvatarKey(completionCard.character)
+    : null;
+  const completionAvatarUrl = completionKey
+    ? avatars[completionKey]
+    : null;
 
   return (
     <div
@@ -599,9 +624,18 @@ export default function FocusOverlay() {
             }
           >
             <span
-              className={`focus-bubble-avatar focus-bubble-avatar-${bubble.character.toLowerCase()}`}
+              className={`focus-bubble-avatar focus-bubble-avatar-${bubble.character.toLowerCase()}${
+                bubbleAvatarUrl ? " has-image" : ""
+              }`}
             >
-              {bubble.character.charAt(0)}
+              {bubbleAvatarUrl ? (
+                <img
+                  src={bubbleAvatarUrl}
+                  alt={bubble.character}
+                />
+              ) : (
+                bubble.character.charAt(0)
+              )}
             </span>
 
             <span className="focus-bubble-content">
@@ -640,9 +674,18 @@ export default function FocusOverlay() {
         >
           <div className="focus-block-card">
             <div
-              className={`focus-block-avatar focus-block-avatar-${blockCard.character.toLowerCase()}`}
+              className={`focus-block-avatar focus-block-avatar-${blockCard.character.toLowerCase()}${
+                blockAvatarUrl ? " has-image" : ""
+              }`}
             >
-              {blockCard.character.charAt(0)}
+              {blockAvatarUrl ? (
+                <img
+                  src={blockAvatarUrl}
+                  alt={blockCard.character}
+                />
+              ) : (
+                blockCard.character.charAt(0)
+              )}
             </div>
 
             <div className="focus-block-name">
@@ -690,9 +733,18 @@ export default function FocusOverlay() {
         >
           <div className="focus-block-card focus-completion-card">
             <div
-              className={`focus-block-avatar focus-block-avatar-${completionCard.character.toLowerCase()}`}
+              className={`focus-block-avatar focus-block-avatar-${completionCard.character.toLowerCase()}${
+                completionAvatarUrl ? " has-image" : ""
+              }`}
             >
-              {completionCard.character.charAt(0)}
+              {completionAvatarUrl ? (
+                <img
+                  src={completionAvatarUrl}
+                  alt={completionCard.character}
+                />
+              ) : (
+                completionCard.character.charAt(0)
+              )}
             </div>
 
             <div className="focus-block-name">

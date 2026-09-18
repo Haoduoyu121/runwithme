@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { Send, Settings, X } from "lucide-react";
+
 import { createMessageId } from "@/data/chat";
 
 import type { MusicChatMessage } from "@/lib/musicChatStorage";
@@ -98,7 +100,7 @@ export default function MusicChatPanel({
           title="卡片设置"
           aria-label="卡片设置"
         >
-          ⚙
+          <Settings size={16} strokeWidth={2} />
         </button>
 
         <button
@@ -107,7 +109,7 @@ export default function MusicChatPanel({
           title="关闭"
           aria-label="关闭"
         >
-          ×
+          <X size={16} strokeWidth={2.2} />
         </button>
       </div>
 
@@ -175,7 +177,7 @@ export default function MusicChatPanel({
               disabled={!input.trim()}
               aria-label="发送"
             >
-              ↑
+              <Send size={16} strokeWidth={2.4} />
             </button>
           </div>
         </>

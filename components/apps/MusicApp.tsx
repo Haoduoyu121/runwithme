@@ -2,6 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import {
+  Check,
+  ChevronLeft,
+  List,
+  MessageCircle,
+  Music as MusicIcon,
+  Pause,
+  Play,
+  Plus,
+  SkipBack,
+  SkipForward,
+  Upload,
+  X,
+} from "lucide-react";
+
 import { useMusic, formatTime } from "@/lib/MusicContext";
 import { useSystem } from "@/lib/SystemContext";
 import { useChat } from "@/lib/ChatContext";
@@ -68,15 +83,16 @@ const PLAY_STATE_MIN_MS = 5 * 1000;
 const PLAY_STATE_MAX_MS = 12 * 1000;
 const SYSTEM_COOLDOWN_MS = 30 * 1000;
 
+/* iOS 上传修复：不用屏幕外 / 不用 zIndex: -1
+   ref.click() 场景 → fixed 右下角 1x1 */
 const IOS_SAFE_FILE_STYLE: React.CSSProperties = {
   position: "fixed",
-  top: 0,
-  left: 0,
+  bottom: 0,
+  right: 0,
   width: 1,
   height: 1,
   opacity: 0,
   overflow: "hidden",
-  zIndex: -1,
 };
 
 function pickLine(list: string[]) {
@@ -138,7 +154,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     setChatMessages(loadMusicChatMessages());
   }, []);
 
-  /* partner 变更同步 */
   useEffect(() => {
     function onChange() {
       setPartner(loadListenPartner());
@@ -188,7 +203,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     };
   }, [settings.avatars]);
 
-  /* 当前歌曲封面 */
   useEffect(() => {
     if (!currentTrack) {
       setCoverUrl(null);
@@ -470,7 +484,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
           onClick={onBack}
           aria-label="返回"
         >
-          ‹
+          <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
 
         <button
@@ -496,7 +510,9 @@ export default function MusicApp({ onBack }: MusicAppProps) {
               )}
             </div>
           ))}
-          <div className="music-v2-listener-add">+</div>
+          <div className="music-v2-listener-add">
+            <Plus size={20} strokeWidth={2.4} />
+          </div>
         </button>
 
         <button
@@ -504,7 +520,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
           onClick={() => setShowUpload(true)}
           aria-label="音乐管理"
         >
-          ↑
+          <Upload size={20} strokeWidth={2.2} />
         </button>
       </header>
 
@@ -520,15 +536,21 @@ export default function MusicApp({ onBack }: MusicAppProps) {
           )}
           {invitation.status === "accepted" && (
             <>
-              ✓ {invitation.acceptedBy.join(" & ")} 加入了
-              {invitation.rejectedBy.length > 0 &&
-                ` · ${invitation.rejectedBy.join(
-                  " & "
-                )} 没有接受`}
+              <Check size={14} strokeWidth={2.6} />
+              <span>
+                {invitation.acceptedBy.join(" & ")} 加入了
+                {invitation.rejectedBy.length > 0 &&
+                  ` · ${invitation.rejectedBy.join(
+                    " & "
+                  )} 没有接受`}
+              </span>
             </>
           )}
           {invitation.status === "rejected" && (
-            <>✕ 没有回应，继续一个人听吧</>
+            <>
+              <X size={14} strokeWidth={2.6} />
+              <span>没有回应，继续一个人听吧</span>
+            </>
           )}
         </div>
       )}
@@ -556,7 +578,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
             {coverUrl ? (
               <img src={coverUrl} alt="专辑封面" />
             ) : (
-              <span>♪</span>
+              <MusicIcon size={54} strokeWidth={1.2} />
             )}
           </div>
         </button>
@@ -565,6 +587,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
           ref={coverInputRef}
           type="file"
           accept="image/*"
+          className="ios-file-input-detached"
           style={IOS_SAFE_FILE_STYLE}
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -624,15 +647,11 @@ export default function MusicApp({ onBack }: MusicAppProps) {
           aria-label="上一首"
           type="button"
         >
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
+          <SkipBack
+            size={24}
+            strokeWidth={1.8}
             fill="currentColor"
-          >
-            <path d="M6 5h2.2v14H6z" />
-            <path d="M20 5v14L9.5 12z" />
-          </svg>
+          />
         </button>
 
         <button
@@ -644,36 +663,17 @@ export default function MusicApp({ onBack }: MusicAppProps) {
           {loading ? (
             <span className="music-v2-play-dots">•••</span>
           ) : isPlaying ? (
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 24 24"
+            <Pause
+              size={26}
+              strokeWidth={1.8}
               fill="currentColor"
-            >
-              <rect
-                x="6"
-                y="5"
-                width="4.2"
-                height="14"
-                rx="1"
-              />
-              <rect
-                x="13.8"
-                y="5"
-                width="4.2"
-                height="14"
-                rx="1"
-              />
-            </svg>
+            />
           ) : (
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 24 24"
+            <Play
+              size={26}
+              strokeWidth={1.8}
               fill="currentColor"
-            >
-              <path d="M8 5.5v13a1 1 0 0 0 1.55.83l10-6.5a1 1 0 0 0 0-1.66l-10-6.5A1 1 0 0 0 8 5.5z" />
-            </svg>
+            />
           )}
         </button>
 
@@ -683,15 +683,11 @@ export default function MusicApp({ onBack }: MusicAppProps) {
           aria-label="下一首"
           type="button"
         >
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
+          <SkipForward
+            size={24}
+            strokeWidth={1.8}
             fill="currentColor"
-          >
-            <path d="M15.8 5H18v14h-2.2z" />
-            <path d="M4 5v14l10.5-7z" />
-          </svg>
+          />
         </button>
       </section>
 
@@ -700,7 +696,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
         onClick={() => setShowChat((v) => !v)}
         aria-label="一起听聊天"
       >
-        💬
+        <MessageCircle size={20} strokeWidth={2} />
       </button>
 
       <button
@@ -708,9 +704,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
         onClick={() => setShowList(true)}
         aria-label="播放列表"
       >
-        <span />
-        <span />
-        <span />
+        <List size={20} strokeWidth={2.2} />
       </button>
 
       {showList && (

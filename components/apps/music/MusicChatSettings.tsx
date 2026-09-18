@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { X } from "lucide-react";
+
 import {
   cards as defaultCards,
   type CharacterCard,
@@ -101,7 +103,7 @@ export default function MusicChatSettings({
         <div className="music-chat-settings-header">
           <h2>一起听 · 卡片设置</h2>
           <button onClick={onClose} aria-label="关闭">
-            ×
+            <X size={16} strokeWidth={2.2} />
           </button>
         </div>
 

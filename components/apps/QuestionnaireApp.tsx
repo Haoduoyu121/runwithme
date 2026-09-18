@@ -9,6 +9,16 @@ import {
 } from "react";
 
 import {
+  ChevronLeft,
+  Plus,
+  Send,
+  Settings,
+  Sparkles,
+  Star,
+  X,
+} from "lucide-react";
+
+import {
   createQAnswerId,
   createQOptionId,
   createQPostId,
@@ -48,6 +58,12 @@ import PoolEditor from "@/components/apps/questionnaire/PoolEditor";
 import NewQuestionModal from "@/components/apps/questionnaire/NewQuestionModal";
 import SpawnMenu from "@/components/apps/questionnaire/SpawnMenu";
 
+import {
+  useCharacterAvatars,
+  toAvatarKey,
+  type CharacterAvatars,
+} from "@/lib/useCharacterAvatars";
+
 type QuestionnaireAppProps = {
   onBack: () => void;
 };
@@ -55,69 +71,16 @@ type QuestionnaireAppProps = {
 type Filter = "all" | "mine" | "theirs" | "daily";
 
 /* =========================================================
-   图标
+   头像助手
    ========================================================= */
 
-function PlusIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
-
-function SparkleIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 3v4" />
-      <path d="M12 17v4" />
-      <path d="M3 12h4" />
-      <path d="M17 12h4" />
-      <path d="M6 6l2 2" />
-      <path d="M16 16l2 2" />
-      <path d="M6 18l2-2" />
-      <path d="M16 8l2-2" />
-    </svg>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
+function avatarUrlOf(
+  who: string | undefined,
+  avatars: CharacterAvatars
+): string | null {
+  if (!who) return null;
+  const key = toAvatarKey(who);
+  return key ? avatars[key] : null;
 }
 
 /* =========================================================
@@ -133,6 +96,8 @@ export default function QuestionnaireApp({
     remove: removeCollection,
     tryAutoCollect,
   } = useCollection();
+
+  const avatars = useCharacterAvatars();
 
   const [posts, setPosts] = useState<QPost[]>([]);
   const [cqCards, setCQCards] = useState<
@@ -153,14 +118,12 @@ export default function QuestionnaireApp({
   const [showSpawnMenu, setShowSpawnMenu] =
     useState(false);
 
-  /* 每秒 tick，用于刷新"正在准备…"的倒计时 */
   const [nowTick, setNowTick] = useState(Date.now());
 
   const [replyDrafts, setReplyDrafts] = useState<
     Record<string, string>
   >({});
 
-  /* 引用最新的 posts，避免闭包过期 */
   const postsRef = useRef<QPost[]>([]);
   useEffect(() => {
     postsRef.current = posts;
@@ -209,7 +172,6 @@ export default function QuestionnaireApp({
 
       for (const pnd of duePendings) {
         if (isChoice) {
-          /* 选项问卷：从选项里随机选一个 */
           const opts = p.options!;
           const opt =
             opts[Math.floor(Math.random() * opts.length)];
@@ -225,7 +187,6 @@ export default function QuestionnaireApp({
           continue;
         }
 
-        /* 文字问题：从回答卡池抽 */
         const card = pickRandomEnabled(
           answers.filter(
             (c) => c.character === pnd.character
@@ -270,7 +231,6 @@ export default function QuestionnaireApp({
     acCardsRef.current = ac;
     sqCardsRef.current = sq;
 
-    /* 每日自动生成 */
     const daily = loadDailyRecords();
     const today = todayStr();
 
@@ -282,7 +242,6 @@ export default function QuestionnaireApp({
     const nextDaily = [...daily];
 
     if (!hasDailyToday) {
-      /* 生成 Daily Question */
       const sqPick = pickRandomEnabled(sq);
       if (sqPick) {
         const now = Date.now();
@@ -311,7 +270,6 @@ export default function QuestionnaireApp({
       }
     }
 
-    /* 每天自动生成 1 条 Character Question */
     const hasCharacterToday = nextPosts.some(
       (p) =>
         p.mode === "character-asked" &&
@@ -339,11 +297,9 @@ export default function QuestionnaireApp({
     saveQPosts(nextPosts);
     saveDailyRecords(nextDaily);
 
-    /* 处理过期 pending */
     setTimeout(() => processPendingAnswers(), 100);
   }, [processPendingAnswers]);
 
-  /* 定时检查 pending */
   useEffect(() => {
     const t = window.setInterval(() => {
       processPendingAnswers();
@@ -351,7 +307,6 @@ export default function QuestionnaireApp({
     return () => window.clearInterval(t);
   }, [processPendingAnswers]);
 
-  /* 每秒 tick，用于刷新"正在准备…"占位 */
   useEffect(() => {
     const t = window.setInterval(() => {
       setNowTick(Date.now());
@@ -390,7 +345,6 @@ export default function QuestionnaireApp({
     commitPosts([post, ...postsRef.current]);
     setShowAskModal(false);
 
-    /* 系统自动收藏判定（1%~5%） */
     tryAutoCollect({
       source: "qa",
       sourceId: post.id,
@@ -437,7 +391,6 @@ export default function QuestionnaireApp({
 
     commitPosts([post, ...postsRef.current]);
 
-    /* 系统自动收藏判定 */
     tryAutoCollect({
       source: "qa",
       sourceId: post.id,
@@ -456,7 +409,7 @@ export default function QuestionnaireApp({
     });
   }
 
-  /* ---------- 角色文字提问（立即生成） ---------- */
+  /* ---------- 角色文字提问 ---------- */
 
   function triggerCharacterQuestion() {
     const cq = cqCardsRef.current;
@@ -479,7 +432,7 @@ export default function QuestionnaireApp({
     commitPosts([post, ...postsRef.current]);
   }
 
-  /* ---------- 角色选项问卷（延迟 10~50s 出现） ---------- */
+  /* ---------- 角色选项问卷 ---------- */
 
   function triggerCharacterChoiceQuestion() {
     const cq = cqCardsRef.current;
@@ -491,7 +444,6 @@ export default function QuestionnaireApp({
       return;
     }
 
-    /* 从对应角色的 AnswerCard 里抽 2~4 个不重复的选项 */
     const candidateAnswers = ac.filter(
       (c) =>
         c.enabled && c.character === pickQ.character
@@ -504,7 +456,6 @@ export default function QuestionnaireApp({
       return;
     }
 
-    /* 洗牌后取 2~4 个 */
     const shuffled = [...candidateAnswers];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -585,7 +536,7 @@ export default function QuestionnaireApp({
     commitPosts(next);
   }
 
-  /* ---------- Yui 回答（character-asked / daily） ---------- */
+  /* ---------- Yui 回答 ---------- */
 
   function submitYuiAnswer(postId: string) {
     const text = (replyDrafts[postId] ?? "").trim();
@@ -666,13 +617,11 @@ export default function QuestionnaireApp({
       return;
     }
 
-    /* 收藏内容 = 问题 + 全部答案 */
     const lines: string[] = [];
 
     lines.push("【问题】");
     lines.push(post.question);
 
-    /* 选项问卷附加选项 */
     if (post.options && post.options.length > 0) {
       lines.push("");
       post.options.forEach((opt, i) => {
@@ -734,11 +683,16 @@ export default function QuestionnaireApp({
   /* ---------- 卡片渲染 ---------- */
 
   function renderPost(post: QPost) {
-    /* 正在准备中：显示占位卡片 */
+    /* 正在准备中 */
     if (
       post.availableAt &&
       post.availableAt > nowTick
     ) {
+      const prepUrl = avatarUrlOf(
+        post.askedBy,
+        avatars
+      );
+
       return (
         <article
           key={post.id}
@@ -760,9 +714,16 @@ export default function QuestionnaireApp({
                 post.askedBy === "Levi"
                   ? "q-avatar-levi"
                   : "q-avatar-erwin"
-              }`}
+              }${prepUrl ? " has-image" : ""}`}
             >
-              {post.askedBy?.charAt(0) ?? "?"}
+              {prepUrl ? (
+                <img
+                  src={prepUrl}
+                  alt={post.askedBy ?? "?"}
+                />
+              ) : (
+                post.askedBy?.charAt(0) ?? "?"
+              )}
             </div>
             <span className="q-preparing-text">
               {post.askedBy ?? "他们"} 正在准备问题…
@@ -789,22 +750,22 @@ export default function QuestionnaireApp({
       ? getQAuthorDisplay(asker)
       : null;
 
-    /* 选项问卷不显示 Yui 文字输入框 */
+    const askerAvatarUrl = asker
+      ? avatarUrlOf(asker, avatars)
+      : null;
+
     const isChoice = isChoicePost(post);
 
-    /* 是否显示"等待 Yui 回答"输入框 */
     const showYuiReply =
       !isChoice &&
       !post.yuiAnswered &&
       (post.mode === "character-asked" ||
         post.mode === "daily");
 
-    /* 等待角色回答 */
     const waitingCharacters = post.pending.map(
       (p) => p.character
     );
 
-    /* 检查角色是否已经回答 */
     const answeredCharacters = new Set(
       post.answers
         .filter((a) => a.author !== "Yui")
@@ -840,7 +801,15 @@ export default function QuestionnaireApp({
                 : "收藏"
             }
           >
-            {isPostCollected(post.id) ? "★" : "☆"}
+            <Star
+              size={14}
+              strokeWidth={2}
+              fill={
+                isPostCollected(post.id)
+                  ? "currentColor"
+                  : "none"
+              }
+            />
           </button>
 
           <button
@@ -848,7 +817,7 @@ export default function QuestionnaireApp({
             onClick={() => deletePost(post.id)}
             aria-label="删除"
           >
-            ×
+            <X size={14} strokeWidth={2.2} />
           </button>
         </div>
 
@@ -856,9 +825,18 @@ export default function QuestionnaireApp({
         {asker && askerDisplay && (
           <div className="q-post-asker">
             <div
-              className={`q-avatar q-avatar-small ${askerDisplay.colorClass}`}
+              className={`q-avatar q-avatar-small ${askerDisplay.colorClass}${
+                askerAvatarUrl ? " has-image" : ""
+              }`}
             >
-              {askerDisplay.initial}
+              {askerAvatarUrl ? (
+                <img
+                  src={askerAvatarUrl}
+                  alt={askerDisplay.name}
+                />
+              ) : (
+                askerDisplay.initial
+              )}
             </div>
             <span>{askerDisplay.name}</span>
           </div>
@@ -932,12 +910,23 @@ export default function QuestionnaireApp({
           <div className="q-post-answers">
             {post.answers.map((a) => {
               const aDisplay = getQAuthorDisplay(a.author);
+              const aUrl = avatarUrlOf(a.author, avatars);
+
               return (
                 <div key={a.id} className="q-answer">
                   <div
-                    className={`q-avatar q-avatar-small ${aDisplay.colorClass}`}
+                    className={`q-avatar q-avatar-small ${aDisplay.colorClass}${
+                      aUrl ? " has-image" : ""
+                    }`}
                   >
-                    {aDisplay.initial}
+                    {aUrl ? (
+                      <img
+                        src={aUrl}
+                        alt={aDisplay.name}
+                      />
+                    ) : (
+                      aDisplay.initial
+                    )}
                   </div>
 
                   <div className="q-answer-body">
@@ -956,7 +945,7 @@ export default function QuestionnaireApp({
                     }
                     aria-label="删除"
                   >
-                    ×
+                    <X size={14} strokeWidth={2.2} />
                   </button>
                 </div>
               );
@@ -970,15 +959,22 @@ export default function QuestionnaireApp({
             <div className="q-answer-pending">
               {waitingCharacters.map((c) => {
                 const d = getQAuthorDisplay(c);
+                const url = avatarUrlOf(c, avatars);
                 return (
                   <div
                     key={c}
                     className="q-answer-pending-row"
                   >
                     <div
-                      className={`q-avatar q-avatar-small ${d.colorClass}`}
+                      className={`q-avatar q-avatar-small ${d.colorClass}${
+                        url ? " has-image" : ""
+                      }`}
                     >
-                      {d.initial}
+                      {url ? (
+                        <img src={url} alt={d.name} />
+                      ) : (
+                        d.initial
+                      )}
                     </div>
                     <span>{d.name} 正在回答…</span>
                   </div>
@@ -1015,18 +1011,19 @@ export default function QuestionnaireApp({
                 !(replyDrafts[post.id] ?? "").trim()
               }
             >
-              回答
+              <Send size={12} strokeWidth={2.4} />
+              <span>回答</span>
             </button>
           </div>
         )}
 
-        {/* 如果 Yui 已回答（character-asked），显示一个小标签 */}
+        {/* 已回复 */}
         {post.mode === "character-asked" &&
           post.yuiAnswered && (
             <div className="q-post-hint">已回复</div>
           )}
 
-        {/* 角色选项问卷，用户还没回答 → 提示可点击 */}
+        {/* 可点选项提示 */}
         {isChoicePost(post) &&
           post.mode === "character-asked" &&
           !post.yuiAnswered && (
@@ -1035,7 +1032,7 @@ export default function QuestionnaireApp({
             </div>
           )}
 
-        {/* 等待角色回答的提示 */}
+        {/* 等待角色回答提示 */}
         {answeredCharacters.size > 0 &&
           post.pending.length > 0 &&
           post.mode !== "character-asked" && (
@@ -1055,14 +1052,13 @@ export default function QuestionnaireApp({
 
   return (
     <main className="app-screen q-app">
-      {/* Header */}
       <header className="q-header">
         <button
           className="q-back"
           onClick={onBack}
           aria-label="返回"
         >
-          ‹
+          <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
 
         <div className="q-header-center">
@@ -1079,7 +1075,7 @@ export default function QuestionnaireApp({
           onClick={() => setShowSpawnMenu(true)}
           aria-label="让他们提问"
         >
-          <SparkleIcon />
+          <Sparkles size={20} strokeWidth={2} />
         </button>
 
         <button
@@ -1087,7 +1083,7 @@ export default function QuestionnaireApp({
           onClick={() => setShowPoolEditor(true)}
           aria-label="卡池"
         >
-          <GearIcon />
+          <Settings size={18} strokeWidth={2} />
         </button>
 
         <button
@@ -1095,11 +1091,10 @@ export default function QuestionnaireApp({
           onClick={() => setShowAskModal(true)}
           aria-label="提问"
         >
-          <PlusIcon />
+          <Plus size={20} strokeWidth={2.4} />
         </button>
       </header>
 
-      {/* 过滤 tab */}
       <div className="q-filter">
         {(
           [
@@ -1123,11 +1118,12 @@ export default function QuestionnaireApp({
         ))}
       </div>
 
-      {/* 列表 */}
       <div className="q-scroll">
         {visiblePosts.length === 0 ? (
           <div className="q-empty">
-            <div className="q-empty-icon">✦</div>
+            <div className="q-empty-icon">
+              <Sparkles size={40} strokeWidth={1.4} />
+            </div>
             <div className="q-empty-title">
               还没有问卷
             </div>
@@ -1140,7 +1136,6 @@ export default function QuestionnaireApp({
         )}
       </div>
 
-      {/* 提问弹窗 */}
       {showAskModal && (
         <NewQuestionModal
           onClose={() => setShowAskModal(false)}
@@ -1153,7 +1148,6 @@ export default function QuestionnaireApp({
         />
       )}
 
-      {/* 卡池编辑 */}
       {showPoolEditor && (
         <PoolEditor
           cqCards={cqCards}
@@ -1175,7 +1169,6 @@ export default function QuestionnaireApp({
         />
       )}
 
-      {/* ✦ 菜单 */}
       {showSpawnMenu && (
         <SpawnMenu
           onClose={() => setShowSpawnMenu(false)}

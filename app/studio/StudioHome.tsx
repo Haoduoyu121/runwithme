@@ -2,10 +2,31 @@
 
 import Link from "next/link";
 
-const studioApps = [
+import {
+  ChevronRight,
+  Heart,
+  Home,
+  Image as ImageIcon,
+  Music,
+  Settings,
+} from "lucide-react";
+
+type StudioApp = {
+  id: string;
+  Icon: React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+  }>;
+  name: string;
+  description: string;
+  href: string;
+  className: string;
+};
+
+const studioApps: StudioApp[] = [
   {
     id: "chat",
-    icon: "♡",
+    Icon: Heart,
     name: "Chat Cards",
     description: "管理 Levi / Erwin 的对话卡片",
     href: "/studio/chat",
@@ -13,7 +34,7 @@ const studioApps = [
   },
   {
     id: "music",
-    icon: "♫",
+    Icon: Music,
     name: "Music",
     description: "管理属于这个世界的声音",
     href: "/studio/music",
@@ -21,7 +42,7 @@ const studioApps = [
   },
   {
     id: "photos",
-    icon: "▧",
+    Icon: ImageIcon,
     name: "Photos",
     description: "管理照片与相册",
     href: "/studio/photos",
@@ -29,7 +50,7 @@ const studioApps = [
   },
   {
     id: "home",
-    icon: "⌂",
+    Icon: Home,
     name: "Home",
     description: "管理手机桌面与组件",
     href: "/studio/home",
@@ -37,7 +58,7 @@ const studioApps = [
   },
   {
     id: "settings",
-    icon: "⚙",
+    Icon: Settings,
     name: "Settings",
     description: "RunWithme 世界设置",
     href: "/studio/settings",
@@ -58,7 +79,7 @@ export default function StudioHome() {
 
           <p>
             一个用来管理这个小世界的地方。
-          </p >
+          </p>
         </div>
 
         <div className="studio-home-mark">
@@ -67,27 +88,30 @@ export default function StudioHome() {
       </header>
 
       <section className="studio-nav-grid">
-        {studioApps.map((app) => (
-          <Link
-            key={app.id}
-            href={app.href}
-            className={`studio-nav-card ${app.className}`}
-          >
-            <div className="studio-nav-icon">
-              {app.icon}
-            </div>
+        {studioApps.map((app) => {
+          const Icon = app.Icon;
+          return (
+            <Link
+              key={app.id}
+              href={app.href}
+              className={`studio-nav-card ${app.className}`}
+            >
+              <div className="studio-nav-icon">
+                <Icon size={22} strokeWidth={1.8} />
+              </div>
 
-            <div className="studio-nav-content">
-              <h2>{app.name}</h2>
+              <div className="studio-nav-content">
+                <h2>{app.name}</h2>
 
-              <p>{app.description}</p >
-            </div>
+                <p>{app.description}</p>
+              </div>
 
-            <div className="studio-nav-arrow">
-              ›
-            </div>
-          </Link>
-        ))}
+              <div className="studio-nav-arrow">
+                <ChevronRight size={20} strokeWidth={2} />
+              </div>
+            </Link>
+          );
+        })}
       </section>
 
       <footer className="studio-home-footer">

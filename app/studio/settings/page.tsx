@@ -4,9 +4,20 @@ import KeepAlivePanel from "@/components/settings/KeepAlivePanel";
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+
+import {
+  ChevronLeft,
+  Download,
+  Moon,
+  Palette,
+  Sun,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 import { cards as defaultCards } from "@/data/cards";
 
@@ -125,7 +136,6 @@ async function getDBSize(
 export default function SettingsPage() {
   const router = useRouter();
 
-  /* ★ 新增 settings / updateSettings */
   const {
     theme,
     setTheme,
@@ -152,12 +162,17 @@ export default function SettingsPage() {
     window.setTimeout(() => setMessage(""), 2600);
   }, []);
 
-  /* ---------- 卡片数量 ---------- */
+  /* 卡片数量：轻量读取，不阻塞渲染 */
   useEffect(() => {
-    setCardCount(loadCards(defaultCards).length);
+    const id = window.setTimeout(() => {
+      setCardCount(loadCards(defaultCards).length);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
 
-  /* ---------- 内存信息 ---------- */
+  /* ---------- 存储信息：延迟计算 ---------- */
+  /* 只在用户空闲时跑一次，避免打开页面时卡 */
+
   const computeStorage = useCallback(async () => {
     setComputing(true);
 
@@ -214,14 +229,36 @@ export default function SettingsPage() {
     setComputing(false);
   }, []);
 
+  /* ★ 延迟到页面渲染完之后再算 */
+  const idleFiredRef = useRef(false);
   useEffect(() => {
-    void computeStorage();
+    if (idleFiredRef.current) return;
+    idleFiredRef.current = true;
+
+    type IdleWindow = Window & {
+      requestIdleCallback?: (
+        cb: () => void,
+        opts?: { timeout?: number }
+      ) => number;
+    };
+
+    const w = window as IdleWindow;
+
+    if (typeof w.requestIdleCallback === "function") {
+      w.requestIdleCallback(() => void computeStorage(), {
+        timeout: 2000,
+      });
+    } else {
+      window.setTimeout(
+        () => void computeStorage(),
+        1200
+      );
+    }
   }, [computeStorage]);
 
   /* ---------- 顺滑主题切换 ---------- */
-  function handleSetTheme(next: "light" | "dark") {
-    if (next === theme) return;
 
+  function withThemeTransition(fn: () => void) {
     if (typeof document !== "undefined") {
       document.documentElement.classList.add(
         "theme-transition"
@@ -232,11 +269,17 @@ export default function SettingsPage() {
         );
       }, 520);
     }
-
-    setTheme(next);
+    fn();
   }
 
+  function handleSetTheme(next: "light" | "dark") {
+    if (next === theme) return;
+    withThemeTransition(() => setTheme(next));
+  }
+
+
   /* ---------- Cards 导出 / 导入 ---------- */
+
   const exportCards = () => {
     const currentCards = loadCards(defaultCards);
     const data = JSON.stringify(currentCards, null, 2);
@@ -254,7 +297,7 @@ export default function SettingsPage() {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 4000);
 
     showMessage(`已导出 ${currentCards.length} 张卡片`);
   };
@@ -285,7 +328,13 @@ export default function SettingsPage() {
 
         if (valid.length === 0) throw new Error();
 
-        saveCards(valid);
+        const ok = saveCards(valid);
+        if (!ok) {
+          showMessage(
+            "导入失败：本地存储空间不足"
+          );
+          return;
+        }
         setCardCount(valid.length);
         showMessage(`已导入 ${valid.length} 张卡片`);
       } catch {
@@ -310,16 +359,29 @@ export default function SettingsPage() {
   };
 
   /* ---------- 全量导出 ---------- */
+
   const exportEverything = async () => {
     if (exporting) return;
     setExporting(true);
     showMessage("正在收集数据…");
 
     try {
-      const bytes = await downloadExport();
-      showMessage(
-        `已导出备份（约 ${formatBytes(bytes)}）`
-      );
+      const result = await downloadExport();
+
+      if (!result.ok) {
+        showMessage(result.message);
+        return;
+      }
+
+      if (result.method === "share") {
+        showMessage("已通过系统分享导出");
+      } else if (result.method === "download") {
+        showMessage(
+          `已导出备份（约 ${formatBytes(result.bytes)}）`
+        );
+      } else if (result.method === "clipboard") {
+        showMessage("已复制备份到剪贴板");
+      }
     } catch (e) {
       console.error(e);
       showMessage("导出失败，请查看控制台。");
@@ -329,6 +391,7 @@ export default function SettingsPage() {
   };
 
   /* ---------- 全量导入 ---------- */
+
   const importEverything = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -367,6 +430,7 @@ export default function SettingsPage() {
   };
 
   /* ---------- 图片压缩 ---------- */
+
   const compressImages = async () => {
     if (
       !window.confirm(
@@ -403,6 +467,7 @@ export default function SettingsPage() {
   };
 
   /* ---------- 清空所有 ---------- */
+
   const clearAll = async () => {
     if (
       !window.confirm(
@@ -422,6 +487,7 @@ export default function SettingsPage() {
   };
 
   /* ---------- 字体缩放 ---------- */
+
   const fontScale = settings?.fontScale ?? 1;
 
   function handleDecFontScale() {
@@ -469,7 +535,8 @@ export default function SettingsPage() {
           className="studio-back-link"
           onClick={() => router.push("/")}
         >
-          ← Home
+          <ChevronLeft size={14} strokeWidth={2.4} />
+          Home
         </button>
       </header>
 
@@ -487,17 +554,17 @@ export default function SettingsPage() {
               </span>
               <h2>外观</h2>
             </div>
-            <span className="settings-section-icon">◐</span>
+            <span className="settings-section-icon">
+              <Palette size={16} strokeWidth={2} />
+            </span>
           </div>
 
           <div className="settings-card">
-            {/* 主题 */}
+            {/* 明暗 */}
             <div className="settings-row">
               <div>
-                <strong>RunWithme Theme</strong>
-                <span>
-                  控制整个 RunWithme 的日间与夜间模式
-                </span>
+                <strong>日间 / 夜间</strong>
+                <span>控制整个 RunWithme 的明暗</span>
               </div>
 
               <div className="settings-segment">
@@ -507,7 +574,8 @@ export default function SettingsPage() {
                   }
                   onClick={() => handleSetTheme("light")}
                 >
-                  ☼ Light
+                  <Sun size={12} strokeWidth={2.2} />
+                  <span>Light</span>
                 </button>
                 <button
                   className={
@@ -515,14 +583,16 @@ export default function SettingsPage() {
                   }
                   onClick={() => handleSetTheme("dark")}
                 >
-                  ☾ Dark
+                  <Moon size={12} strokeWidth={2.2} />
+                  <span>Dark</span>
                 </button>
               </div>
             </div>
 
+
             <div className="settings-divider" />
 
-            {/* ★ 字体大小 */}
+            {/* 字体大小 */}
             <div className="settings-row">
               <div>
                 <strong>字体大小</strong>
@@ -564,24 +634,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* ---------- BACKGROUND / KEEPALIVE ---------- */}
-        <section className="settings-section">
-          <div className="settings-section-heading">
-            <div>
-              <span className="settings-section-label">
-                BACKGROUND
-              </span>
-              <h2>通知与保活</h2>
-            </div>
-            <span className="settings-section-icon">◐</span>
-          </div>
-
-          <div className="settings-card">
-            <KeepAlivePanel />
-          </div>
-        </section>
-
-        {/* ---------- BACKGROUND / KEEPALIVE ---------- */}
+        {/* ---------- BACKGROUND ---------- */}
         <section className="settings-section">
           <div className="settings-section-heading">
             <div>
@@ -617,7 +670,9 @@ export default function SettingsPage() {
                   <strong>
                     {storageInfo
                       ? formatBytes(storageInfo.usage)
-                      : "计算中…"}
+                      : computing
+                        ? "计算中…"
+                        : "点击右侧开始"}
                   </strong>
                   <span>
                     已使用
@@ -741,7 +796,7 @@ export default function SettingsPage() {
                 disabled={exporting}
               >
                 <span className="settings-action-icon">
-                  ↑
+                  <Download size={16} strokeWidth={2} />
                 </span>
                 <span>
                   <strong>
@@ -757,7 +812,7 @@ export default function SettingsPage() {
 
               <label className="settings-action">
                 <span className="settings-action-icon">
-                  ↓
+                  <Upload size={16} strokeWidth={2} />
                 </span>
                 <span>
                   <strong>
@@ -778,7 +833,6 @@ export default function SettingsPage() {
                     width: 1,
                     height: 1,
                     opacity: 0,
-                    pointerEvents: "none",
                     overflow: "hidden",
                   }}
                 />
@@ -816,7 +870,7 @@ export default function SettingsPage() {
                 onClick={exportCards}
               >
                 <span className="settings-action-icon">
-                  ↑
+                  <Download size={16} strokeWidth={2} />
                 </span>
                 <span>
                   <strong>Export Cards</strong>
@@ -826,7 +880,7 @@ export default function SettingsPage() {
 
               <label className="settings-action">
                 <span className="settings-action-icon">
-                  ↓
+                  <Upload size={16} strokeWidth={2} />
                 </span>
                 <span>
                   <strong>Import Cards</strong>
@@ -841,7 +895,6 @@ export default function SettingsPage() {
                     width: 1,
                     height: 1,
                     opacity: 0,
-                    pointerEvents: "none",
                     overflow: "hidden",
                   }}
                 />
@@ -850,7 +903,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* ---------- DANGER ---------- */}
+        {/* ---------- RESET ---------- */}
         <section className="settings-section">
           <div className="settings-section-heading">
             <div>
@@ -891,6 +944,15 @@ export default function SettingsPage() {
                 className="settings-danger-button"
                 onClick={() => void clearAll()}
               >
+                <Trash2
+                  size={14}
+                  strokeWidth={2}
+                  style={{
+                    display: "inline-block",
+                    verticalAlign: "-2px",
+                    marginRight: 6,
+                  }}
+                />
                 Clear All
               </button>
             </div>

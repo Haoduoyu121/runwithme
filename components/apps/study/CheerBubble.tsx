@@ -7,16 +7,27 @@ import {
   type StudyCheerCard,
 } from "@/data/study";
 
+import {
+  useCharacterAvatars,
+  toAvatarKey,
+} from "@/lib/useCharacterAvatars";
+
 type Props = {
   card: StudyCheerCard;
   onDone: () => void;
 };
 
 export default function CheerBubble({ card, onDone }: Props) {
+  /* ★ 统一头像 */
+  const avatars = useCharacterAvatars();
+
   useEffect(() => {
     const t = window.setTimeout(onDone, CHEER_BUBBLE_DURATION_MS);
     return () => window.clearTimeout(t);
   }, [card.id, onDone]);
+
+  const key = toAvatarKey(card.character);
+  const avatarUrl = key ? avatars[key] : null;
 
   return (
     <div
@@ -26,9 +37,18 @@ export default function CheerBubble({ card, onDone }: Props) {
       tabIndex={0}
     >
       <span
-        className={`study-cheer-avatar study-cheer-avatar-${card.character.toLowerCase()}`}
+        className={`study-cheer-avatar study-cheer-avatar-${card.character.toLowerCase()}${
+          avatarUrl ? " has-image" : ""
+        }`}
       >
-        {card.character.charAt(0)}
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={card.character}
+          />
+        ) : (
+          card.character.charAt(0)
+        )}
       </span>
 
       <span className="study-cheer-content">

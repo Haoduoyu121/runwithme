@@ -22,7 +22,16 @@ type SystemContextValue = {
   updateSettings: (updates: Partial<SystemSettings>) => void;
 };
 
-const SystemContext = createContext<SystemContextValue | null>(null);
+const SystemContext =
+  createContext<SystemContextValue | null>(null);
+
+function applyTheme(theme: RunwithmeTheme) {
+  if (typeof document === "undefined") return;
+  document.documentElement.setAttribute(
+    "data-runwithme-theme",
+    theme
+  );
+}
 
 export function SystemProvider({
   children,
@@ -34,12 +43,12 @@ export function SystemProvider({
 
   useEffect(() => {
     const loaded = loadSystemSettings();
-
     setSettings(loaded);
+    applyTheme(loaded.theme);
 
-    document.documentElement.setAttribute(
-      "data-runwithme-theme",
-      loaded.theme
+    /* 兜底：清掉可能残留的 data-runwithme-style 属性 */
+    document.documentElement.removeAttribute(
+      "data-runwithme-style"
     );
   }, []);
 
@@ -47,17 +56,13 @@ export function SystemProvider({
     setSettings((current) => {
       if (!current) return current;
 
-      const next = {
+      const next: SystemSettings = {
         ...current,
         theme,
       };
 
       saveSystemSettings(next);
-
-      document.documentElement.setAttribute(
-        "data-runwithme-theme",
-        theme
-      );
+      applyTheme(theme);
 
       return next;
     });
@@ -77,10 +82,7 @@ export function SystemProvider({
       saveSystemSettings(next);
 
       if (updates.theme) {
-        document.documentElement.setAttribute(
-          "data-runwithme-theme",
-          updates.theme
-        );
+        applyTheme(updates.theme);
       }
 
       return next;

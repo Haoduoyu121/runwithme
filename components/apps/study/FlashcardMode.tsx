@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { Volume2, VolumeX } from "lucide-react";
+
 import type { Word } from "@/data/study";
 
 type Props = {
@@ -59,7 +61,11 @@ export default function FlashcardMode({
                   tabIndex={0}
                   aria-label="播放发音"
                 >
-                  {playing ? "❚❚" : "▶"}
+                  {playing ? (
+                    <VolumeX size={20} strokeWidth={2} />
+                  ) : (
+                    <Volume2 size={20} strokeWidth={2} />
+                  )}
                 </span>
 
                 <div className="study-flip-hint">

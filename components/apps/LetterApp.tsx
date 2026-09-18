@@ -2,6 +2,16 @@
 
 import { useMemo, useState } from "react";
 
+import {
+  ChevronLeft,
+  Mail,
+  PenLine,
+  Send,
+  Star,
+  Trash2,
+  X,
+} from "lucide-react";
+
 import { useCollection } from "@/lib/CollectionContext";
 import { useLetters } from "@/lib/LetterContext";
 
@@ -12,24 +22,14 @@ import {
   type Letter,
 } from "@/data/letter";
 
+import {
+  useCharacterAvatars,
+  toAvatarKey,
+  type CharacterAvatars,
+} from "@/lib/useCharacterAvatars";
+
 type LetterAppProps = { onBack: () => void };
 type Tab = "Levi" | "Erwin";
-
-const IOS_SAFE = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  width: 1,
-  height: 1,
-  opacity: 0,
-  overflow: "hidden",
-  zIndex: -1,
-} as React.CSSProperties;
-
-function avatarLabel(sender: "You" | "Levi" | "Erwin") {
-  if (sender === "You") return "Y";
-  return sender.charAt(0);
-}
 
 function avatarClass(sender: "You" | "Levi" | "Erwin") {
   if (sender === "You") return "letter-avatar letter-avatar-you";
@@ -38,22 +38,40 @@ function avatarClass(sender: "You" | "Levi" | "Erwin") {
   return "letter-avatar letter-avatar-erwin";
 }
 
+function avatarLabel(sender: "You" | "Levi" | "Erwin") {
+  if (sender === "You") return "Y";
+  return sender.charAt(0);
+}
+
 function LetterCard({
   letter,
+  avatars,
   onOpen,
 }: {
   letter: Letter;
+  avatars: CharacterAvatars;
   onOpen: () => void;
 }) {
   const isIncoming = letter.from !== "You";
+
+  const key = toAvatarKey(letter.from);
+  const avatarUrl = key ? avatars[key] : null;
 
   return (
     <button
       className={`letter-card${isIncoming && !letter.read ? " is-unread" : ""}`}
       onClick={onOpen}
     >
-      <div className={avatarClass(letter.from)}>
-        {avatarLabel(letter.from)}
+      <div
+        className={`${avatarClass(letter.from)}${
+          avatarUrl ? " has-image" : ""
+        }`}
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={letter.from} />
+        ) : (
+          avatarLabel(letter.from)
+        )}
       </div>
 
       <div className="letter-card-body">
@@ -128,7 +146,6 @@ function LetterDetail({
       return;
     }
 
-    /* 收藏内容 = From / To / Subject / Body */
     const lines: string[] = [];
     lines.push(`From: ${senderName}`);
     lines.push(`To: ${receiverName}`);
@@ -161,7 +178,7 @@ function LetterDetail({
           onClick={onClose}
           aria-label="关闭"
         >
-          ‹
+          <ChevronLeft size={24} strokeWidth={2.4} />
         </button>
         <div className="letter-detail-title">信件</div>
         <button
@@ -171,14 +188,18 @@ function LetterDetail({
           onClick={handleToggleCollect}
           aria-label={isCollected ? "取消收藏" : "收藏"}
         >
-          {isCollected ? "★" : "☆"}
+          <Star
+            size={20}
+            strokeWidth={2}
+            fill={isCollected ? "currentColor" : "none"}
+          />
         </button>
         <button
           className="letter-detail-delete"
           onClick={onDelete}
           aria-label="删除"
         >
-          🗑
+          <Trash2 size={18} strokeWidth={2} />
         </button>
       </div>
 
@@ -279,7 +300,7 @@ function LetterCompose({
           onClick={onClose}
           aria-label="关闭"
         >
-          ✕
+          <X size={22} strokeWidth={2.4} />
         </button>
         <div className="letter-detail-title">写信</div>
         <button
@@ -287,7 +308,8 @@ function LetterCompose({
           onClick={handleSend}
           disabled={!body.trim()}
         >
-          寄出
+          <Send size={14} strokeWidth={2.2} />
+          <span>寄出</span>
         </button>
       </div>
 
@@ -374,8 +396,9 @@ export default function LetterApp({
     markRead,
     deleteLetter,
   } = useLetters();
-   
+
   const { tryAutoCollect } = useCollection();
+  const avatars = useCharacterAvatars();
 
   const [tab, setTab] = useState<Tab>("Levi");
   const [showCompose, setShowCompose] = useState(false);
@@ -417,9 +440,7 @@ export default function LetterApp({
           letter={openLetter}
           onClose={() => setOpenLetterId(null)}
           onDelete={() => {
-            if (
-              window.confirm("删除这封信？")
-            ) {
+            if (window.confirm("删除这封信？")) {
               deleteLetter(openLetter.id);
               setOpenLetterId(null);
             }
@@ -438,7 +459,6 @@ export default function LetterApp({
           onSend={(to, subject, body) => {
             sendLetterTo(to, subject, body);
 
-            /* 系统自动收藏判定（1%~5%） */
             tryAutoCollect({
               source: "letter",
               content: `To: ${to}${
@@ -463,7 +483,7 @@ export default function LetterApp({
           onClick={onBack}
           aria-label="返回"
         >
-          ‹
+          <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
 
         <div className="letter-header-center">
@@ -478,7 +498,7 @@ export default function LetterApp({
           onClick={() => setShowCompose(true)}
           aria-label="写新信"
         >
-          ＋
+          <PenLine size={18} strokeWidth={2.2} />
         </button>
       </header>
 
@@ -511,12 +531,14 @@ export default function LetterApp({
       <div className="letter-scroll">
         {visibleLetters.length === 0 ? (
           <div className="letter-empty">
-            <div className="letter-empty-icon">✉</div>
+            <div className="letter-empty-icon">
+              <Mail size={42} strokeWidth={1.4} />
+            </div>
             <div className="letter-empty-title">
               还没有信件
             </div>
             <div className="letter-empty-desc">
-              点击右上角 ＋ 给 {tab} 写一封信吧
+              点击右上角 ✎ 给 {tab} 写一封信吧
             </div>
           </div>
         ) : (
@@ -525,6 +547,7 @@ export default function LetterApp({
               <LetterCard
                 key={l.id}
                 letter={l}
+                avatars={avatars}
                 onOpen={() => handleOpenLetter(l)}
               />
             ))}
@@ -537,7 +560,7 @@ export default function LetterApp({
         onClick={() => setShowCompose(true)}
         aria-label="写信"
       >
-        ✎
+        <PenLine size={22} strokeWidth={2.2} />
       </button>
     </main>
   );

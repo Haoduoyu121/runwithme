@@ -8,6 +8,16 @@ import {
 } from "react";
 
 import {
+  BarChart3,
+  BookOpen,
+  ChevronLeft,
+  Library,
+  Pencil,
+  Settings,
+  Sun,
+} from "lucide-react";
+
+import {
   createBookId,
   createWordId,
   type DailySentence as DailySentenceType,
@@ -51,6 +61,7 @@ import StudySession from "@/components/apps/study/StudySession";
 import StudySettingsPanel from "@/components/apps/study/StudySettingsPanel";
 import StatsPanel from "@/components/apps/study/StatsPanel";
 import DailySentence from "@/components/apps/study/DailySentence";
+import TodayWordCard from "@/components/apps/study/TodayWordCard";
 
 import { initSpeech } from "@/lib/studyAudio";
 
@@ -62,11 +73,18 @@ type StudyAppProps = {
 
 type Tab = "home" | "library" | "study" | "stats";
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: "home", label: "Home", icon: "☼" },
-  { key: "library", label: "Library", icon: "▤" },
-  { key: "study", label: "Study", icon: "✎" },
-  { key: "stats", label: "Stats", icon: "▦" },
+const TABS: {
+  key: Tab;
+  label: string;
+  Icon: React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+  }>;
+}[] = [
+  { key: "home", label: "Home", Icon: Sun },
+  { key: "library", label: "Library", Icon: Library },
+  { key: "study", label: "Study", Icon: Pencil },
+  { key: "stats", label: "Stats", Icon: BarChart3 },
 ];
 
 export default function StudyApp({
@@ -92,19 +110,15 @@ export default function StudyApp({
     StudyMistake[]
   >([]);
 
-  /* Library 里打开了哪本书 */
   const [openBookId, setOpenBookId] = useState<
     string | null
   >(null);
 
-  /* CSV 导入弹窗 */
   const [showImport, setShowImport] = useState(false);
 
-  /* 设置弹窗 */
   const [showSettings, setShowSettings] =
     useState(false);
 
-  /* 当前学习会话 */
   const [session, setSession] =
     useState<StudySessionState | null>(null);
 
@@ -135,12 +149,10 @@ export default function StudyApp({
 
     markSystemCollectedToday();
 
-    /* 抛硬币：4 种结果各 25% */
     const r = Math.random();
 
     let owners: ("levi" | "erwin")[] = [];
     if (r < 0.25) {
-      /* 都不收藏 */
       return;
     } else if (r < 0.5) {
       owners = ["levi"];
@@ -150,13 +162,11 @@ export default function StudyApp({
       owners = ["levi", "erwin"];
     }
 
-    /* 内容字符串 */
     const content = `「${todaySentence.text}」${
       todaySentence.source ? ` — ${todaySentence.source}` : ""
     }`;
 
     for (const owner of owners) {
-      /* 已存在同 owner + source + sourceId → 跳过 */
       const exists = collectionItems.some(
         (it) =>
           it.owner === owner &&
@@ -165,7 +175,6 @@ export default function StudyApp({
       );
       if (exists) continue;
 
-      /* 从备注卡池抽一条 */
       const cards = loadCollectionNoteCards();
       const card = pickCollectionNoteCard(cards, owner);
 
@@ -213,7 +222,7 @@ export default function StudyApp({
     []
   );
 
-    const recordStudy = useCallback(
+  const recordStudy = useCallback(
     (wordIds: string[], correct: boolean) => {
       updateTodayRecord(wordIds, correct);
     },
@@ -242,7 +251,7 @@ export default function StudyApp({
     []
   );
 
-    /* ---------- 每日一句：用户收藏 ---------- */
+  /* ---------- 每日一句：用户收藏 ---------- */
 
   function toggleCollectTodaySentence() {
     if (!todaySentence) return;
@@ -511,7 +520,6 @@ export default function StudyApp({
       (w) => w.bookId === bookId
     );
 
-    /* 未掌握的优先，但组内随机打乱 */
     const fresh = bookWords.filter(
       (w) => w.mastery !== "mastered"
     );
@@ -549,18 +557,15 @@ export default function StudyApp({
     });
   }
 
-  /* 错题集会话 */
   function startMistakeSession(partner: SessionPartner) {
     if (!settings) return;
 
-    /* 有效的错题 id */
     const validIds = mistakes
       .map((m) => m.wordId)
       .filter((id) => words.some((w) => w.id === id));
 
     if (validIds.length === 0) return;
 
-    /* 随机打乱 */
     const shuffled = [...validIds];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -570,7 +575,6 @@ export default function StudyApp({
       ];
     }
 
-    /* 只取前 sessionSize 个 */
     const wordIds = shuffled.slice(
       0,
       settings.sessionSize
@@ -588,7 +592,6 @@ export default function StudyApp({
     });
   }
 
-  /* 会话结束后"再来一轮"：同一个词书同一 partner，重新抽词 */
   function restartSession() {
     if (!session) return;
     if (session.kind === "mistakes") {
@@ -612,8 +615,6 @@ export default function StudyApp({
     ? words.filter((w) => w.bookId === openBookId)
     : [];
 
-  /* 会话里的书 */
-  /* 错题集会话没有 book，用一个占位对象 */
   const sessionBook = session
     ? session.kind === "mistakes"
       ? ({
@@ -626,8 +627,6 @@ export default function StudyApp({
       : books.find((b) => b.id === session.bookId) ?? null
     : null;
 
-  /* 错题集会话：words 直接从 sessionWordIds 里取
-     普通会话：从 bookId 过滤 */
   const sessionWords = useMemo(() => {
     if (!session) return [];
     if (session.kind === "mistakes") {
@@ -643,7 +642,6 @@ export default function StudyApp({
   const showMainHeader =
     tab !== "library" || openBook === null;
 
-  /* Study Tab 是否是会话中 */
   const inSession =
     tab === "study" && session !== null && sessionBook;
 
@@ -656,7 +654,7 @@ export default function StudyApp({
             onClick={onBack}
             aria-label="返回"
           >
-            ‹
+            <ChevronLeft size={26} strokeWidth={2.4} />
           </button>
 
           <div className="study-header-center">
@@ -671,7 +669,7 @@ export default function StudyApp({
             onClick={() => setShowSettings(true)}
             aria-label="设置"
           >
-            ⚙
+            <Settings size={18} strokeWidth={2} />
           </button>
         </header>
       )}
@@ -686,12 +684,16 @@ export default function StudyApp({
             />
           ) : (
             <div className="study-empty">
-              <div className="study-empty-icon">☼</div>
+              <div className="study-empty-icon">
+                <Sun size={36} strokeWidth={1.4} />
+              </div>
               <div className="study-empty-title">
                 还没有每日一句
               </div>
             </div>
           )}
+
+          <TodayWordCard words={words} books={books} />
         </div>
       )}
 
@@ -768,23 +770,26 @@ export default function StudyApp({
       {!inSession && (
         <nav className="study-dock">
           <div className="study-dock-inner">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                className={`study-dock-tab${
-                  tab === t.key ? " active" : ""
-                }`}
-                onClick={() => setTab(t.key)}
-                aria-label={t.label}
-              >
-                <span className="study-dock-icon">
-                  {t.icon}
-                </span>
-                <span className="study-dock-label">
-                  {t.label}
-                </span>
-              </button>
-            ))}
+            {TABS.map((t) => {
+              const Icon = t.Icon;
+              return (
+                <button
+                  key={t.key}
+                  className={`study-dock-tab${
+                    tab === t.key ? " active" : ""
+                  }`}
+                  onClick={() => setTab(t.key)}
+                  aria-label={t.label}
+                >
+                  <span className="study-dock-icon">
+                    <Icon size={22} strokeWidth={1.8} />
+                  </span>
+                  <span className="study-dock-label">
+                    {t.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </nav>
       )}

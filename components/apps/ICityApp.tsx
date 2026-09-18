@@ -3,10 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
+  Bell,
+  ChevronLeft,
+  Globe,
+  Pencil,
+  Plus,
+  RefreshCw,
+  UserRound,
+} from "lucide-react";
+
+import {
   formatTimeAgo,
   getAuthorDisplay,
   type ICityPost,
   type ICityAuthor,
+  type ICityProfiles,
 } from "@/data/icity";
 
 import { useICity } from "@/lib/ICityContext";
@@ -23,107 +34,6 @@ type ICityAppProps = {
 };
 
 type Tab = "world" | "mine";
-
-/* -------------------------------------------------------
-   SVG 图标
-   ------------------------------------------------------- */
-
-function WorldIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18" />
-      <path d="M12 3c2.5 2.8 3.8 5.9 3.8 9s-1.3 6.2-3.8 9" />
-      <path d="M12 3c-2.5 2.8-3.8 5.9-3.8 9s1.3 6.2 3.8 9" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
-
-function PostIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M4 20l4-1L20 7a2 2 0 0 0-3-3L5 16l-1 4z" />
-      <path d="M15 6l3 3" />
-    </svg>
-  );
-}
-
-function RefreshIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 12a9 9 0 1 1-3-6.7" />
-      <path d="M21 4v5h-5" />
-    </svg>
-  );
-}
 
 /* =========================================================
    主组件
@@ -143,7 +53,7 @@ export default function ICityApp({
     forceInteraction,
     unreadCount,
   } = useICity();
- 
+
   const { tryAutoCollect } = useCollection();
   const [tab, setTab] = useState<Tab>("world");
   const [showNewPost, setShowNewPost] = useState(false);
@@ -160,7 +70,7 @@ export default function ICityApp({
   } | null>(null);
 
   const [showNotifications, setShowNotifications] =
-  useState(false);
+    useState(false);
 
   const dockMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -168,6 +78,13 @@ export default function ICityApp({
   const myAvatarUrl = avatarUrls.Yui;
   const myInitial =
     myProfile.name.trim().charAt(0) || "Y";
+
+  /* ★ 独立全屏层级打开时，隐藏 Dock */
+  const detailOpen = detailPostId !== null;
+  const standaloneProfileOpen = profileAuthor !== null;
+  const lightboxOpen = lightbox !== null;
+  const hideDock =
+    detailOpen || standaloneProfileOpen || lightboxOpen;
 
   /* 点击外部关闭 dock 菜单 */
   useEffect(() => {
@@ -238,7 +155,7 @@ export default function ICityApp({
           onClick={onBack}
           aria-label="返回"
         >
-          ‹
+          <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
 
         <div className="icity-title">
@@ -250,15 +167,16 @@ export default function ICityApp({
           </div>
         </div>
 
-                <button
+        <button
           className={`icity-notif-btn${
             showNotifications ? " is-active" : ""
           }`}
           onClick={() => setShowNotifications(true)}
           aria-label="互动消息"
-          title=""
         >
-          <span className="icity-notif-bell">♡</span>
+          <span className="icity-notif-bell">
+            <Bell size={20} strokeWidth={1.9} />
+          </span>
           <span
             className={`icity-notif-badge${
               unreadCount === 0 ? " is-zero" : ""
@@ -268,7 +186,7 @@ export default function ICityApp({
           </span>
         </button>
 
-                <button
+        <button
           className={`icity-my-avatar ${
             myAvatarUrl ? " has-image" : ""
           }`}
@@ -291,7 +209,7 @@ export default function ICityApp({
           {posts.length === 0 ? (
             <div className="icity-feed-empty">
               <div className="icity-feed-empty-icon">
-                ✦
+                <Globe size={40} strokeWidth={1.4} />
               </div>
               <div className="icity-feed-empty-title">
                 还没有动态
@@ -332,75 +250,83 @@ export default function ICityApp({
         />
       )}
 
-      <nav className="icity-dock">
-        <div className="icity-dock-inner">
-          <button
-            className={`icity-dock-tab${
-              tab === "world" ? " active" : ""
-            }`}
-            onClick={() => setTab("world")}
-            aria-label="World"
-          >
-            <WorldIcon />
-            <span>World</span>
-          </button>
+      {/* ★ 只在没有打开独立全屏层级时渲染 Dock */}
+      {!hideDock && (
+        <nav className="icity-dock">
+          <div className="icity-dock-inner">
+            <button
+              className={`icity-dock-tab${
+                tab === "world" ? " active" : ""
+              }`}
+              onClick={() => setTab("world")}
+              aria-label="World"
+            >
+              <Globe size={22} strokeWidth={1.8} />
+              <span>World</span>
+            </button>
 
-          <div
-            className="icity-dock-post-slot"
-            ref={dockMenuRef}
-          >
-            {/* 悬浮菜单 */}
-            {showDockMenu && (
-              <div className="icity-dock-menu">
-                <button
-                  className="icity-dock-menu-item"
-                  onClick={handleMenuPost}
-                >
-                  <span className="icity-dock-menu-icon">
-                    <PostIcon />
-                  </span>
-                  <span className="icity-dock-menu-label">
-                    发帖
-                  </span>
-                </button>
+            <div
+              className="icity-dock-post-slot"
+              ref={dockMenuRef}
+            >
+              {showDockMenu && (
+                <div className="icity-dock-menu">
+                  <button
+                    className="icity-dock-menu-item"
+                    onClick={handleMenuPost}
+                  >
+                    <span className="icity-dock-menu-icon">
+                      <Pencil
+                        size={16}
+                        strokeWidth={2}
+                      />
+                    </span>
+                    <span className="icity-dock-menu-label">
+                      发帖
+                    </span>
+                  </button>
 
-                <button
-                  className="icity-dock-menu-item"
-                  onClick={handleMenuRefresh}
-                >
-                  <span className="icity-dock-menu-icon">
-                    <RefreshIcon />
-                  </span>
-                  <span className="icity-dock-menu-label">
-                    刷新
-                  </span>
-                </button>
-              </div>
-            )}
+                  <button
+                    className="icity-dock-menu-item"
+                    onClick={handleMenuRefresh}
+                  >
+                    <span className="icity-dock-menu-icon">
+                      <RefreshCw
+                        size={16}
+                        strokeWidth={2}
+                      />
+                    </span>
+                    <span className="icity-dock-menu-label">
+                      刷新
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              <button
+                className={`icity-dock-post${
+                  showDockMenu ? " active" : ""
+                }`}
+                onClick={handleDockPlus}
+                aria-label="更多"
+              >
+                <Plus size={24} strokeWidth={2.6} />
+              </button>
+            </div>
 
             <button
-              className={`icity-dock-post${
-                showDockMenu ? " active" : ""
+              className={`icity-dock-tab${
+                tab === "mine" ? " active" : ""
               }`}
-              onClick={handleDockPlus}
-              aria-label="更多"
+              onClick={() => setTab("mine")}
+              aria-label="Mine"
             >
-              <PlusIcon />
+              <UserRound size={22} strokeWidth={1.8} />
+              <span>Mine</span>
             </button>
           </div>
-
-          <button
-            className={`icity-dock-tab${
-              tab === "mine" ? " active" : ""
-            }`}
-            onClick={() => setTab("mine")}
-            aria-label="Mine"
-          >
-            <UserIcon />
-            <span>Mine</span>
-          </button>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       {showNewPost && (
         <NewPostModal
@@ -408,7 +334,6 @@ export default function ICityApp({
           onSubmit={(text, files) => {
             addUserPost(text, files);
 
-            /* 系统自动收藏判定（1%~5%） */
             tryAutoCollect({
               source: "icity",
               content:
@@ -448,7 +373,7 @@ export default function ICityApp({
           onClose={() => setLightbox(null)}
         />
       )}
-      
+
       {showNotifications && (
         <ICityNotificationPanel
           onClose={() => setShowNotifications(false)}
@@ -477,11 +402,7 @@ function PostCard({
   onOpenImage,
 }: {
   post: ICityPost;
-  profiles: {
-    Yui: { name: string; handle: string };
-    Levi: { name: string; handle: string };
-    Erwin: { name: string; handle: string };
-  };
+  profiles: ICityProfiles; 
   avatarUrls: Record<ICityAuthor, string | null>;
   postImageUrls: Record<string, string>;
   commentCount: number;

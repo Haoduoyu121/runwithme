@@ -7,6 +7,24 @@ import {
   useState,
 } from "react";
 
+import {
+  ChevronLeft,
+  Film,
+  Heart,
+  Maximize2,
+  Minimize2,
+  Pause,
+  PenLine,
+  Play,
+  Plus,
+  RotateCw,
+  Send,
+  Settings,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
+
 import { pickWatchCard } from "@/lib/watchCards";
 import {
   loadWatchSettings,
@@ -14,6 +32,10 @@ import {
   type WatchSettings,
 } from "@/lib/watchSettings";
 import WatchCardEditor from "@/components/watch/WatchCardEditor";
+
+import {
+  useCharacterAvatars,
+} from "@/lib/useCharacterAvatars";
 
 type WatchAppProps = {
   onBack: () => void;
@@ -121,108 +143,11 @@ function parseBilibiliUrl(
   return { bvid, page };
 }
 
-/* ---------- 图标 ---------- */
-
-function PlayIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M6 3 L20 12 L6 21 Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function PauseIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="6" y="4" width="4" height="16" fill="currentColor" />
-      <rect x="14" y="4" width="4" height="16" fill="currentColor" />
-    </svg>
-  );
-}
-
-function VolumeIcon({ muted }: { muted: boolean }) {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M11 5 L6 9 H2 v6 h4 l5 4 Z" fill="currentColor" />
-      {muted ? (
-        <>
-          <line x1="16" y1="9" x2="22" y2="15" />
-          <line x1="22" y1="9" x2="16" y2="15" />
-        </>
-      ) : (
-        <>
-          <path d="M15.54 8.46 a5 5 0 0 1 0 7.07" />
-          <path d="M19.07 4.93 a10 10 0 0 1 0 14.14" />
-        </>
-      )}
-    </svg>
-  );
-}
-
-function FullscreenIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {active ? (
-        <>
-          <path d="M9 4 v3 a2 2 0 0 1 -2 2 H4" />
-          <path d="M20 9 h-3 a2 2 0 0 1 -2 -2 V4" />
-          <path d="M4 15 h3 a2 2 0 0 1 2 2 v3" />
-          <path d="M15 20 v-3 a2 2 0 0 1 2 -2 h3" />
-        </>
-      ) : (
-        <>
-          <path d="M9 4 H6 a2 2 0 0 0 -2 2 v3" />
-          <path d="M20 9 V6 a2 2 0 0 0 -2 -2 h-3" />
-          <path d="M4 15 v3 a2 2 0 0 0 2 2 h3" />
-          <path d="M15 20 h3 a2 2 0 0 0 2 -2 v-3" />
-        </>
-      )}
-    </svg>
-  );
-}
-
-function RotateIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 12 a9 9 0 1 1 -3 -6.7" />
-      <path d="M21 3 v6 h-6" />
-    </svg>
-  );
-}
-
 /* ---------- 主组件 ---------- */
 
 export default function WatchApp({ onBack }: WatchAppProps) {
+  const avatars = useCharacterAvatars();
+
   const [source, setSource] = useState<VideoSource | null>(null);
 
   const [showImport, setShowImport] = useState(false);
@@ -281,7 +206,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     replyTimersRef.current = [];
   }
 
-  /* 卸载 / source 变化时释放 */
   useEffect(() => {
     return () => {
       clearInviteTimers();
@@ -292,7 +216,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     };
   }, [source]);
 
-  /* 全屏自动隐藏控制条 */
   useEffect(() => {
     if (!isFullscreen || !playing || !controlsVisible) return;
     const t = window.setTimeout(() => {
@@ -301,12 +224,10 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     return () => window.clearTimeout(t);
   }, [isFullscreen, playing, controlsVisible]);
 
-  /* 初始加载 watch 设置 */
   useEffect(() => {
     setWatchSettings(loadWatchSettings());
   }, []);
 
-  /* 在场角色 */
   const presentPartners: Partner[] = useMemo(() => {
     if (!invite) return [];
     const targets: Partner[] =
@@ -318,7 +239,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     );
   }, [invite]);
 
-  /* 有人接受 → 1.2s 后自动进入聊天 */
   useEffect(() => {
     if (!invite || chatMode) return;
     if (presentPartners.length === 0) return;
@@ -341,7 +261,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     return () => window.clearTimeout(t);
   }, [invite, chatMode, presentPartners]);
 
-    /* 播放中系统主动消息 */
   useEffect(() => {
     if (!chatMode) return;
     if (!watchSettings.autoMessageEnabled) return;
@@ -349,7 +268,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     if (source === null) return;
 
     const isLocal = source.kind === "local";
-    /* 本地视频：必须正在播放；B 站：拿不到播放状态，直接调度 */
     if (isLocal && !playing) return;
 
     let cancelled = false;
@@ -360,8 +278,8 @@ export default function WatchApp({ onBack }: WatchAppProps) {
 
       const isFirst = !autoMsgFirstSentRef.current;
       const delay = isFirst
-        ? 30000 + Math.random() * 60000 /* 30~90s */
-        : 120000 + Math.random() * 180000; /* 2~5min */
+        ? 30000 + Math.random() * 60000
+        : 120000 + Math.random() * 180000;
 
       timerId = window.setTimeout(() => {
         if (cancelled) return;
@@ -421,7 +339,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     playing,
   ]);
 
-  /* 自动滚到底部 */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
@@ -657,7 +574,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     }
   }
 
-  /* 邀请状态判定 */
   const invitePartners: Partner[] = invite
     ? invite.invitee === "both"
       ? ["levi", "erwin"]
@@ -681,7 +597,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
 
   /* ---------- 聊天 ---------- */
 
-  /* L7：暂停 / 拖进度 时的角色反应 */
   function maybeReact(chance: number, delayMs: number) {
     if (!chatMode) return;
     if (!watchSettings.autoMessageEnabled) return;
@@ -744,7 +659,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
 
     const delay = 2000 + Math.random() * 4000;
 
-    /* typing 提前出现 */
     const typingDelay = Math.max(400, delay - 1200);
     const typingId = window.setTimeout(() => {
       setTypingPartner(partner);
@@ -815,7 +729,7 @@ export default function WatchApp({ onBack }: WatchAppProps) {
           onClick={handleBack}
           aria-label="Back"
         >
-          ‹
+          <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
 
         <div className="watch-header-center">
@@ -828,7 +742,7 @@ export default function WatchApp({ onBack }: WatchAppProps) {
           onClick={() => setShowCardEditor(true)}
           aria-label="编辑字卡池"
         >
-          ✎
+          <PenLine size={18} strokeWidth={2} />
         </button>
 
         <button
@@ -836,7 +750,7 @@ export default function WatchApp({ onBack }: WatchAppProps) {
           onClick={() => openImport()}
           aria-label="导入视频"
         >
-          +
+          <Plus size={20} strokeWidth={2.4} />
         </button>
       </header>
 
@@ -847,7 +761,9 @@ export default function WatchApp({ onBack }: WatchAppProps) {
       >
         {source === null ? (
           <div className="watch-empty">
-            <div className="watch-empty-icon">▷</div>
+            <div className="watch-empty-icon">
+              <Film size={44} strokeWidth={1.4} />
+            </div>
             <div className="watch-empty-title">还没有视频</div>
             <div className="watch-empty-desc">
               点右上角 + 导入本地 mp4，或粘贴 B 站链接
@@ -940,7 +856,19 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                           playing ? "暂停" : "播放"
                         }
                       >
-                        {playing ? <PauseIcon /> : <PlayIcon />}
+                        {playing ? (
+                          <Pause
+                            size={18}
+                            strokeWidth={1.8}
+                            fill="currentColor"
+                          />
+                        ) : (
+                          <Play
+                            size={18}
+                            strokeWidth={1.8}
+                            fill="currentColor"
+                          />
+                        )}
                       </button>
 
                       <span className="watch-time">
@@ -959,7 +887,17 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                             muted ? "取消静音" : "静音"
                           }
                         >
-                          <VolumeIcon muted={muted} />
+                          {muted ? (
+                            <VolumeX
+                              size={18}
+                              strokeWidth={1.8}
+                            />
+                          ) : (
+                            <Volume2
+                              size={18}
+                              strokeWidth={1.8}
+                            />
+                          )}
                         </button>
                         <input
                           className="watch-volume-slider"
@@ -1010,7 +948,10 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                           onClick={toggleRotate}
                           aria-label="旋转"
                         >
-                          <RotateIcon />
+                          <RotateCw
+                            size={18}
+                            strokeWidth={1.8}
+                          />
                         </button>
                       )}
 
@@ -1021,7 +962,17 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                           isFullscreen ? "退出全屏" : "全屏"
                         }
                       >
-                        <FullscreenIcon active={isFullscreen} />
+                        {isFullscreen ? (
+                          <Minimize2
+                            size={18}
+                            strokeWidth={1.8}
+                          />
+                        ) : (
+                          <Maximize2
+                            size={18}
+                            strokeWidth={1.8}
+                          />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1041,7 +992,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
             )}
 
             {showChatLayout ? (
-              /* ---------- 一起看聊天 ---------- */
               <div className="watch-chat">
                 <div className="watch-chat-topbar">
                   <span className="watch-chat-topbar-label">
@@ -1057,14 +1007,17 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                     }
                     aria-label="一起看设置"
                   >
-                    ⚙
+                    <Settings
+                      size={16}
+                      strokeWidth={2}
+                    />
                   </button>
                   <button
                     className="watch-chat-exit"
                     onClick={exitChat}
                     aria-label="退出一起看"
                   >
-                    ×
+                    <X size={16} strokeWidth={2.4} />
                   </button>
                 </div>
 
@@ -1100,6 +1053,7 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                     }
 
                     const partner = m.role;
+                    const avatarUrl = avatars[partner];
 
                     return (
                       <div
@@ -1110,10 +1064,18 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                           className={
                             "watch-chat-avatar " +
                             "watch-chat-avatar-" +
-                            partner
+                            partner +
+                            (avatarUrl ? " has-image" : "")
                           }
                         >
-                          {PARTNER_AVATAR[partner]}
+                          {avatarUrl ? (
+                            <img
+                              src={avatarUrl}
+                              alt={PARTNER_NAME[partner]}
+                            />
+                          ) : (
+                            PARTNER_AVATAR[partner]
+                          )}
                         </span>
 
                         <div className="watch-chat-bubble-wrap">
@@ -1131,29 +1093,41 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                     );
                   })}
 
-                  {typingPartner && (
-                    <div className="watch-chat-row is-other">
-                      <span
-                        className={
-                          "watch-chat-avatar " +
-                          "watch-chat-avatar-" +
-                          typingPartner
-                        }
-                      >
-                        {PARTNER_AVATAR[typingPartner]}
-                      </span>
-                      <div className="watch-chat-bubble-wrap">
-                        <div className="watch-chat-name">
-                          {PARTNER_NAME[typingPartner]}
-                        </div>
-                        <div className="watch-chat-bubble watch-chat-typing">
-                          <span />
-                          <span />
-                          <span />
+                  {typingPartner && (() => {
+                    const avatarUrl =
+                      avatars[typingPartner];
+                    return (
+                      <div className="watch-chat-row is-other">
+                        <span
+                          className={
+                            "watch-chat-avatar " +
+                            "watch-chat-avatar-" +
+                            typingPartner +
+                            (avatarUrl ? " has-image" : "")
+                          }
+                        >
+                          {avatarUrl ? (
+                            <img
+                              src={avatarUrl}
+                              alt={PARTNER_NAME[typingPartner]}
+                            />
+                          ) : (
+                            PARTNER_AVATAR[typingPartner]
+                          )}
+                        </span>
+                        <div className="watch-chat-bubble-wrap">
+                          <div className="watch-chat-name">
+                            {PARTNER_NAME[typingPartner]}
+                          </div>
+                          <div className="watch-chat-bubble watch-chat-typing">
+                            <span />
+                            <span />
+                            <span />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   <div ref={messagesEndRef} />
                 </div>
@@ -1183,12 +1157,11 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                     disabled={!chatInput.trim()}
                     aria-label="发送"
                   >
-                    ↑
+                    <Send size={16} strokeWidth={2.4} />
                   </button>
                 </div>
               </div>
             ) : (
-              /* ---------- 单人 / 邀请 ---------- */
               <>
                 <div className="watch-invite-zone">
                   {invite === null ? (
@@ -1199,7 +1172,11 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                       }
                     >
                       <span className="watch-invite-trigger-icon">
-                        ♡
+                        <Heart
+                          size={16}
+                          strokeWidth={2}
+                          fill="currentColor"
+                        />
                       </span>
                       <span>邀请一起看</span>
                     </button>
@@ -1217,6 +1194,8 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                         {invitePartners.map((p) => {
                           const outcome =
                             invite.outcomes[p] ?? "pending";
+                          const avatarUrl = avatars[p];
+
                           return (
                             <div
                               key={p}
@@ -1225,8 +1204,22 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                                 outcome
                               }
                             >
-                              <span className="watch-invite-status-avatar">
-                                {PARTNER_AVATAR[p]}
+                              <span
+                                className={
+                                  "watch-invite-status-avatar" +
+                                  (avatarUrl
+                                    ? " has-image"
+                                    : "")
+                                }
+                              >
+                                {avatarUrl ? (
+                                  <img
+                                    src={avatarUrl}
+                                    alt={PARTNER_NAME[p]}
+                                  />
+                                ) : (
+                                  PARTNER_AVATAR[p]
+                                )}
                               </span>
                               <span className="watch-invite-status-name">
                                 {PARTNER_NAME[p]}
@@ -1466,8 +1459,17 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                 className="watch-invite-option watch-invite-option-levi"
                 onClick={() => startInvite("levi")}
               >
-                <span className="watch-invite-option-avatar">
-                  L
+                <span
+                  className={
+                    "watch-invite-option-avatar" +
+                    (avatars.levi ? " has-image" : "")
+                  }
+                >
+                  {avatars.levi ? (
+                    <img src={avatars.levi} alt="Levi" />
+                  ) : (
+                    "L"
+                  )}
                 </span>
                 <span className="watch-invite-option-name">
                   Levi
@@ -1481,8 +1483,17 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                 className="watch-invite-option watch-invite-option-erwin"
                 onClick={() => startInvite("erwin")}
               >
-                <span className="watch-invite-option-avatar">
-                  E
+                <span
+                  className={
+                    "watch-invite-option-avatar" +
+                    (avatars.erwin ? " has-image" : "")
+                  }
+                >
+                  {avatars.erwin ? (
+                    <img src={avatars.erwin} alt="Erwin" />
+                  ) : (
+                    "E"
+                  )}
                 </span>
                 <span className="watch-invite-option-name">
                   Erwin
@@ -1496,8 +1507,22 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                 className="watch-invite-option watch-invite-option-both"
                 onClick={() => startInvite("both")}
               >
-                <span className="watch-invite-option-avatar">
-                  L·E
+                <span
+                  className={
+                    "watch-invite-option-avatar" +
+                    (avatars.levi && avatars.erwin
+                      ? " has-image"
+                      : "")
+                  }
+                >
+                  {avatars.levi && avatars.erwin ? (
+                    <span className="watch-invite-option-avatar-both">
+                      <img src={avatars.levi} alt="Levi" />
+                      <img src={avatars.erwin} alt="Erwin" />
+                    </span>
+                  ) : (
+                    "L·E"
+                  )}
                 </span>
                 <span className="watch-invite-option-name">
                   三个人
@@ -1518,7 +1543,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
         </div>
       )}
 
-      {/* 一起看设置 Sheet */}
       {showChatSettings && (
         <div
           className="watch-import-backdrop"
@@ -1576,7 +1600,6 @@ export default function WatchApp({ onBack }: WatchAppProps) {
         </div>
       )}
 
-      {/* 字卡池编辑器 */}
       {showCardEditor && (
         <WatchCardEditor
           onClose={() => setShowCardEditor(false)}

@@ -3,6 +3,10 @@ export type ICityAuthor = "Yui" | "Levi" | "Erwin";
 export type ICityProfile = {
   name: string;
   handle: string;
+  /** 个人简介 */
+  bio: string;
+  /** 上次被自动刷新的时间戳（ms）。0 = 从未刷新 */
+  lastBioUpdate: number;
 };
 
 export type ICityProfiles = Record<
@@ -11,9 +15,24 @@ export type ICityProfiles = Record<
 >;
 
 export const DEFAULT_PROFILES: ICityProfiles = {
-  Yui: { name: "Yui", handle: "yui" },
-  Levi: { name: "Levi", handle: "levi" },
-  Erwin: { name: "Erwin", handle: "erwin" },
+  Yui: {
+    name: "Yui",
+    handle: "yui",
+    bio: "",
+    lastBioUpdate: 0,
+  },
+  Levi: {
+    name: "Levi",
+    handle: "levi",
+    bio: "",
+    lastBioUpdate: 0,
+  },
+  Erwin: {
+    name: "Erwin",
+    handle: "erwin",
+    bio: "",
+    lastBioUpdate: 0,
+  },
 };
 
 export type ICityPost = {
@@ -22,7 +41,6 @@ export type ICityPost = {
   text: string;
   timestamp: number;
   likes: ICityAuthor[];
-  /* 帖子配图在 IndexedDB 里的 key 列表（最多 2 张） */
   imageIds?: string[];
 };
 
@@ -107,6 +125,7 @@ export function getAuthorDisplay(
 
   return { name, handle, initial, colorClass };
 }
+
 /* =========================================================
    iCity 通知
    ========================================================= */

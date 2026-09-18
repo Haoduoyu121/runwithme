@@ -1,5 +1,7 @@
 "use client";
 
+import { Star } from "lucide-react";
+
 import type { DailySentence as DailySentenceType } from "@/data/study";
 
 type Props = {
@@ -25,7 +27,11 @@ export default function DailySentence({
           aria-label={collected ? "取消收藏" : "收藏"}
           type="button"
         >
-          {collected ? "★" : "☆"}
+          <Star
+            size={18}
+            strokeWidth={2}
+            fill={collected ? "currentColor" : "none"}
+          />
         </button>
       </div>
 

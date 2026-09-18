@@ -7,6 +7,16 @@ import {
   useState,
 } from "react";
 
+import {
+  ChevronLeft,
+  Pencil,
+  Plus,
+  Search,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
+
 import type { Word, WordBook, StudySettings } from "@/data/study";
 
 import WordFormModal from "@/components/apps/study/WordFormModal";
@@ -45,7 +55,6 @@ export default function BookDetail({
     useState<Word | null>(null);
   const [search, setSearch] = useState("");
 
-  /* 发音 */
   const [settings, setSettings] =
     useState<StudySettings | null>(null);
   const [playingWordId, setPlayingWordId] = useState<
@@ -57,7 +66,6 @@ export default function BookDetail({
     setSettings(loadStudySettings());
   }, []);
 
-  /* 卸载时停止播放 */
   useEffect(() => {
     return () => {
       playTokenRef.current++;
@@ -65,7 +73,7 @@ export default function BookDetail({
     };
   }, []);
 
-   function handlePlay(word: Word) {
+  function handlePlay(word: Word) {
     if (!settings) return;
 
     if (playingWordId === word.id) {
@@ -84,7 +92,6 @@ export default function BookDetail({
       ttsVoiceName: settings.ttsVoiceName,
     });
 
-    /* 大约 1.5 秒后自动复位按钮状态（TTS 没有可靠的回调） */
     window.setTimeout(() => {
       setPlayingWordId((prev) =>
         prev === word.id ? null : prev
@@ -118,7 +125,7 @@ export default function BookDetail({
           onClick={onBack}
           aria-label="返回"
         >
-          ‹
+          <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
 
         <div className="study-header-center">
@@ -141,7 +148,7 @@ export default function BookDetail({
           }}
           aria-label="添加单词"
         >
-          ＋
+          <Plus size={20} strokeWidth={2.4} />
         </button>
       </header>
 
@@ -160,7 +167,9 @@ export default function BookDetail({
 
         {words.length === 0 ? (
           <div className="study-empty">
-            <div className="study-empty-icon">✎</div>
+            <div className="study-empty-icon">
+              <Pencil size={36} strokeWidth={1.4} />
+            </div>
             <div className="study-empty-title">
               还没有单词
             </div>
@@ -170,7 +179,9 @@ export default function BookDetail({
           </div>
         ) : filtered.length === 0 ? (
           <div className="study-empty">
-            <div className="study-empty-icon">∅</div>
+            <div className="study-empty-icon">
+              <Search size={36} strokeWidth={1.4} />
+            </div>
             <div className="study-empty-title">
               没找到匹配的单词
             </div>
@@ -216,7 +227,11 @@ export default function BookDetail({
                         : "播放发音"
                     }
                   >
-                    {playingWordId === w.id ? "❚❚" : "▶"}
+                    {playingWordId === w.id ? (
+                      <VolumeX size={13} strokeWidth={2.4} />
+                    ) : (
+                      <Volume2 size={13} strokeWidth={2.4} />
+                    )}
                   </button>
                   <button
                     className="study-word-action"
@@ -226,14 +241,14 @@ export default function BookDetail({
                     }}
                     aria-label="编辑"
                   >
-                    ✎
+                    <Pencil size={14} strokeWidth={2} />
                   </button>
                   <button
                     className="study-word-action danger"
                     onClick={() => handleDelete(w)}
                     aria-label="删除"
                   >
-                    ×
+                    <X size={15} strokeWidth={2.2} />
                   </button>
                 </div>
               </li>

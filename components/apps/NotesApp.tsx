@@ -8,6 +8,15 @@ import {
 } from "react";
 
 import {
+  ChevronLeft,
+  Plus,
+  Settings,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+
+import {
   collectAllTags,
   createNoteId,
   createWishlistItemId,
@@ -34,87 +43,21 @@ import {
 
 import WishlistPoolEditor from "@/components/apps/notes/WishlistPoolEditor";
 import { useCollection } from "@/lib/CollectionContext";
+import {
+  useCharacterAvatars,
+  toAvatarKey,
+} from "@/lib/useCharacterAvatars";
 
 type NotesAppProps = {
   onBack: () => void;
 };
 
-/* =========================================================
-   图标
-   ========================================================= */
-
-function PlusIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
-
-function SparkleIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 3v4" />
-      <path d="M12 17v4" />
-      <path d="M3 12h4" />
-      <path d="M17 12h4" />
-      <path d="M6 6l2 2" />
-      <path d="M16 16l2 2" />
-      <path d="M6 18l2-2" />
-      <path d="M16 8l2-2" />
-    </svg>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
-
-/* =========================================================
-   主组件
-   ========================================================= */
-
 export default function NotesApp({
   onBack,
 }: NotesAppProps) {
   const { tryAutoCollect } = useCollection();
+  const avatars = useCharacterAvatars();
 
-  /* 已经触发过自动收藏的笔记 id（每篇只触发一次） */
   const autoCollectedNoteRef = useRef<Set<string>>(
     new Set()
   );
@@ -138,7 +81,6 @@ export default function NotesApp({
   const [showPoolEditor, setShowPoolEditor] =
     useState(false);
 
-  /* 标签 */
   const [tagFilter, setTagFilter] = useState<string | null>(
     null
   );
@@ -152,7 +94,6 @@ export default function NotesApp({
     setCards(loadWishlistCards());
   }, []);
 
-    /* 键盘弹起时把 textarea 滚进视野 */
   useEffect(() => {
     function onKb(e: Event) {
       const detail = (
@@ -222,7 +163,6 @@ export default function NotesApp({
     );
     commitNotes(next);
 
-    /* 系统自动收藏：每篇笔记只在首次写入非空内容时触发一次 */
     const updated = next.find((n) => n.id === id);
     if (
       updated &&
@@ -396,7 +336,7 @@ export default function NotesApp({
             onClick={closeEditor}
             aria-label="返回"
           >
-            ‹
+            <ChevronLeft size={26} strokeWidth={2.4} />
           </button>
 
           <div className="notes-editor-title-bar">
@@ -412,7 +352,7 @@ export default function NotesApp({
             }}
             aria-label="删除"
           >
-            🗑
+            <Trash2 size={18} strokeWidth={2} />
           </button>
         </header>
 
@@ -430,7 +370,6 @@ export default function NotesApp({
             autoFocus
           />
 
-          {/* 标签编辑行 */}
           <div className="notes-editor-tags">
             {editingNote.tags.map((t) => (
               <span
@@ -445,7 +384,7 @@ export default function NotesApp({
                   }
                   aria-label="移除标签"
                 >
-                  ×
+                  <X size={10} strokeWidth={3} />
                 </button>
               </span>
             ))}
@@ -515,7 +454,7 @@ export default function NotesApp({
           onClick={onBack}
           aria-label="返回"
         >
-          ‹
+          <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
 
         <div className="notes-header-center">
@@ -530,7 +469,7 @@ export default function NotesApp({
           onClick={() => setShowPoolEditor(true)}
           aria-label="卡池"
         >
-          <GearIcon />
+          <Settings size={18} strokeWidth={2} />
         </button>
 
         <button
@@ -538,7 +477,7 @@ export default function NotesApp({
           onClick={createNote}
           aria-label="新建笔记"
         >
-          <PlusIcon />
+          <Plus size={20} strokeWidth={2.4} />
         </button>
       </header>
 
@@ -559,7 +498,7 @@ export default function NotesApp({
                 }}
                 aria-label="添加愿望"
               >
-                <PlusIcon />
+                <Plus size={16} strokeWidth={2.4} />
               </button>
 
               <button
@@ -567,7 +506,7 @@ export default function NotesApp({
                 onClick={generateWish}
                 aria-label="随机生成"
               >
-                <SparkleIcon />
+                <Sparkles size={16} strokeWidth={2} />
               </button>
             </div>
           </div>
@@ -615,6 +554,13 @@ export default function NotesApp({
                   w.character && w.source !== "user"
                     ? w.character
                     : null;
+
+                const key = fromCharacter
+                  ? toAvatarKey(fromCharacter)
+                  : null;
+                const avatarUrl = key
+                  ? avatars[key]
+                  : null;
 
                 return (
                   <li
@@ -666,9 +612,20 @@ export default function NotesApp({
                       >
                         {fromCharacter && (
                           <span
-                            className={`notes-wish-source notes-wish-source-${fromCharacter.toLowerCase()}`}
+                            className={`notes-wish-source notes-wish-source-${fromCharacter.toLowerCase()}${
+                              avatarUrl
+                                ? " has-image"
+                                : ""
+                            }`}
                           >
-                            {fromCharacter.charAt(0)}
+                            {avatarUrl ? (
+                              <img
+                                src={avatarUrl}
+                                alt={fromCharacter}
+                              />
+                            ) : (
+                              fromCharacter.charAt(0)
+                            )}
                           </span>
                         )}
                         <span className="notes-wish-content">
@@ -682,7 +639,7 @@ export default function NotesApp({
                       onClick={() => deleteWish(w.id)}
                       aria-label="删除"
                     >
-                      ×
+                      <X size={14} strokeWidth={2.4} />
                     </button>
                   </li>
                 );
@@ -739,7 +696,7 @@ export default function NotesApp({
           {sortedNotes.length === 0 ? (
             <div className="notes-list-empty">
               <div className="notes-list-empty-icon">
-                ✎
+                <Sparkles size={34} strokeWidth={1.4} />
               </div>
               <div className="notes-list-empty-title">
                 {tagFilter

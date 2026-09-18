@@ -2,6 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 
+import { Check, X } from "lucide-react";
+
 import type { Word, WordBook } from "@/data/study";
 import {
   parseStudyCsv,
@@ -38,7 +40,6 @@ export default function ImportCSVModal({
 
   const [stage, setStage] = useState<Stage>("pick");
 
-  /* 目标 */
   const [targetMode, setTargetMode] = useState<
     "existing" | "new"
   >(books.length > 0 ? "existing" : "new");
@@ -47,27 +48,22 @@ export default function ImportCSVModal({
   >(books[0]?.id ?? "");
   const [newBookName, setNewBookName] = useState("");
 
-  /* 解析结果 */
   const [rows, setRows] = useState<CsvWordRow[]>([]);
   const [parseSkipped, setParseSkipped] = useState(0);
   const [fileName, setFileName] = useState("");
 
-  /* 结果 */
   const [result, setResult] = useState<{
     added: number;
     skipped: number;
     bookName: string;
   } | null>(null);
 
-  /* 当前目标是否合法 */
   const canContinue = useMemo(() => {
     if (targetMode === "existing") {
       return !!selectedBookId;
     }
     return newBookName.trim().length > 0;
   }, [targetMode, selectedBookId, newBookName]);
-
-  /* ---------- 选文件 ---------- */
 
   async function handleFileChange(
     files: FileList | null
@@ -96,8 +92,6 @@ export default function ImportCSVModal({
     }
   }
 
-  /* ---------- 提交 ---------- */
-
   function handleImport() {
     if (!canContinue || rows.length === 0) return;
 
@@ -110,8 +104,6 @@ export default function ImportCSVModal({
     setResult(res);
     setStage("done");
   }
-
-  /* ---------- 关闭（done 阶段再点关闭就真的关） ---------- */
 
   function handleClose() {
     onClose();
@@ -131,12 +123,12 @@ export default function ImportCSVModal({
           <button
             className="study-modal-close"
             onClick={handleClose}
+            aria-label="关闭"
           >
-            ×
+            <X size={16} strokeWidth={2.4} />
           </button>
         </div>
 
-        {/* ---------- 阶段 1：选目标 + 选文件 ---------- */}
         {stage === "pick" && (
           <>
             <div className="study-import-section">
@@ -253,7 +245,6 @@ export default function ImportCSVModal({
           </>
         )}
 
-        {/* ---------- 阶段 2：预览 ---------- */}
         {stage === "preview" && (
           <>
             <div className="study-import-summary">
@@ -307,12 +298,11 @@ export default function ImportCSVModal({
           </>
         )}
 
-        {/* ---------- 阶段 3：结果 ---------- */}
         {stage === "done" && result && (
           <>
             <div className="study-import-result">
               <div className="study-import-result-icon">
-                ✓
+                <Check size={26} strokeWidth={2.8} />
               </div>
               <div className="study-import-result-title">
                 导入完成
