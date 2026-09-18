@@ -34998,3 +34998,184 @@ html[data-runwithme-theme="dark"] .photos-app-header {
 .study-subheader {
   border-bottom: none !important;
 }
+/* =========================================================================
+   紧急修复 · 2026-09-18
+   ========================================================================= */
+
+/* ---------- 1. 屏幕外 input 移回屏幕内右下角 1x1 ---------- */
+/* 原因：iOS 上 input 在屏幕外时 .click() 不弹选择器 */
+.ios-file-input-detached {
+  position: fixed !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  top: auto !important;
+  left: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  pointer-events: none !important;
+}
+
+/* ---------- 2. 除 Chat 外所有顶栏：彻底透明 ---------- */
+
+.icity-header,
+.icity-detail-header,
+.icity-profile-header,
+.calendar-header,
+.notes-header,
+.notes-editor-header,
+.checkin-header,
+.q-header,
+.photos-app-header,
+.letter-header,
+.letter-detail-header,
+.watch-header,
+.collection-header,
+.study-header,
+.study-subheader,
+.studio-header,
+.hs-header,
+.music-v2-header {
+  padding-top: max(env(safe-area-inset-top), 8px) !important;
+  min-height: auto !important;
+  background: transparent !important;
+  border-bottom: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* ---------- 3. Chat 顶栏保留玻璃 ---------- */
+
+.chat-page .telegram-header {
+  padding-top: max(env(safe-area-inset-top), 8px) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.46) 48%,
+    rgba(255, 255, 255, 0.58) 100%
+  ) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(26px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(1.9) !important;
+  box-shadow:
+    0 6px 22px rgba(90, 60, 65, 0.07),
+    0 2px 6px rgba(90, 60, 65, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+}
+
+html[data-runwithme-theme="dark"] .chat-page .telegram-header {
+  background: linear-gradient(
+    135deg,
+    rgba(70, 60, 68, 0.74) 0%,
+    rgba(44, 38, 44, 0.6) 48%,
+    rgba(60, 50, 58, 0.68) 100%
+  ) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09) !important;
+}
+
+/* ---------- 4. Photos 顶栏按钮区（"底下那层"）去掉 ---------- */
+
+.photos-app-tabs {
+  background: transparent !important;
+  border-bottom: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* ---------- 5. Photos 空状态图标恢复默认样式 ---------- */
+
+.photos-app-empty-icon {
+  background: rgba(252, 190, 195, 0.55) !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+/* =========================================================================
+   2026-09-18 · 上传修复 + 顶栏紧凑
+   ========================================================================= */
+
+/* ---------- 1. 所有隐藏 file input 去掉 pointer-events: none ---------- */
+/* iOS 上 pointer-events: none 会让 .click() 静默失效 */
+
+.ios-file-input-detached,
+.ios-file-input,
+.hs-hidden-input,
+.chat-image-input-hidden {
+  pointer-events: auto !important;
+}
+
+.ios-file-input-detached {
+  position: fixed !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  top: auto !important;
+  left: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+
+/* ---------- 2. 顶栏：只避让刘海，不加额外高度 ---------- */
+
+.study-header,
+.study-subheader,
+.collection-header,
+.watch-header,
+.icity-header,
+.icity-detail-header,
+.icity-profile-header,
+.notes-editor-header,
+.photos-app-header,
+.calendar-header,
+.notes-header,
+.checkin-header,
+.q-header,
+.letter-header,
+.letter-detail-header,
+.music-v2-header {
+  padding-top: max(env(safe-area-inset-top), 8px) !important;
+  padding-bottom: 4px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  background: transparent !important;
+  border-bottom: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* iCity 详情页紧凑一点 */
+.icity-detail-header {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.icity-detail-header .icity-detail-back {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+/* Photos 顶栏下方那层（tabs 底/分割线）去掉 */
+.photos-app-tabs {
+  background: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+/* ---------- 3. Chat 顶栏保留玻璃（不动） ---------- */

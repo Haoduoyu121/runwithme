@@ -319,27 +319,29 @@ export default function PomodoroPanel({
   /* ---------- 语音卡池 ---------- */
 
   function commitVoiceCards(next: VoiceCard[]) {
-    saveVoiceCards(next);
+    /* 先更新 UI，用户立即能看到新卡 */
+    setVoiceCards(next);
 
-    /* 立即回读，确认写入的内容没有被 isValid 过滤掉 */
-    const reread = loadVoiceCards();
+    /* 再写盘，写失败给明确提示 */
+    try {
+      saveVoiceCards(next);
 
-    if (reread.length !== next.length) {
-      console.warn(
-        "[VoicePool] ⚠️ 保存后回读长度不一致\n" +
-          "  写入: " + next.length + "\n" +
-          "  读回: " + reread.length + "\n" +
-          "  可能被 isValid 过滤，请把这个日志发给我"
-      );
-      console.warn("  写入内容:", next);
-      console.warn("  读回内容:", reread);
-    } else {
-      console.log(
-        "[VoicePool] ✓ 保存成功，卡池共 " + reread.length + " 张"
+      /* 回读一次做校验，但不再覆盖 state */
+      const reread = loadVoiceCards();
+
+      if (reread.length !== next.length) {
+        console.warn(
+          "[VoicePool] ⚠️ 写盘后回读长度不一致",
+          { 写入: next.length, 读回: reread.length }
+        );
+      }
+    } catch (e) {
+      console.error("[VoicePool] localStorage 写入失败:", e);
+      alert(
+        "保存失败：本地存储可能已满。\n" +
+          (e instanceof Error ? e.message : String(e))
       );
     }
-
-    setVoiceCards(reread);
   }
 
   return (

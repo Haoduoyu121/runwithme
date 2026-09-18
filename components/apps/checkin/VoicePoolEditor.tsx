@@ -95,39 +95,7 @@ export default function VoicePoolEditor({
       return;
     }
 
-    /* ★ iOS PWA 关键：File 是临时引用，必须立即读进内存 */
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const buf = reader.result as ArrayBuffer;
-
-      let mime = file.type;
-      if (!mime) {
-        if (nameLower.endsWith(".mp3")) mime = "audio/mpeg";
-        else if (nameLower.endsWith(".m4a")) mime = "audio/mp4";
-        else if (nameLower.endsWith(".wav")) mime = "audio/wav";
-        else if (nameLower.endsWith(".aac")) mime = "audio/aac";
-        else if (nameLower.endsWith(".ogg")) mime = "audio/ogg";
-        else if (nameLower.endsWith(".opus")) mime = "audio/opus";
-        else mime = "audio/mpeg";
-      }
-
-      const fresh = new File(
-        [buf],
-        file.name || "voice.mp3",
-        { type: mime }
-      );
-
-      setDraftFile(fresh);
-    };
-
-    reader.onerror = () => {
-      console.error("读取文件失败:", reader.error);
-      alert("读取文件失败，请重试。");
-      setDraftFile(null);
-    };
-
-    reader.readAsArrayBuffer(file);
+    setDraftFile(file);
   }
 
   async function handleAdd() {
@@ -144,7 +112,18 @@ export default function VoicePoolEditor({
     setSaving(true);
     try {
       const id = createVoiceCardId();
+
+      console.log(
+        "[VoicePool] 保存文件…",
+        id,
+        draftFile.name,
+        draftFile.size,
+        "bytes"
+      );
+
       await saveVoiceFile(id, draftFile);
+
+      console.log("[VoicePool] 文件已保存，写入卡片列表");
 
       const next: VoiceCard = {
         id,
@@ -159,8 +138,11 @@ export default function VoicePoolEditor({
       setDraftText("");
       setDraftFile(null);
     } catch (e) {
-      console.error("保存语音失败:", e);
-      alert("保存失败，可能文件太大。");
+      console.error("[VoicePool] 保存失败:", e);
+      alert(
+        "保存失败：" +
+          (e instanceof Error ? e.message : String(e))
+      );
     } finally {
       setSaving(false);
     }
@@ -297,24 +279,26 @@ export default function VoicePoolEditor({
           </div>
 
           <div className="voice-add-row voice-add-file-row">
-            <label
+            <button
+              type="button"
               className="voice-add-file"
               onClick={() => fileInputRef.current?.click()}
             >
               {draftFile
                 ? draftFile.name
                 : "选择 mp3 / m4a"}
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="ios-file-input-detached"
-                accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a"
-                onChange={(e) => {
-                  pickFile(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-            </label>
+            </button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="ios-file-input-detached"
+              accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a"
+              onChange={(e) => {
+                pickFile(e.target.files);
+                e.target.value = "";
+              }}
+            />
 
             <button
               className="voice-add-btn"

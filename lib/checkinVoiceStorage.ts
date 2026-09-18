@@ -17,7 +17,16 @@ export function loadVoiceCards(): VoiceCard[] {
 
 export function saveVoiceCards(list: VoiceCard[]): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(list));
+
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error(
+      "[VoiceCards] localStorage 写入失败（可能已满）:",
+      e
+    );
+    throw e;
+  }
 }
 
 function isValid(v: unknown): v is VoiceCard {
