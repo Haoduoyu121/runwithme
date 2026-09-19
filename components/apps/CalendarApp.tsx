@@ -21,32 +21,23 @@ import {
   buildMonthGrid,
   buildWeekGrid,
   createAnniversaryId,
-  createPeriodId,
   dateStrFromDate,
   daysUntil,
-  FLOW_LABELS,
   formatAnniversaryDate,
   formatDate,
   getMonthName,
   getWeekdayShort,
   getWeekdayNames,
   hasAnniversary,
-  isPeriodDay,
   nextOccurrence,
-  periodDayIndex,
-  periodTotalDays,
   toDateStr,
   type Anniversary,
   type AnniversaryRepeat,
-  type PeriodFlow,
-  type PeriodRecord,
 } from "@/data/calendar";
 
 import {
   loadAnniversaries,
-  loadPeriods,
   saveAnniversaries,
-  savePeriods,
 } from "@/lib/calendarStorage";
 
 import {
@@ -79,6 +70,24 @@ import {
   toAvatarKey,
 } from "@/lib/useCharacterAvatars";
 
+import {
+  loadPeriodRecords,
+  loadPeriodSettings,
+  migrateLegacyPeriodsIfNeeded,
+} from "@/lib/periodStorage";
+import {
+  daysUntilNext,
+  getAverageCycle,
+  getActualDay,
+  getPredictedPeriods,
+} from "@/lib/periodCalc";
+import type {
+  PeriodRecord as NewPeriodRecord,
+  PeriodSettings,
+} from "@/data/period";
+import { todayStr } from "@/data/period";
+import PeriodDetailSheet from "@/components/apps/calendar/PeriodDetailSheet";
+
 type CalendarAppProps = {
   onBack: () => void;
 };
@@ -92,61 +101,36 @@ type ViewMode = "month" | "week";
 
 function classifyPeriod(
   dateStr: string,
-  periods: PeriodRecord[]
+  records: NewPeriodRecord[],
+  settings: PeriodSettings
 ): SystemCardCategory | null {
-  const inPeriod = periods.some((p) =>
-    isPeriodDay(p, dateStr)
-  );
-  if (inPeriod) return "period-active";
+  if (records.length === 0) return null;
+
+  const actual = getActualDay(dateStr, records);
+  if (actual) return "period-active";
 
   const yesterday = new Date(dateStr + "T00:00:00");
   yesterday.setDate(yesterday.getDate() - 1);
   const yStr = dateStrFromDate(yesterday);
 
-  const endedYesterday = periods.some(
-    (p) => p.endDate === yStr
+  const endedYesterday = records.some(
+    (r) => r.endDate === yStr
   );
   if (endedYesterday) return "period-ended";
 
-  if (periods.length >= 2) {
-    const sorted = [...periods].sort((a, b) =>
-      a.startDate < b.startDate ? -1 : 1
-    );
-
-    let totalCycles = 0;
-    for (let i = 1; i < sorted.length; i++) {
-      const a = new Date(
-        sorted[i - 1].startDate + "T00:00:00"
-      );
-      const b = new Date(
-        sorted[i].startDate + "T00:00:00"
-      );
-      const diff =
-        (b.getTime() - a.getTime()) /
-        (24 * 60 * 60 * 1000);
-      if (diff > 10 && diff < 90) totalCycles += diff;
-    }
-    const avg =
-      sorted.length > 1
-        ? totalCycles / (sorted.length - 1)
-        : 28;
-
-    const lastStart = new Date(
-      sorted[sorted.length - 1].startDate +
-        "T00:00:00"
-    );
-    const nextStart = new Date(lastStart.getTime());
-    nextStart.setDate(
-      nextStart.getDate() + Math.round(avg)
-    );
-
-    const today = new Date(dateStr + "T00:00:00");
-    const diffDays = Math.round(
-      (nextStart.getTime() - today.getTime()) /
+  const predicted = getPredictedPeriods(
+    records,
+    settings,
+    1
+  );
+  if (predicted.length > 0) {
+    const next = predicted[0].startDate;
+    const diff = Math.round(
+      (new Date(next + "T00:00:00").getTime() -
+        new Date(dateStr + "T00:00:00").getTime()) /
         (24 * 60 * 60 * 1000)
     );
-
-    if (diffDays >= 0 && diffDays <= 3) {
+    if (diff >= 0 && diff <= 3) {
       return "period-upcoming";
     }
   }
@@ -156,9 +140,14 @@ function classifyPeriod(
 
 function pickCategory(
   dateStr: string,
-  periods: PeriodRecord[]
+  records: NewPeriodRecord[],
+  settings: PeriodSettings
 ): SystemCardCategory {
-  const periodCat = classifyPeriod(dateStr, periods);
+  const periodCat = classifyPeriod(
+    dateStr,
+    records,
+    settings
+  );
   if (periodCat) return periodCat;
 
   const d = new Date(dateStr + "T00:00:00");
@@ -191,7 +180,6 @@ export default function CalendarApp({
   const [anniversaries, setAnniversaries] = useState<
     Anniversary[]
   >([]);
-  const [periods, setPeriods] = useState<PeriodRecord[]>([]);
   const [dailyNotes, setDailyNotes] = useState<
     Record<string, DailyNote>
   >({});
@@ -221,25 +209,30 @@ export default function CalendarApp({
     day: today.getDate(),
   });
 
-  const [showPeriodForm, setShowPeriodForm] =
-    useState(false);
-  const [editingPeriod, setEditingPeriod] =
-    useState<PeriodRecord | null>(null);
-  const [periodForm, setPeriodForm] = useState({
-    startDate: dateStrFromDate(today),
-    duration: "5",
-    flow: "medium" as PeriodFlow,
-    symptoms: "",
-    note: "",
-  });
+
 
   const [showPoolEditor, setShowPoolEditor] =
     useState(false);
 
+      /* 新经期系统 */
+  const [newPeriodRecords, setNewPeriodRecords] =
+    useState<NewPeriodRecord[]>([]);
+  const [newPeriodSettings, setNewPeriodSettings] =
+    useState<PeriodSettings>({ cycleLength: 28 });
+
+      /* 经期详情面板：打开时存 dateStr */
+  const [periodDetailDate, setPeriodDetailDate] =
+    useState<string | null>(null);
+
   useEffect(() => {
     setAnniversaries(loadAnniversaries());
-    const loadedPeriods = loadPeriods();
-    setPeriods(loadedPeriods);
+
+    /* 新经期系统：先迁移旧数据，再加载 */
+    migrateLegacyPeriodsIfNeeded();
+    const loadedNewRecords = loadPeriodRecords();
+    const loadedNewSettings = loadPeriodSettings();
+    setNewPeriodRecords(loadedNewRecords);
+    setNewPeriodSettings(loadedNewSettings);
 
     const notes = loadDailyNotes();
     setDailyNotes(notes);
@@ -255,7 +248,8 @@ export default function CalendarApp({
     if (!notes[todayStr]) {
       const category = pickCategory(
         todayStr,
-        loadedPeriods
+        loadedNewRecords,
+        loadedNewSettings
       );
       const card = pickSystemCard(category);
 
@@ -292,6 +286,7 @@ export default function CalendarApp({
       setDailySchedules(next);
       saveDailySchedules(next);
     }
+
   }, []);
 
   const selectedDateStr = useMemo(() => {
@@ -325,14 +320,13 @@ export default function CalendarApp({
 
   const weekdays = useMemo(() => getWeekdayNames(), []);
 
-  const selectedPeriod = useMemo(() => {
+  const selectedPeriodInfo = useMemo(() => {
     if (!selectedDateStr) return null;
-    return (
-      periods.find((p) =>
-        isPeriodDay(p, selectedDateStr)
-      ) ?? null
+    return getActualDay(
+      selectedDateStr,
+      newPeriodRecords
     );
-  }, [periods, selectedDateStr]);
+  }, [selectedDateStr, newPeriodRecords]);
 
   const selectedAnniversaries = useMemo(() => {
     if (selectedDay === null) return [];
@@ -363,6 +357,30 @@ export default function CalendarApp({
           x.next.getTime() - y.next.getTime()
       );
   }, [anniversaries]);
+
+    /* 新经期系统的派生数据 */
+  const daysToNextPeriod = useMemo(
+    () =>
+      daysUntilNext(
+        newPeriodRecords,
+        newPeriodSettings
+      ),
+    [newPeriodRecords, newPeriodSettings]
+  );
+
+  const avgCycle = useMemo(
+    () => getAverageCycle(newPeriodRecords),
+    [newPeriodRecords]
+  );
+
+  const predictedDates = useMemo(() => {
+    const list = getPredictedPeriods(
+      newPeriodRecords,
+      newPeriodSettings,
+      12
+    );
+    return new Set(list.map((p) => p.startDate));
+  }, [newPeriodRecords, newPeriodSettings]);
 
   /* ---------- 导航 ---------- */
 
@@ -551,95 +569,7 @@ export default function CalendarApp({
     saveAnniversaries(next);
   }
 
-  /* ---------- 经期 CRUD ---------- */
 
-  function openNewPeriod() {
-    setEditingPeriod(null);
-    setPeriodForm({
-      startDate:
-        selectedDateStr ?? dateStrFromDate(today),
-      duration: "5",
-      flow: "medium",
-      symptoms: "",
-      note: "",
-    });
-    setShowPeriodForm(true);
-  }
-
-  function openEditPeriod(p: PeriodRecord) {
-    setEditingPeriod(p);
-    setPeriodForm({
-      startDate: p.startDate,
-      duration: String(periodTotalDays(p)),
-      flow: p.flow,
-      symptoms: p.symptoms,
-      note: p.note,
-    });
-    setShowPeriodForm(true);
-  }
-
-  function closePeriodForm() {
-    setShowPeriodForm(false);
-    setEditingPeriod(null);
-  }
-
-  function savePeriodForm() {
-    const duration = Math.max(
-      1,
-      Math.min(
-        30,
-        parseInt(periodForm.duration, 10) || 1
-      )
-    );
-
-    const start = new Date(
-      periodForm.startDate + "T00:00:00"
-    );
-    const end = new Date(start.getTime());
-    end.setDate(start.getDate() + (duration - 1));
-    const endDate = dateStrFromDate(end);
-
-    if (editingPeriod) {
-      const next = periods.map((p) =>
-        p.id === editingPeriod.id
-          ? {
-              ...p,
-              startDate: periodForm.startDate,
-              endDate,
-              flow: periodForm.flow,
-              symptoms: periodForm.symptoms.trim(),
-              note: periodForm.note.trim(),
-            }
-          : p
-      );
-      setPeriods(next);
-      savePeriods(next);
-    } else {
-      const next: PeriodRecord[] = [
-        ...periods,
-        {
-          id: createPeriodId(),
-          startDate: periodForm.startDate,
-          endDate,
-          flow: periodForm.flow,
-          symptoms: periodForm.symptoms.trim(),
-          note: periodForm.note.trim(),
-          createdAt: Date.now(),
-        },
-      ];
-      setPeriods(next);
-      savePeriods(next);
-    }
-
-    closePeriodForm();
-  }
-
-  function deletePeriod(id: string) {
-    if (!window.confirm("删除这条经期记录？")) return;
-    const next = periods.filter((p) => p.id !== id);
-    setPeriods(next);
-    savePeriods(next);
-  }
 
   /* ---------- 渲染辅助 ---------- */
 
@@ -652,7 +582,9 @@ export default function CalendarApp({
   }
 
   function isInPeriod(dateStr: string) {
-    return periods.some((p) => isPeriodDay(p, dateStr));
+    return (
+      getActualDay(dateStr, newPeriodRecords) !== null
+    );
   }
 
   function hasNote(dateStr: string) {
@@ -666,7 +598,7 @@ export default function CalendarApp({
 
   /* ---------- 月视图格子 ---------- */
 
-  function renderMonthCell(
+    function renderMonthCell(
     cell: (typeof monthGrid)[number]
   ) {
     const isSelected =
@@ -682,6 +614,9 @@ export default function CalendarApp({
     );
 
     const inPeriod = isInPeriod(cell.dateStr);
+    const isPredicted = predictedDates.has(
+      cell.dateStr
+    );
 
     return (
       <button
@@ -694,7 +629,9 @@ export default function CalendarApp({
             : " calendar-day-other"
         }${cell.isToday ? " calendar-day-today" : ""}${
           isSelected ? " calendar-day-selected" : ""
-        }${inPeriod ? " calendar-day-period" : ""}`}
+        }${inPeriod ? " calendar-day-period" : ""}${
+          isPredicted ? " calendar-day-predicted" : ""
+        }`}
         onClick={() => {
           setYear(cell.year);
           setMonth(cell.month);
@@ -706,6 +643,9 @@ export default function CalendarApp({
         </span>
         {hasAnn && (
           <span className="calendar-day-dot" />
+        )}
+        {isPredicted && !inPeriod && (
+          <span className="calendar-day-predicted-dot" />
         )}
       </button>
     );
@@ -832,6 +772,46 @@ export default function CalendarApp({
       {/* ============== Calendar Tab ============== */}
       {tab === "calendar" && (
         <div className="calendar-scroll">
+                    {/* 经期状态条（点击打开面板） */}
+          {daysToNextPeriod !== null && (
+            <button
+              type="button"
+              className="calendar-period-banner"
+              onClick={() =>
+                setPeriodDetailDate(todayStr())
+              }
+            >
+              <span className="calendar-period-banner-dot" />
+              <span className="calendar-period-banner-text">
+                {daysToNextPeriod > 0
+                  ? `距离下次经期还有 ${daysToNextPeriod} 天`
+                  : daysToNextPeriod === 0
+                    ? "今天可能是经期第一天"
+                    : `预计经期已过 ${Math.abs(daysToNextPeriod)} 天`}
+              </span>
+              {avgCycle !== null && (
+                <span className="calendar-period-banner-avg">
+                  历史平均 {avgCycle} 天
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* 无经期数据时也给一个开始入口 */}
+          {daysToNextPeriod === null && (
+            <button
+              type="button"
+              className="calendar-period-banner calendar-period-banner-empty"
+              onClick={() =>
+                setPeriodDetailDate(todayStr())
+              }
+            >
+              <span className="calendar-period-banner-dot calendar-period-banner-dot-empty" />
+              <span className="calendar-period-banner-text">
+                还没有经期记录 · 点这里开始
+              </span>
+            </button>
+          )}
           <div className="calendar-nav">
             <button
               className="calendar-nav-btn"
@@ -978,94 +958,30 @@ export default function CalendarApp({
                   );
                 })()}
 
-                {selectedPeriod ? (
-                  <div className="calendar-period-card">
-                    <div className="calendar-period-top">
-                      <span className="calendar-period-icon">
-                        🩸
-                      </span>
-                      <div className="calendar-period-title">
-                        经期
-                        <span className="calendar-period-day">
-                          Day{" "}
-                          {periodDayIndex(
-                            selectedPeriod,
-                            selectedDateStr!
-                          )}{" "}
-                          / {periodTotalDays(selectedPeriod)}
-                        </span>
-                      </div>
-
-                      <button
-                        className="calendar-anniv-action"
-                        onClick={() =>
-                          openEditPeriod(selectedPeriod)
-                        }
-                        aria-label="编辑"
-                      >
-                        <Pencil
-                          size={16}
-                          strokeWidth={2}
-                        />
-                      </button>
-
-                      <button
-                        className="calendar-anniv-action danger"
-                        onClick={() =>
-                          deletePeriod(selectedPeriod.id)
-                        }
-                        aria-label="删除"
-                      >
-                        <X size={16} strokeWidth={2.2} />
-                      </button>
-                    </div>
-
-                    <div className="calendar-period-fields">
-                      {selectedPeriod.flow && (
-                        <div className="calendar-period-field">
-                          <span className="calendar-period-label">
-                            量
-                          </span>
-                          <span className="calendar-period-value">
-                            {
-                              FLOW_LABELS[
-                                selectedPeriod.flow
-                              ]
-                            }
-                          </span>
-                        </div>
-                      )}
-
-                      {selectedPeriod.symptoms && (
-                        <div className="calendar-period-field">
-                          <span className="calendar-period-label">
-                            不适
-                          </span>
-                          <span className="calendar-period-value">
-                            {selectedPeriod.symptoms}
-                          </span>
-                        </div>
-                      )}
-
-                      {selectedPeriod.note && (
-                        <div className="calendar-period-field">
-                          <span className="calendar-period-label">
-                            备注
-                          </span>
-                          <span className="calendar-period-value">
-                            {selectedPeriod.note}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
+                {selectedDateStr && (
                   <button
                     className="calendar-add-period-btn"
-                    onClick={openNewPeriod}
+                    onClick={() =>
+                      setPeriodDetailDate(selectedDateStr)
+                    }
                   >
-                    <Plus size={14} strokeWidth={2.6} />
-                    <span>记录经期</span>
+                    {selectedPeriodInfo ? (
+                      <>
+                        <span className="calendar-period-mini-dot" />
+                        <span>
+                          Day {selectedPeriodInfo.cycleDay}
+                          {" · 查看 / 编辑"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus
+                          size={14}
+                          strokeWidth={2.6}
+                        />
+                        <span>记录经期</span>
+                      </>
+                    )}
                   </button>
                 )}
 
@@ -1497,139 +1413,6 @@ export default function CalendarApp({
         </div>
       )}
 
-      {showPeriodForm && (
-        <div
-          className="calendar-modal-backdrop"
-          onClick={closePeriodForm}
-        >
-          <div
-            className="calendar-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="calendar-modal-header">
-              <h2>
-                {editingPeriod
-                  ? "编辑经期记录"
-                  : "记录经期"}
-              </h2>
-              <button
-                className="calendar-modal-close"
-                onClick={closePeriodForm}
-                aria-label="关闭"
-              >
-                <X size={16} strokeWidth={2.4} />
-              </button>
-            </div>
-
-            <label className="calendar-field">
-              <span>开始日期</span>
-              <input
-                type="date"
-                value={periodForm.startDate}
-                onChange={(e) =>
-                  setPeriodForm((f) => ({
-                    ...f,
-                    startDate: e.target.value,
-                  }))
-                }
-              />
-            </label>
-
-            <label className="calendar-field">
-              <span>持续天数</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={periodForm.duration}
-                onChange={(e) =>
-                  setPeriodForm((f) => ({
-                    ...f,
-                    duration: e.target.value.replace(
-                      /[^0-9]/g,
-                      ""
-                    ),
-                  }))
-                }
-                maxLength={2}
-                placeholder="5"
-              />
-            </label>
-
-            <div className="calendar-field">
-              <span>量</span>
-              <div className="calendar-segment">
-                {(["light", "medium", "heavy"] as const).map(
-                  (f) => (
-                    <button
-                      key={f}
-                      className={
-                        periodForm.flow === f
-                          ? "active"
-                          : ""
-                      }
-                      onClick={() =>
-                        setPeriodForm((prev) => ({
-                          ...prev,
-                          flow: f,
-                        }))
-                      }
-                    >
-                      {FLOW_LABELS[f]}
-                    </button>
-                  )
-                )}
-              </div>
-            </div>
-
-            <label className="calendar-field">
-              <span>不适（可留空）</span>
-              <input
-                type="text"
-                value={periodForm.symptoms}
-                onChange={(e) =>
-                  setPeriodForm((f) => ({
-                    ...f,
-                    symptoms: e.target.value,
-                  }))
-                }
-                placeholder="例如：头痛、腹痛"
-                maxLength={60}
-              />
-            </label>
-
-            <label className="calendar-field">
-              <span>备注（可留空）</span>
-              <input
-                type="text"
-                value={periodForm.note}
-                onChange={(e) =>
-                  setPeriodForm((f) => ({
-                    ...f,
-                    note: e.target.value,
-                  }))
-                }
-                maxLength={60}
-              />
-            </label>
-
-            <div className="calendar-modal-footer">
-              <button
-                className="calendar-btn ghost"
-                onClick={closePeriodForm}
-              >
-                取消
-              </button>
-
-              <button
-                className="calendar-btn"
-                onClick={savePeriodForm}
-              >
-                保存
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showPoolEditor && (
         <SchedulePoolEditor
@@ -1639,6 +1422,17 @@ export default function CalendarApp({
             saveScheduleCards(next);
           }}
           onClose={() => setShowPoolEditor(false)}
+        />
+      )}
+
+      {periodDetailDate && (
+        <PeriodDetailSheet
+          dateStr={periodDetailDate}
+          onClose={() => setPeriodDetailDate(null)}
+          onSaved={() => {
+            /* 重新加载新系统数据，让顶部状态条刷新 */
+            setNewPeriodRecords(loadPeriodRecords());
+          }}
         />
       )}
     </main>
