@@ -8,6 +8,9 @@ export const defaultReadSettings: ReadSettings = {
   fontSize: 17,
   lineHeight: 1.8,
   fontFamily: "serif",
+  /* ★ 新增（对应现在硬编码的 52 / 84） */
+  paddingTop: 52,
+  paddingBottom: 84,
 };
 
 function safeSetItem(key: string, value: string): boolean {

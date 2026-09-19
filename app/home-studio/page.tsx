@@ -71,25 +71,25 @@ type DockEntry = {
 const DOCK_SLOTS: DockEntry[] = [
   {
     id: "slot-1",
-    label: "Slot 1",
-    fallback: "♡",
-    description: "装饰按钮",
+    label: "Calendar",
+    fallback: "▦",
+    description: "打开 Calendar",
   },
   {
     id: "slot-2",
-    label: "Slot 2",
+    label: "Cards",
     fallback: "✎",
     description: "打开 Card Studio",
   },
   {
     id: "slot-3",
-    label: "Slot 3",
+    label: "Home Studio",
     fallback: "✦",
     description: "打开 Home Studio",
   },
   {
     id: "slot-4",
-    label: "Slot 4",
+    label: "Settings",
     fallback: "⚙",
     description: "打开 Settings",
   },

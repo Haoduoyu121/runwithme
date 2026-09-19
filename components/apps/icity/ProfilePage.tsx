@@ -51,7 +51,12 @@ export default function ProfilePage({
     toggleLike,
   } = useICity();
 
-  const profile = profiles[author];
+  const profile = profiles[author] ?? {
+    name: author,
+    handle: author.toLowerCase(),
+    bio: "",
+    lastBioUpdate: 0,
+  };
   const avatarUrl = avatarUrls[author];
   const bgUrl = backgroundUrls[author];
 
@@ -106,7 +111,8 @@ export default function ProfilePage({
         ? "icity-avatar-levi"
         : "icity-avatar-erwin";
 
-  const isMine = author === "Yui";
+  // 现在所有角色都可编辑（包括 Levi / Erwin）
+  const isMine = true;
 
   function saveName() {
     const trimmed = nameDraft.trim();

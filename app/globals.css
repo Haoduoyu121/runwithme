@@ -53360,6 +53360,8 @@ html[data-runwithme-theme="dark"]
   position: absolute;
   inset: 0;
   padding: 52px 22px 84px;
+  padding-top: 52px;
+  padding-bottom: 84px;
   box-sizing: border-box;
   display: flex;
 }
@@ -55471,4 +55473,134 @@ body {
 }
 .read-reader[data-bg="night"] .read-reader-body ::-moz-selection {
   background: rgba(252, 190, 195, 0.5);
+}
+/* =========================================================
+   Study 背单词 · 顶栏避让
+   ========================================================= */
+
+.study-session-topbar,
+.study-subheader {
+  padding-top: max(
+    calc(env(safe-area-inset-top) + 10px),
+    20px
+  ) !important;
+  box-sizing: border-box;
+}
+
+.study-session-progress-bar {
+  margin-top: 8px;
+}
+
+/* 卡片区域避免被顶栏压住 */
+.study-session-body {
+  padding-top: 8px;
+}
+/* =========================================================
+   Chat 图片上传：修复 iOS .click() 失效
+   ========================================================= */
+
+.chat-image-input-hidden {
+  position: fixed !important;
+  left: -1000px !important;
+  top: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+}
+/* =========================================================
+   iCity · Profile 简介字体
+   ========================================================= */
+
+.icity-profile-bio,
+.icity-profile-bio-input {
+  font-family: inherit !important;      /* 跟随系统 sans-serif */
+  font-style: normal !important;        /* 去掉斜体 */
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.icity-profile-bio.is-placeholder {
+  opacity: 0.5;
+}
+/* =========================================================
+   Home Dock · iPhone PWA 悬浮修复
+   ========================================================= */
+
+html body .home-screen .dock,
+html body .home-screen-v2 .dock,
+html body .dock {
+  position: fixed !important;
+  top: auto !important;
+  left: 50% !important;
+  right: auto !important;
+
+  /* ★ 关键：底部留出 safe-area + 悬浮间距 */
+  bottom: max(env(safe-area-inset-bottom), 12px) !important;
+
+  width: min(92%, 520px) !important;
+  height: auto !important;
+  transform: translateX(-50%) !important;
+  translate: none !important;
+  margin: 0 !important;
+
+  /* ★ 四角都圆 + 底部左右留白 */
+  padding: 12px 22px !important;
+  border-radius: 28px !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+
+  /* 玻璃效果保留 */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(255, 255, 255, 0.28) 48%,
+    rgba(255, 255, 255, 0.46) 100%
+  ) !important;
+  backdrop-filter: blur(28px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8) !important;
+  box-shadow:
+    0 14px 34px rgba(90, 60, 65, 0.18),
+    0 3px 10px rgba(90, 60, 65, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04) !important;
+
+  z-index: 9500 !important;
+}
+
+/* 深色模式 */
+html[data-runwithme-theme="dark"] body .dock,
+html[data-runwithme-theme="dark"]
+  body
+  .home-screen
+  .dock,
+html[data-runwithme-theme="dark"]
+  body
+  .home-screen-v2
+  .dock {
+  background: linear-gradient(
+    135deg,
+    rgba(72, 62, 70, 0.78) 0%,
+    rgba(44, 38, 44, 0.6) 48%,
+    rgba(60, 50, 58, 0.72) 100%
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.5),
+    0 3px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 内容区给 Dock 留够空间 */
+html body .home-screen-v2 .home-v2-grid-wrap,
+html body .home-screen .home-v2-grid-wrap {
+  padding-bottom: calc(
+    130px + env(safe-area-inset-bottom)
+  ) !important;
 }

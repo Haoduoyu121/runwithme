@@ -146,6 +146,8 @@ export default function ReadReader({
     useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollEndTimerRef = useRef<number | null>(null);
+  const snappingRef = useRef(false);
   const pagesRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
@@ -407,13 +409,18 @@ export default function ReadReader({
   /* ---------- 切章 ---------- */
 
   const prevChapterRef = useRef(chapterIndex);
-  useEffect(() => {
+   useEffect(() => {
     if (prevChapterRef.current === chapterIndex) return;
     prevChapterRef.current = chapterIndex;
     const scroll = scrollRef.current;
     if (scroll) scroll.scrollLeft = 0;
     pageIndexRef.current = 0;
     setPageIndex(0);
+    if (scrollEndTimerRef.current !== null) {
+      window.clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = null;
+    }
+    snappingRef.current = false;
   }, [chapterIndex]);
 
   /* ---------- 保存进度 ---------- */
@@ -422,6 +429,23 @@ export default function ReadReader({
   useEffect(() => {
     if (!savedOnceRef.current) {
       savedOnceRef.current = true;
+        useEffect(() => {
+    return () => {
+      upsertBook({
+        ...book,
+        progress: {
+          chapterIndex: chapterIndexRef.current,
+          offset: 0,
+          pageIndex: pageIndexRef.current,
+          updatedAt: Date.now(),
+        },
+      });
+      if (scrollEndTimerRef.current !== null) {
+        window.clearTimeout(scrollEndTimerRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
       return;
     }
     upsertBook({
@@ -463,6 +487,39 @@ export default function ReadReader({
       pageIndexRef.current = p;
       setPageIndex(p);
     }
+
+    if (snappingRef.current) return;
+
+    if (scrollEndTimerRef.current !== null) {
+      window.clearTimeout(scrollEndTimerRef.current);
+    }
+    scrollEndTimerRef.current = window.setTimeout(() => {
+      snapToNearestPage();
+    }, 180);
+  }
+
+  function snapToNearestPage() {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const w = scroll.clientWidth;
+    if (w <= 0) return;
+
+    const current = scroll.scrollLeft;
+    const page = Math.round(current / w);
+    const target = page * w;
+    const diff = Math.abs(current - target);
+
+    if (diff < 2) return;
+
+    snappingRef.current = true;
+    scroll.scrollTo({
+      left: target,
+      behavior: "smooth",
+    });
+
+    window.setTimeout(() => {
+      snappingRef.current = false;
+    }, 420);
   }
 
   /* ---------- 翻页 ---------- */
@@ -480,7 +537,7 @@ export default function ReadReader({
     } else {
       scroll.scrollTo({
         left: scroll.scrollLeft - w,
-        behavior: "smooth",
+        behavior: "auto",
       });
     }
   }
@@ -499,7 +556,7 @@ export default function ReadReader({
     } else {
       scroll.scrollTo({
         left: scroll.scrollLeft + w,
-        behavior: "smooth",
+        behavior: "auto",
       });
     }
   }
@@ -865,7 +922,14 @@ export default function ReadReader({
       className="read-reader"
       data-bg={settings.background}
     >
-      <div className="read-reader-pad">
+      <div
+        className="read-reader-pad"
+        style={{
+          paddingTop: `${settings.paddingTop}px`,
+          paddingBottom: `${settings.paddingBottom}px`,
+        }}
+      >
+
         <div
           ref={scrollRef}
           className="read-reader-scroll-h"
@@ -1177,6 +1241,43 @@ export default function ReadReader({
 
             <div className="read-reader-settings-group">
               <div className="read-reader-settings-label">
+                            <div className="read-reader-settings-group">
+              <div className="read-reader-settings-label">
+                上边距 {settings.paddingTop}px
+              </div>
+              <input
+                type="range"
+                min={20}
+                max={120}
+                step={2}
+                value={settings.paddingTop}
+                onChange={(e) =>
+                  updateSettings({
+                    paddingTop: Number(e.target.value),
+                  })
+                }
+                className="read-reader-slider"
+              />
+            </div>
+
+            <div className="read-reader-settings-group">
+              <div className="read-reader-settings-label">
+                下边距 {settings.paddingBottom}px
+              </div>
+              <input
+                type="range"
+                min={40}
+                max={160}
+                step={2}
+                value={settings.paddingBottom}
+                onChange={(e) =>
+                  updateSettings({
+                    paddingBottom: Number(e.target.value),
+                  })
+                }
+                className="read-reader-slider"
+              />
+            </div>
                 一起读 · 每章划线上限 {chapterLimit}
               </div>
               <input

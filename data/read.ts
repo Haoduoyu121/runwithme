@@ -38,6 +38,9 @@ export type ReadSettings = {
   fontSize: number;
   lineHeight: number;
   fontFamily: ReadFontFamily;
+  /* ★ 新增 */
+  paddingTop: number;
+  paddingBottom: number;
 };
 
 export type ReadChapter = {

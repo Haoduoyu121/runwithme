@@ -437,12 +437,13 @@ export default function ReadChatPanel({
           </button>
         </div>
 
-        {showCardStudio && (
-          <ReadChatCardStudio
-            onClose={() => setShowCardStudio(false)}
-          />
-        )}
       </div>
+
+      {showCardStudio && (
+        <ReadChatCardStudio
+          onClose={() => setShowCardStudio(false)}
+        />
+      )}
     </div>
   );
 }

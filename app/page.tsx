@@ -24,6 +24,7 @@ import {
   loadSystemSettings,
   type SystemSettings,
   type AppId,
+  type DockSlotId,
 } from "@/lib/systemStorage";
 
 import { wallpapers } from "@/data/wallpapers";
@@ -213,6 +214,7 @@ function LockScreen({
 function HomeScreen({
   wallpaper,
   iconUrls,
+  dockIconUrls,
   onOpenApp,
   onOpenSettings,
   onOpenHomeStudio,
@@ -221,6 +223,7 @@ function HomeScreen({
 }: {
   wallpaper: string;
   iconUrls: Partial<Record<AppId, string>>;
+  dockIconUrls: Partial<Record<DockSlotId, string>>;
   onOpenApp: (app: AppId) => void;
   onOpenSettings: () => void;
   onOpenHomeStudio: () => void;
@@ -594,52 +597,77 @@ function HomeScreen({
       )}
 
       <div className="dock">
-        <button
-          className="dock-icon"
-          onClick={onOpenCalendar}
-          aria-label="Calendar"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="3" y="5" width="18" height="16" rx="3" />
-            <path d="M3 10h18" />
-            <path d="M8 3v4" />
-            <path d="M16 3v4" />
-          </svg>
-        </button>
-
-        <button
-          className="dock-icon"
-          onClick={onOpenCards}
-          aria-label="Open Card Studio"
-        >
-          ✎
-        </button>
-
-        <button
-          className="dock-icon"
-          onClick={onOpenHomeStudio}
-          aria-label="Open Home Studio"
-        >
-          ✦
-        </button>
-
-        <button
-          className="dock-icon"
-          onClick={onOpenSettings}
-          aria-label="Open Settings"
-        >
-          ⚙
-        </button>
+        {(
+          [
+            {
+              slot: "slot-1" as const,
+              onClick: onOpenCalendar,
+              label: "Calendar",
+              fallback: (
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect
+                    x="3"
+                    y="5"
+                    width="18"
+                    height="16"
+                    rx="3"
+                  />
+                  <path d="M3 10h18" />
+                  <path d="M8 3v4" />
+                  <path d="M16 3v4" />
+                </svg>
+              ),
+            },
+            {
+              slot: "slot-2" as const,
+              onClick: onOpenCards,
+              label: "Card Studio",
+              fallback: "✎",
+            },
+            {
+              slot: "slot-3" as const,
+              onClick: onOpenHomeStudio,
+              label: "Home Studio",
+              fallback: "✦",
+            },
+            {
+              slot: "slot-4" as const,
+              onClick: onOpenSettings,
+              label: "Settings",
+              fallback: "⚙",
+            },
+          ] as const
+        ).map((cfg) => {
+          const customUrl = dockIconUrls[cfg.slot];
+          return (
+            <button
+              key={cfg.slot}
+              className={
+                customUrl
+                  ? "dock-icon dock-icon-custom"
+                  : "dock-icon"
+              }
+              onClick={cfg.onClick}
+              aria-label={cfg.label}
+            >
+              {customUrl ? (
+                <img src={customUrl} alt={cfg.label} />
+              ) : (
+                cfg.fallback
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {showAddWidget && (
@@ -728,6 +756,54 @@ export default function Home() {
   const [appIconUrls, setAppIconUrls] = useState<
     Partial<Record<AppId, string>>
   >({});
+
+    const [dockIconUrls, setDockIconUrls] = useState<
+    Partial<Record<DockSlotId, string>>
+  >({});
+
+    /* ★ 加载底部栏自定义图标 */
+  useEffect(() => {
+    if (!systemSettings) return;
+
+    let cancelled = false;
+    const created: string[] = [];
+
+    async function loadDockIcons() {
+      const next: Partial<Record<DockSlotId, string>> = {};
+      const slots: DockSlotId[] = [
+        "slot-1",
+        "slot-2",
+        "slot-3",
+        "slot-4",
+      ];
+
+      for (const slot of slots) {
+        if (systemSettings?.dockIcons?.[slot] !== "custom") {
+          continue;
+        }
+
+        const file = await getAppIconFile(`dock-icon-${slot}`);
+        if (!file) continue;
+
+        const url = URL.createObjectURL(file);
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          continue;
+        }
+        created.push(url);
+        next[slot] = url;
+      }
+
+      if (!cancelled) setDockIconUrls(next);
+    }
+
+    void loadDockIcons();
+
+    return () => {
+      cancelled = true;
+      created.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [systemSettings]);
 
     /* ★ Step 9a：世界在转 —— 启动 + 从后台切回前台时触发补偿 */
   useEffect(() => {
@@ -989,6 +1065,7 @@ export default function Home() {
               <HomeScreen
                 wallpaper={homeWallpaper}
                 iconUrls={appIconUrls}
+                dockIconUrls={dockIconUrls}
                 onOpenApp={setCurrentApp}
                 onOpenSettings={() => {
                   router.push("/studio/settings");

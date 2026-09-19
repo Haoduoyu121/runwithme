@@ -201,6 +201,22 @@ function pickCommentText(
   ].text.trim();
 }
 
+/* ★ 校验名字：非空、长度 ≤ 20、至少含一个字母或数字 */
+function isValidName(s: unknown): s is string {
+  if (typeof s !== "string") return false;
+  const t = s.trim();
+  if (!t || t.length > 20) return false;
+  return /[\p{L}\p{N}]/u.test(t);
+}
+
+/* ★ 校验 handle：可以空，但非空时必须含字母或数字 */
+function isValidHandle(s: unknown): s is string {
+  if (typeof s !== "string") return false;
+  const t = s.trim().replace(/^@/, "");
+  if (!t) return true; // 允许空
+  if (t.length > 30) return false;
+  return /[\p{L}\p{N}]/u.test(t);
+}
 /* 兼容旧数据：确保每个 profile 都有 bio / lastBioUpdate */
 function normalizeProfiles(
   raw: ICityProfiles
@@ -214,8 +230,12 @@ function normalizeProfiles(
     const base = DEFAULT_PROFILES[a];
     const cur = raw[a];
     next[a] = {
-      name: cur?.name ?? base.name,
-      handle: cur?.handle ?? base.handle,
+      name: isValidName(cur?.name)
+        ? cur.name.trim()
+        : base.name,
+      handle: isValidHandle(cur?.handle)
+        ? cur.handle.trim().replace(/^@/, "")
+        : base.handle,
       bio:
         typeof cur?.bio === "string"
           ? cur.bio
@@ -864,10 +884,14 @@ export function ICityProvider({
         const next: ICityProfiles = {
           ...prev,
           [author]: {
-            name: patch.name?.trim() || current.name,
+            name:
+              patch.name !== undefined &&
+              isValidName(patch.name)
+                ? patch.name.trim()
+                : current.name,
             handle:
               patch.handle !== undefined
-                ? patch.handle.trim()
+                ? patch.handle.trim().replace(/^@/, "")
                 : current.handle,
             bio:
               patch.bio !== undefined
