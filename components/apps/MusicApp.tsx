@@ -46,6 +46,8 @@ import {
 } from "@/lib/musicChatStorage";
 import { generateMusicReply } from "@/lib/musicChatReply";
 
+import { pushMemory } from "@/lib/memoryStorage";
+
 import MusicListDrawer from "@/components/apps/music/MusicListDrawer";
 import MusicUploadPanel from "@/components/apps/music/MusicUploadPanel";
 import MusicChatPanel from "@/components/apps/music/MusicChatPanel";
@@ -83,6 +85,9 @@ const PLAY_STATE_MIN_MS = 5 * 1000;
 const PLAY_STATE_MAX_MS = 12 * 1000;
 const SYSTEM_COOLDOWN_MS = 30 * 1000;
 
+/* session 至少 3 秒才写入 Memory，防御短命 session */
+const MIN_SESSION_MS = 3 * 1000;
+
 /* iOS 上传修复：不用屏幕外 / 不用 zIndex: -1
    ref.click() 场景 → fixed 右下角 1x1 */
 const IOS_SAFE_FILE_STYLE: React.CSSProperties = {
@@ -97,6 +102,29 @@ const IOS_SAFE_FILE_STYLE: React.CSSProperties = {
 
 function pickLine(list: string[]) {
   return list[Math.floor(Math.random() * list.length)];
+}
+
+/* ★ Step 2：把毫秒差格式化成 01:24:36 */
+function formatTogetherDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) ms = 0;
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2, "0")}:${String(
+    m
+  ).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/* ★ Step 3：时长的人类可读标签（给 Memory 标题用） */
+function formatSessionLength(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h} 小时 ${m} 分`;
+  if (m > 0) return `${m} 分 ${s} 秒`;
+  return `${s} 秒`;
 }
 
 export default function MusicApp({ onBack }: MusicAppProps) {
@@ -142,8 +170,27 @@ export default function MusicApp({ onBack }: MusicAppProps) {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
 
+  /* ★ Step 2：一起听计时（纯运行时） */
+  const [togetherStartAt, setTogetherStartAt] = useState<
+    number | null
+  >(null);
+  const [togetherElapsed, setTogetherElapsed] =
+    useState(0);
+
   const systemCooldownRef = useRef(0);
   const systemTimerRef = useRef<number | null>(null);
+
+  /* ★ Step 3：session 追踪 refs */
+  const prevPartnerRef = useRef<ListenPartner>("Solo");
+  const sessionStartAtRef = useRef<number | null>(null);
+  const sessionTrackIdsRef = useRef<Set<string>>(new Set());
+  const sessionStartMsgCountRef = useRef(0);
+
+  /* 让 effect 内读到最新 chatMessages.length，不受闭包限制 */
+  const chatMessagesRef = useRef<MusicChatMessage[]>([]);
+  useEffect(() => {
+    chatMessagesRef.current = chatMessages;
+  }, [chatMessages]);
 
   /* -------------------------------------------------------
      初始化
@@ -174,6 +221,115 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     if (chatMessages.length === 0) return;
     saveMusicChatMessages(chatMessages);
   }, [chatMessages]);
+
+  /* -------------------------------------------------------
+     ★ Step 2 + Step 3：一起听 session 生命周期
+     - 进入非 Solo：开始计时 + 开 session
+     - 回到 Solo：结束 session + 写入 Memory
+     - 非 Solo → 另一个非 Solo：先结束旧的，再开新的
+     ------------------------------------------------------- */
+
+  useEffect(() => {
+    if (partner === "Solo") {
+      setTogetherStartAt(null);
+      setTogetherElapsed(0);
+      return;
+    }
+
+    const start = Date.now();
+    setTogetherStartAt(start);
+    setTogetherElapsed(0);
+
+    const timer = window.setInterval(() => {
+      setTogetherElapsed(Date.now() - start);
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [partner]);
+
+  useEffect(() => {
+    const prev = prevPartnerRef.current;
+    const next = partner;
+
+    /* 结束旧 session（prev 非 Solo 且曾经真的开过） */
+    if (prev !== "Solo" && sessionStartAtRef.current !== null) {
+      finalizeSession(prev);
+    }
+
+    /* 开始新 session */
+    if (next !== "Solo") {
+      startSession();
+    }
+
+    prevPartnerRef.current = next;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partner]);
+
+  function startSession() {
+    sessionStartAtRef.current = Date.now();
+    sessionTrackIdsRef.current = new Set();
+    sessionStartMsgCountRef.current =
+      chatMessagesRef.current.length;
+
+    /* 把当前正在播的歌也算进 session */
+    if (currentTrack?.id) {
+      sessionTrackIdsRef.current.add(currentTrack.id);
+    }
+  }
+
+  function finalizeSession(endedPartner: ListenPartner) {
+    const startAt = sessionStartAtRef.current;
+    sessionStartAtRef.current = null;
+
+    if (startAt === null) return;
+
+    const endAt = Date.now();
+    const durationMs = endAt - startAt;
+
+    /* 太短就丢弃，避免误写 */
+    if (durationMs < MIN_SESSION_MS) return;
+
+    const trackCount = sessionTrackIdsRef.current.size;
+    const startMsgCount = sessionStartMsgCountRef.current;
+    const messageCount = Math.max(
+      0,
+      chatMessagesRef.current.length - startMsgCount
+    );
+
+    const partnerName =
+      endedPartner === "Both"
+        ? "Levi & Erwin"
+        : endedPartner;
+
+    const durationLabel = formatSessionLength(durationMs);
+
+    const title = `与 ${partnerName} 一起听 · ${durationLabel}`;
+
+    const parts: string[] = [];
+    if (trackCount > 0) parts.push(`听了 ${trackCount} 首`);
+    if (messageCount > 0) parts.push(`聊了 ${messageCount} 条`);
+    const preview = parts.length > 0 ? parts.join(" · ") : undefined;
+
+    pushMemory({
+      sourceApp: "music",
+      sourceId: `listen-session-${startAt}`,
+      timestamp: endAt,
+      type: "session",
+      title,
+      preview,
+      meta: {
+        partner: endedPartner,
+        partnerName,
+        durationMs,
+        startAt,
+        endAt,
+        trackCount,
+        messageCount,
+      },
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -234,6 +390,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
 
   /* -------------------------------------------------------
      系统主动发消息（切歌 / 播放 / 暂停）
+     ★ Step 3：切歌时顺便把 trackId 计入当前 session
      ------------------------------------------------------- */
 
   useEffect(() => {
@@ -277,12 +434,25 @@ export default function MusicApp({ onBack }: MusicAppProps) {
       }, delay);
     }
 
-    const onTrackChange = () =>
+    const onTrackChange = (e: Event) => {
       fireSystemMessage(
         "切歌",
         TRACK_CHANGE_MIN_MS,
         TRACK_CHANGE_MAX_MS
       );
+
+      /* ★ Step 3：收集 session 内的曲目 id */
+      try {
+        const ce = e as CustomEvent<{
+          index: number;
+          item?: { id?: string };
+        }>;
+        const id = ce.detail?.item?.id;
+        if (id) sessionTrackIdsRef.current.add(id);
+      } catch {
+        /* ignore */
+      }
+    };
     const onPlay = () =>
       fireSystemMessage(
         "播放",
@@ -523,6 +693,19 @@ export default function MusicApp({ onBack }: MusicAppProps) {
           <Upload size={20} strokeWidth={2.2} />
         </button>
       </header>
+
+      {/* ★ Step 2：一起听计时条 */}
+      {partner !== "Solo" && togetherStartAt !== null && (
+        <div className="music-v2-together-timer">
+          <span className="music-v2-together-timer-dot" />
+          <span>
+            Together {partnerName}
+          </span>
+          <span className="music-v2-together-timer-time">
+            {formatTogetherDuration(togetherElapsed)}
+          </span>
+        </div>
+      )}
 
       {invitation && (
         <div

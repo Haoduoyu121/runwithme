@@ -14,6 +14,11 @@ import QuestionnaireApp from "@/components/apps/QuestionnaireApp";
 import CheckInApp from "@/components/apps/CheckInApp";
 import LetterApp from "@/components/apps/LetterApp";
 import WatchApp from "@/components/apps/WatchApp";
+import MemoryApp from "@/components/apps/MemoryApp";
+import RandomApp from "@/components/apps/RandomApp";
+import SearchApp from "@/components/apps/SearchApp";
+import ReadApp from "@/components/apps/ReadApp";
+import { runWorldCompensation } from "@/lib/worldClock";
 
 import {
   loadSystemSettings,
@@ -115,6 +120,30 @@ const apps = [
     icon: "▷",
     color: "blue",
   },
+  {
+    id: "memory" as AppId,
+    name: "Memory",
+    icon: "❋",
+    color: "brown",
+  },
+  {
+    id: "random" as AppId,
+    name: "Random",
+    icon: "⁂",
+    color: "blue",
+  },
+  {
+    id: "search" as AppId,
+    name: "Search",
+    icon: "⌕",
+    color: "cream",
+  },
+  {
+    id: "read" as AppId,
+    name: "Read",
+    icon: "▤",
+    color: "brown",
+  },
 ];
 
 const APP_IDS_FOR_LAYOUT: AppId[] = apps.map((a) => a.id);
@@ -198,7 +227,6 @@ function HomeScreen({
   onOpenCalendar: () => void;
   onOpenCards: () => void;
 }) {
-  /* ★ 分页 state：pages = HomePages，currentPage 是当前页下标 */
   const [pages, setPages] = useState<HomePages>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [hydrated, setHydrated] = useState(false);
@@ -209,10 +237,8 @@ function HomeScreen({
   );
   const [showAddWidget, setShowAddWidget] = useState(false);
 
-  /* 当前页的 items（空页时返回空数组） */
   const items: HomeItem[] = pages[currentPage] ?? [];
 
-  /* 首次挂载：从 localStorage 恢复 + 补全新增 App */
   useEffect(() => {
     const defaultItems = buildDefaultLayout(
       APP_IDS_FOR_LAYOUT
@@ -223,7 +249,6 @@ function HomeScreen({
     setHydrated(true);
   }, []);
 
-  /* 保存：hydrate 完成后才允许保存，避免覆盖 */
   useEffect(() => {
     if (!hydrated) return;
     const ok = saveHomePages(pages);
@@ -234,7 +259,6 @@ function HomeScreen({
     }
   }, [pages, hydrated]);
 
-  /* 修改当前页 */
   function updateCurrentPage(
     updater: (prev: HomeItem[]) => HomeItem[]
   ) {
@@ -247,7 +271,6 @@ function HomeScreen({
     });
   }
 
-  /* 长按任意 item 进入编辑模式 */
   function handleItemLongPress() {
     if (!editing) {
       setEditSnapshot(items);
@@ -268,12 +291,10 @@ function HomeScreen({
     setEditing(false);
   }
 
-  /* 使用长按检测（在 HomeGrid 外部包一层） */
   const longPressTimerRef = {
     current: null as ReturnType<typeof setTimeout> | null,
   };
 
-  /* 翻页手势 */
   const swipeRef = {
     current: null as {
       x: number;
@@ -323,18 +344,15 @@ function HomeScreen({
     const dy = e.clientY - start.y;
     const dt = Date.now() - start.t;
 
-    /* 时间过长 或 垂直位移更大 → 不是翻页手势 */
     if (dt > 800) return;
     if (Math.abs(dy) > Math.abs(dx)) return;
     if (Math.abs(dx) < 60) return;
 
     if (dx < 0) {
-      /* 向左滑 → 下一页 */
       setCurrentPage((p) =>
         p < pages.length - 1 ? p + 1 : p
       );
     } else {
-      /* 向右滑 → 上一页 */
       setCurrentPage((p) => (p > 0 ? p - 1 : p));
     }
   }
@@ -347,13 +365,11 @@ function HomeScreen({
     swipeRef.current = null;
   }
 
-  /* 添加新页面 */
   function handleAddPage() {
     setPages((prev) => [...prev, []]);
     setCurrentPage((prev) => prev + 1);
   }
 
-    /* 跨页拖动 */
   function handleCrossPageDrop(
     itemId: string,
     fromPage: number,
@@ -389,7 +405,6 @@ function HomeScreen({
     });
   }
 
-  /* 删除当前页 */
   function handleDeletePage() {
     if (pages.length <= 1) {
       window.alert("至少保留一页");
@@ -407,7 +422,6 @@ function HomeScreen({
     setPages((prev) =>
       prev.filter((_, i) => i !== currentPage)
     );
-    /* 夹紧 currentPage 到新范围 */
     setCurrentPage((p) => Math.min(p, pages.length - 2));
   }
 
@@ -431,7 +445,6 @@ function HomeScreen({
       onPointerCancel={handlePointerCancelCapture}
       onPointerLeave={handlePointerCancelCapture}
     >
-      {/* 顶部小状态栏 */}
       <div className="home-v2-top">
         {editing ? (
           <button
@@ -455,7 +468,6 @@ function HomeScreen({
         </span>
       </div>
 
-      {/* 编辑模式：悬浮工具栏（取消 / 完成） */}
       {editing && (
         <div className="home-edit-toolbar">
           <button
@@ -473,7 +485,6 @@ function HomeScreen({
         </div>
       )}
 
-      {/* 编辑模式：左右翻页箭头 */}
       {editing && pages.length > 1 && (
         <>
           {currentPage > 0 && (
@@ -503,7 +514,6 @@ function HomeScreen({
         </>
       )}
 
-      {/* 网格 */}
       <div className="home-v2-grid-wrap">
         <HomeGrid
           items={items}
@@ -516,7 +526,7 @@ function HomeScreen({
             if (editing) return;
             onOpenApp(id);
           }}
-                    onChangeItems={(next) =>
+          onChangeItems={(next) =>
             updateCurrentPage(() => next)
           }
           onCrossPageDrop={handleCrossPageDrop}
@@ -543,7 +553,6 @@ function HomeScreen({
         )}
       </div>
 
-      {/* 页点指示器（非编辑模式） */}
       {!editing && pages.length > 1 && (
         <div className="home-pager-dots">
           {pages.map((_, i) => (
@@ -560,7 +569,6 @@ function HomeScreen({
         </div>
       )}
 
-      {/* 编辑模式底部按钮 */}
       {editing && (
         <div className="home-v2-edit-bar">
           <button
@@ -585,7 +593,6 @@ function HomeScreen({
         </div>
       )}
 
-      {/* dock */}
       <div className="dock">
         <button
           className="dock-icon"
@@ -635,7 +642,6 @@ function HomeScreen({
         </button>
       </div>
 
-      {/* 添加小组件弹窗 */}
       {showAddWidget && (
         <AddWidgetModal
           onAdd={handleAddWidget}
@@ -653,9 +659,11 @@ function HomeScreen({
 function AppWindow({
   app,
   onBack,
+  isActive,
 }: {
   app: AppId;
   onBack: () => void;
+  isActive: boolean;
 }) {
   return (
     <div className="app-screen">
@@ -670,12 +678,21 @@ function AppWindow({
         <QuestionnaireApp onBack={onBack} />
       )}
       {app === "checkin" && <CheckInApp onBack={onBack} />}
-            {app === "letter" && <LetterApp onBack={onBack} />}
+      {app === "letter" && <LetterApp onBack={onBack} />}
       {app === "collection" && (
         <CollectionApp onBack={onBack} />
       )}
       {app === "study" && <StudyApp onBack={onBack} />}
       {app === "watch" && <WatchApp onBack={onBack} />}
+      {app === "memory" && <MemoryApp onBack={onBack} />}
+      {app === "random" && <RandomApp onBack={onBack} />}
+      {app === "search" && <SearchApp onBack={onBack} />}
+      {app === "read" && (
+        <ReadApp
+          key={isActive ? "active" : "inactive"}
+          onBack={onBack}
+        />
+      )}
     </div>
   );
 }
@@ -695,10 +712,9 @@ export default function Home() {
   const [currentApp, setCurrentApp] =
     useState<AppId | null>(null);
 
-    /* 已经打开过的 App 列表；一旦加入永不移除 */
   const [mountedApps, setMountedApps] = useState<AppId[]>(
     []
-  );  
+  );
 
   const [systemSettings, setSystemSettings] =
     useState<SystemSettings | null>(null);
@@ -713,7 +729,34 @@ export default function Home() {
     Partial<Record<AppId, string>>
   >({});
 
-    /* 注册 App 启动器，供全局通知点击时调用 */
+    /* ★ Step 9a：世界在转 —— 启动 + 从后台切回前台时触发补偿 */
+  useEffect(() => {
+    const result = runWorldCompensation();
+    if (result.triggered && result.generated > 0) {
+      console.log(
+        `[世界在转] 你不在的 ${Math.floor(
+          result.offlineMs / 60000
+        )} 分钟里，发生了 ${result.generated} 件事`
+      );
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "visible") {
+        runWorldCompensation();
+      }
+    }
+    document.addEventListener(
+      "visibilitychange",
+      onVisibility
+    );
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibility
+      );
+    };
+  }, []);
+
   useEffect(() => {
     registerLauncher((appId) => {
       if (!unlocked) {
@@ -744,7 +787,6 @@ export default function Home() {
     setUnlocked(hasUnlocked);
   }, []);
 
-     /* 一旦打开过某个 App，就把它加进常驻列表 */
   useEffect(() => {
     if (!currentApp) return;
     setMountedApps((prev) =>
@@ -754,7 +796,6 @@ export default function Home() {
     );
   }, [currentApp]);
 
-  /* 加载自定义壁纸（锁屏 + 主屏） */
   useEffect(() => {
     if (!systemSettings) return;
 
@@ -809,7 +850,6 @@ export default function Home() {
     systemSettings?.homeWallpaper,
   ]);
 
-  /* 把当前壁纸同步到 html 的 --rw-bg，覆盖 iOS PWA 底部安全区 */
   useEffect(() => {
     if (!systemSettings) return;
 
@@ -846,7 +886,6 @@ export default function Home() {
     customHomeWallpaper,
   ]);
 
-  /* 加载自定义 App 图标 */
   useEffect(() => {
     if (!systemSettings) return;
 
@@ -946,7 +985,6 @@ export default function Home() {
           />
         ) : (
           <>
-            {/* Home 只在没有打开 App 时挂载 */}
             {currentApp === null && (
               <HomeScreen
                 wallpaper={homeWallpaper}
@@ -967,7 +1005,6 @@ export default function Home() {
               />
             )}
 
-            {/* 打开过的 App 都常驻，切换只切显隐 */}
             {mountedApps.map((appId) => (
               <div
                 key={appId}
@@ -983,6 +1020,7 @@ export default function Home() {
                 <AppWindow
                   app={appId}
                   onBack={handleBackHome}
+                  isActive={currentApp === appId}
                 />
               </div>
             ))}

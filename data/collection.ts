@@ -15,7 +15,8 @@ export type CollectionSource =
   | "anniversary"
   | "schedule"
   | "music"
-  | "daily-sentence";
+  | "daily-sentence"
+  | "read";
 
 export type CollectionSender = "You" | "Levi" | "Erwin";
 
@@ -66,6 +67,7 @@ export const SOURCE_LABELS: Record<CollectionSource, string> = {
   schedule: "行程",
   music: "Music",
   "daily-sentence": "每日一句",
+  "read": "Read",
 };
 
 export const SOURCE_ICONS: Record<CollectionSource, string> = {
@@ -79,6 +81,7 @@ export const SOURCE_ICONS: Record<CollectionSource, string> = {
   schedule: "▤",
   music: "♪",
   "daily-sentence": "❝",
+  "read": "▤",
 };
 
 export const OWNER_LABELS: Record<CollectionOwner, string> = {

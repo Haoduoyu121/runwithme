@@ -40,6 +40,7 @@ type AppEntry = {
   icon: string;
 };
 
+/* ★ 与 app/page.tsx 的 apps 数组保持一一对应 */
 const APP_ENTRIES: AppEntry[] = [
   { id: "chat", name: "Chat", icon: "♡" },
   { id: "music", name: "Music", icon: "♪" },
@@ -48,6 +49,16 @@ const APP_ENTRIES: AppEntry[] = [
   { id: "cards", name: "Cards", icon: "✎" },
   { id: "notes", name: "Notes", icon: "✎" },
   { id: "calendar", name: "Calendar", icon: "◫" },
+  { id: "questionnaire", name: "Q&A", icon: "?" },
+  { id: "checkin", name: "Check-in", icon: "☑" },
+  { id: "letter", name: "Letter", icon: "✉" },
+  { id: "collection", name: "Collection", icon: "★" },
+  { id: "study", name: "Study", icon: "✎" },
+  { id: "watch", name: "Watch", icon: "▷" },
+  { id: "memory", name: "Memory", icon: "❋" },
+  { id: "random", name: "Random", icon: "⁂" },
+  { id: "search", name: "Search", icon: "⌕" },
+  { id: "read", name: "Read", icon: "▤" },
 ];
 
 type DockEntry = {

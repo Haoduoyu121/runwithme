@@ -20,6 +20,7 @@ import NotificationOverlay from "@/components/system/NotificationOverlay";
 import KeyboardInsetListener from "@/components/system/KeyboardInsetListener";
 import { WatchInviteScheduler } from "@/lib/WatchInviteScheduler";
 import { KeepAliveProvider } from "@/lib/KeepAliveContext";
+import ReadInviteScheduler from "@/components/system/ReadInviteScheduler";
 
 export const metadata: Metadata = {
   title: "RunWithme",
@@ -84,6 +85,7 @@ export default function RootLayout({
                             <MusicInviteOverlay />
                             <FocusOverlay />
                             <NotificationOverlay />
+                              <ReadInviteScheduler />
                             <KeyboardInsetListener />
                           </PomodoroProvider>
                         </ICityProvider>

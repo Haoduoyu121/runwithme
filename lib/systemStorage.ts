@@ -16,7 +16,11 @@ export type AppId =
   | "letter"
   | "collection"
   | "study"
-  | "watch";
+  | "watch"
+  | "memory"
+  | "random"
+  | "search"
+  | "read";
 
 export type AppIconState = "custom" | null;
 
@@ -110,6 +114,10 @@ const defaultSettings: SystemSettings = {
     collection: null,
     study: null,
     watch: null,
+    memory: null,
+    random: null,
+    search: null,
+    read: null,
   },
   dockIcons: {
     "slot-1": null,
