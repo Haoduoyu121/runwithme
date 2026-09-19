@@ -30,10 +30,8 @@ import {
   upsertBook,
 } from "@/lib/readLibraryStorage";
 import { getBookText } from "@/lib/readBookFiles";
-import {
-  getChapterText,
-  parseChapters,
-} from "@/lib/readChapterParser";
+import { getChapters } from "@/lib/readChapterCache";
+import { getChapterText } from "@/lib/readChapterParser";
 import {
   addHighlight,
   createHighlightId,
@@ -201,8 +199,8 @@ export default function ReadReader({
 
   const chapters = useMemo(() => {
     if (!text) return [];
-    return parseChapters(text);
-  }, [text]);
+    return getChapters(book.id, text);
+  }, [text, book.id]);
 
   const currentChapter = chapters[chapterIndex] ?? null;
 

@@ -55388,3 +55388,87 @@ body {
 .read-reader-settings {
   padding-bottom: calc(28px + env(safe-area-inset-bottom));
 }
+/* =========================================================
+   顶栏避让刘海 / 状态栏
+   ========================================================= */
+
+/* Memory / Random / Search 顶栏 */
+.memory-header,
+.random-header,
+.search-app-header {
+  padding-top: max(
+    calc(env(safe-area-inset-top) + 10px),
+    20px
+  ) !important;
+  box-sizing: border-box;
+}
+
+/* Read 书架顶栏 */
+.read-library-header {
+  padding-top: max(
+    calc(env(safe-area-inset-top) + 10px),
+    20px
+  ) !important;
+  box-sizing: border-box;
+}
+
+/* Read 阅读器顶栏：继续用之前的 */
+.read-reader-top {
+  padding-top: max(
+    calc(env(safe-area-inset-top) + 6px),
+    14px
+  ) !important;
+  box-sizing: border-box;
+}
+
+/* 一起读状态栏跟着下移 */
+.read-together-bar {
+  top: max(
+    calc(env(safe-area-inset-top) + 50px),
+    60px
+  ) !important;
+}
+/* ---------- 修正 iOS 划线选区 ---------- */
+
+/* 打开长按选择 */
+.read-reader,
+.read-reader-pad,
+.read-reader-scroll-h,
+.read-reader-pages,
+.read-reader-body {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+
+/* 只禁掉顶栏/底栏/按钮的选中和长按菜单 */
+.read-reader-top,
+.read-reader-top *,
+.read-reader-bottom,
+.read-reader-bottom *,
+.read-together-bar,
+.read-together-bar * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* ---------- 选中高亮：默认浅蓝太丑，改成品牌粉 ---------- */
+
+.read-reader-body ::selection {
+  background: rgba(252, 190, 195, 0.7);
+  color: inherit;
+}
+
+.read-reader-body ::-moz-selection {
+  background: rgba(252, 190, 195, 0.7);
+  color: inherit;
+}
+
+/* 夜间模式下换深一点的粉 */
+.read-reader[data-bg="night"] .read-reader-body ::selection {
+  background: rgba(252, 190, 195, 0.5);
+}
+.read-reader[data-bg="night"] .read-reader-body ::-moz-selection {
+  background: rgba(252, 190, 195, 0.5);
+}
