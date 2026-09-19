@@ -423,13 +423,29 @@ export default function ReadReader({
     snappingRef.current = false;
   }, [chapterIndex]);
 
-  /* ---------- 保存进度 ---------- */
+   /* ---------- 保存进度（翻页触发） ---------- */
 
   const savedOnceRef = useRef(false);
   useEffect(() => {
     if (!savedOnceRef.current) {
       savedOnceRef.current = true;
-        useEffect(() => {
+      return;
+    }
+    upsertBook({
+      ...book,
+      progress: {
+        chapterIndex,
+        offset: 0,
+        pageIndex,
+        updatedAt: Date.now(),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapterIndex, pageIndex]);
+
+  /* ---------- 保存进度（卸载时兜底） ---------- */
+
+  useEffect(() => {
     return () => {
       upsertBook({
         ...book,
@@ -446,35 +462,6 @@ export default function ReadReader({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-      return;
-    }
-    upsertBook({
-      ...book,
-      progress: {
-        chapterIndex,
-        offset: 0,
-        pageIndex,
-        updatedAt: Date.now(),
-      },
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterIndex, pageIndex]);
-
-  useEffect(() => {
-    return () => {
-      upsertBook({
-        ...book,
-        progress: {
-          chapterIndex: chapterIndexRef.current,
-          offset: 0,
-          pageIndex: pageIndexRef.current,
-          updatedAt: Date.now(),
-        },
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   /* ---------- 滚动 ---------- */
 
   function handleScroll() {
