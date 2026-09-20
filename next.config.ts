@@ -19,8 +19,10 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
 
-  /* ★ 先禁用 PWA，避免和静态导出冲突 */
-  disable: true,
+  /* ★ 开启 PWA */
+  disable: false,
+  register: true,
+  skipWaiting: true,
 
   workboxOptions: {
     disableDevLogs: true,
