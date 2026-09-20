@@ -36,7 +36,7 @@ import type { StickerItem } from "@/data/stickers";
 
 import { loadStickers } from "@/lib/stickerStorage";
 import { getStickerFile } from "@/lib/stickerFiles";
-
+import TextCard from "@/components/apps/photos/TextCard";
 import { useCall } from "@/lib/CallContext";
 import { useSystem } from "@/lib/SystemContext";
 import { useChat } from "@/lib/ChatContext";
@@ -139,13 +139,22 @@ function MessageQuote({
   quote,
   names,
 }: {
-  quote: { sender: ChatSender; text: string };
+  quote: {
+    sender: ChatSender;
+    text: string;
+    sourceApp?: string;
+  };
   names: CharacterNames;
 }) {
   return (
     <div className="message-quote">
       <div className="message-quote-sender">
-        {getSenderName(quote.sender, names)}
+        <span>{getSenderName(quote.sender, names)}</span>
+        {quote.sourceApp === "icity" && (
+          <span className="message-quote-source-tag">
+            iCity
+          </span>
+        )}
       </div>
       <div className="message-quote-text">{quote.text}</div>
     </div>
@@ -577,6 +586,8 @@ export default function ChatApp({ onBack }: ChatAppProps) {
   });
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesScrollRef = useRef<HTMLElement | null>(null);
+  const initialScrollDoneRef = useRef(false);
 
   const chatName = settings.chatName;
 
@@ -734,9 +745,35 @@ export default function ChatApp({ onBack }: ChatAppProps) {
 
   /* 自动滚底 */
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
+    const container = messagesScrollRef.current;
+    if (!container) return;
+
+    const behavior = initialScrollDoneRef.current
+      ? "smooth"
+      : "auto";
+
+    initialScrollDoneRef.current = true;
+
+    const doScroll = () => {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+    };
+
+    // 先滚一次
+    doScroll();
+
+    // 等一帧再滚一次（等图片 / 卡片撑开高度）
+    const raf = requestAnimationFrame(doScroll);
+
+    // 再过 200ms 兜底滚一次
+    const t = window.setTimeout(doScroll, 200);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t);
+    };
   }, [messages, generatingCount]);
 
   /* 键盘弹起时滚到底部 */
@@ -1283,6 +1320,21 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 </div>
               )}
 
+                          {message.type === "textcard" &&
+              message.textCardSnapshot && (
+                <div className="chat-textcard-message">
+                  <TextCard
+                    card={message.textCardSnapshot}
+                    variant="bubble"
+                    avatars={{
+                      you: avatarUrls.you,
+                      levi: avatarUrls.levi,
+                      erwin: avatarUrls.erwin,
+                    }}
+                  />
+                </div>
+              )}
+
             {message.type === "call" && (
               <CallMessage
                 message={message}
@@ -1375,6 +1427,15 @@ export default function ChatApp({ onBack }: ChatAppProps) {
 
   return (
     <main
+      data-fs={
+        settings.chatFontScale >= 1.25
+          ? "xl"
+          : settings.chatFontScale >= 1.05
+            ? "lg"
+            : settings.chatFontScale >= 0.95
+              ? "md"
+              : "sm"
+      }
       className={`phone-screen chat-page${
         theme === "dark" ? " chat-dark" : " chat-light"
       }${customBgUrl ? " chat-has-custom-bg" : ""}${
@@ -1474,7 +1535,10 @@ export default function ChatApp({ onBack }: ChatAppProps) {
         )}
       </header>
 
-      <section className="chat-messages">
+      <section
+        className="chat-messages"
+        ref={messagesScrollRef}
+      >
         <div className="chat-date">TODAY</div>
         {messages.map(renderMessage)}
 

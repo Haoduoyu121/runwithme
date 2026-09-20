@@ -1,13 +1,21 @@
+export type NoteAuthor = "user" | "Levi" | "Erwin";
+export type NoteKind = "note" | "diary";
+
 export type Note = {
   id: string;
+  kind: NoteKind;
+  author: NoteAuthor;
   title: string;
   body: string;
   tags: string[];
+  mood?: string;
   createdAt: number;
   updatedAt: number;
 };
 
 export type WishlistSource = "user" | "levi" | "erwin";
+
+export type WishlistCompleter = "user" | "Levi" | "Erwin";
 
 export type WishlistItem = {
   id: string;
@@ -16,6 +24,13 @@ export type WishlistItem = {
   source: WishlistSource;
   character?: "Levi" | "Erwin";
   createdAt: number;
+
+  // A4
+  completedBy?: WishlistCompleter[];
+  completedAt?: number;
+  completionNote?: string;
+  inMemory?: boolean;
+  pendingUntil?: number;
 };
 
 export type WishlistCard = {
@@ -24,6 +39,20 @@ export type WishlistCard = {
   text: string;
   enabled: boolean;
 };
+
+/* ---------- 日记心情预设（A1 固定，A2 再做卡池） ---------- */
+
+export const DIARY_MOODS: readonly string[] = [
+  "平静",
+  "开心",
+  "想念",
+  "疲惫",
+  "低落",
+  "期待",
+  "思考",
+];
+
+/* ---------- ID ---------- */
 
 export function createNoteId(): string {
   return `note-${Date.now()}-${Math.random()
@@ -44,6 +73,8 @@ export function createWishlistCardId(
     .toString(36)
     .slice(2, 6)}`;
 }
+
+/* ---------- 时间 ---------- */
 
 export function formatNoteTime(ts: number): string {
   const now = new Date();
@@ -80,6 +111,8 @@ export function formatNoteTime(ts: number): string {
   });
 }
 
+/* ---------- 笔记展示 ---------- */
+
 export function getNoteDisplayTitle(note: Note): string {
   const t = note.title.trim();
   if (t) return t;
@@ -106,6 +139,18 @@ export function getNotePreview(note: Note): string {
 
   return rest.slice(0, 90) || "无附加文字";
 }
+
+/* ---------- 日记展示 ---------- */
+
+export function getDiaryPreview(
+  note: Note,
+  max = 80
+): string {
+  const text = note.body.replace(/\s+/g, " ").trim();
+  if (!text) return "……";
+  return text.slice(0, max);
+}
+
 /* ---------- 标签工具 ---------- */
 
 export function normalizeTag(tag: string): string {

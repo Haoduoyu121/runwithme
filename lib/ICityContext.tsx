@@ -56,6 +56,8 @@ import {
 } from "@/lib/icityNotificationStorage";
 
 import { collectInteractions } from "@/lib/icityNotificationHelper";
+import { loadPhotoTextCards } from "@/lib/photoTextStorage";
+import { emitWorldEvent } from "@/lib/worldEventsStorage";
 
 /* ★ Bio 调度 */
 import {
@@ -115,6 +117,18 @@ type ICityContextValue = {
   ) => Promise<void>;
 
   addUserPost: (text: string, files?: File[]) => void;
+  addTextCardPost: (
+    author: "Levi" | "Erwin",
+    snapshot: {
+      author: "Levi" | "Erwin";
+      place: string;
+      weather: string;
+      person: string;
+      action: string;
+      mood: string;
+    },
+    sourceCardId?: string
+  ) => void;
   deletePost: (postId: string) => void;
   toggleLike: (postId: string, asUser: boolean) => void;
   addUserComment: (
@@ -201,7 +215,6 @@ function pickCommentText(
   ].text.trim();
 }
 
-/* ★ 校验名字：非空、长度 ≤ 20、至少含一个字母或数字 */
 function isValidName(s: unknown): s is string {
   if (typeof s !== "string") return false;
   const t = s.trim();
@@ -209,15 +222,14 @@ function isValidName(s: unknown): s is string {
   return /[\p{L}\p{N}]/u.test(t);
 }
 
-/* ★ 校验 handle：可以空，但非空时必须含字母或数字 */
 function isValidHandle(s: unknown): s is string {
   if (typeof s !== "string") return false;
   const t = s.trim().replace(/^@/, "");
-  if (!t) return true; // 允许空
+  if (!t) return true;
   if (t.length > 30) return false;
   return /[\p{L}\p{N}]/u.test(t);
 }
-/* 兼容旧数据：确保每个 profile 都有 bio / lastBioUpdate */
+
 function normalizeProfiles(
   raw: ICityProfiles
 ): ICityProfiles {
@@ -349,10 +361,7 @@ export function ICityProvider({
     }
   }, []);
 
-  /* -------------------------------------------------------
-     ★ Bio 自动刷新调度
-     ------------------------------------------------------- */
-
+  /* Bio 自动刷新 */
   useEffect(() => {
     function tick() {
       const cards = loadBioCards();
@@ -390,10 +399,8 @@ export function ICityProvider({
       });
     }
 
-    /* 挂载立刻跑一次（处理首次/长期未打开的情况） */
     tick();
 
-    /* 之后每 30 分钟跑一次 */
     const t = window.setInterval(
       tick,
       BIO_CHECK_INTERVAL_MS
@@ -531,10 +538,7 @@ export function ICityProvider({
     []
   );
 
-  /* -------------------------------------------------------
-     ★ 通知扫描
-     ------------------------------------------------------- */
-
+  /* 通知扫描 */
   useEffect(() => {
     if (posts.length === 0 && comments.length === 0) {
       return;
@@ -603,13 +607,58 @@ export function ICityProvider({
     saveNotifications([]);
   }, []);
 
-  /* -------------------------------------------------------
-     自动发帖
-     ------------------------------------------------------- */
-
+  /* 自动发帖 */
   const performAutoPost = useCallback(() => {
     const cards = loadCards(defaultCards);
     const character = pickRandomCharacter();
+
+    if (Math.random() < 0.1) {
+      const photoCards = loadPhotoTextCards();
+      const pool = photoCards.filter(
+        (c) => c.author === character
+      );
+      if (pool.length > 0) {
+        const card =
+          pool[Math.floor(Math.random() * pool.length)];
+
+        const withCaption = Math.random() < 0.5;
+        const caption = withCaption
+          ? pickCommentText(cards, character) ?? ""
+          : "";
+
+        const newPost: ICityPost = {
+          id: createPostId(),
+          author: character,
+          text: caption,
+          timestamp: Date.now(),
+          likes: [],
+          textCardSnapshot: {
+            author: card.author,
+            place: card.place,
+            weather: card.weather,
+            person: card.person,
+            action: card.action,
+            mood: card.mood,
+          },
+          sourcePhotoTextCardId: card.id,
+        };
+
+        emitWorldEvent({
+          app: "icity",
+          type: "post",
+          sourceId: newPost.id,
+          actor: character,
+          title: `${character} 在 iCity 发了新动态`,
+          preview: (
+            caption || "（分享了一张照片）"
+          ).slice(0, 40),
+        });
+
+        commitPosts([newPost, ...postsRef.current]);
+        return;
+      }
+    }
+
     const text = composePostText(cards, character);
     if (!text) return;
 
@@ -620,6 +669,15 @@ export function ICityProvider({
       timestamp: Date.now(),
       likes: [],
     };
+
+    emitWorldEvent({
+      app: "icity",
+      type: "post",
+      sourceId: newPost.id,
+      actor: character,
+      title: `${character} 在 iCity 发了新动态`,
+      preview: text.slice(0, 40),
+    });
 
     commitPosts([newPost, ...postsRef.current]);
   }, [commitPosts]);
@@ -654,10 +712,7 @@ export function ICityProvider({
     };
   }, [performAutoPost]);
 
-  /* -------------------------------------------------------
-     评论回复链
-     ------------------------------------------------------- */
-
+  /* 评论回复链 */
   const scheduleReactionsToComment = useCallback(
     (sourceComment: ICityComment, depth = 0) => {
       if (depth > MAX_REPLY_DEPTH) return;
@@ -704,6 +759,15 @@ export function ICityProvider({
             newComment,
           ]);
 
+          emitWorldEvent({
+            app: "icity",
+            type: "comment",
+            sourceId: sourceComment.postId,
+            actor: character,
+            title: `${character} 评论了你的帖子`,
+            preview: text.slice(0, 40),
+          });
+
           scheduleReactionsToComment(
             newComment,
             depth + 1
@@ -745,6 +809,14 @@ export function ICityProvider({
                 : p
             );
 
+            emitWorldEvent({
+              app: "icity",
+              type: "like",
+              sourceId: post.id,
+              actor: character,
+              title: `${character} 赞了你的帖子`,
+            });
+
             commitPosts(next);
           }, delay);
         }
@@ -781,6 +853,15 @@ export function ICityProvider({
               newComment,
             ]);
 
+            emitWorldEvent({
+              app: "icity",
+              type: "comment",
+              sourceId: post.id,
+              actor: character,
+              title: `${character} 评论了你的帖子`,
+              preview: text.slice(0, 40),
+            });
+
             scheduleReactionsToComment(newComment, 1);
           }, delay);
         }
@@ -793,10 +874,7 @@ export function ICityProvider({
     ]
   );
 
-  /* -------------------------------------------------------
-     立即触发一次互动
-     ------------------------------------------------------- */
-
+  /* 立即触发一次互动 */
   const forceInteraction = useCallback(() => {
     const list = postsRef.current;
 
@@ -834,6 +912,14 @@ export function ICityProvider({
           : p
       );
 
+      emitWorldEvent({
+        app: "icity",
+        type: "like",
+        sourceId: target.id,
+        actor: character,
+        title: `${character} 赞了你的帖子`,
+      });
+
       commitPosts(next);
       return;
     }
@@ -859,6 +945,15 @@ export function ICityProvider({
 
     commitComments([...commentsRef.current, newComment]);
 
+    emitWorldEvent({
+      app: "icity",
+      type: "comment",
+      sourceId: target.id,
+      actor: character,
+      title: `${character} 评论了你的帖子`,
+      preview: text.slice(0, 40),
+    });
+
     if (Math.random() < 0.5) {
       scheduleReactionsToComment(newComment, 0);
     }
@@ -869,10 +964,7 @@ export function ICityProvider({
     scheduleReactionsToComment,
   ]);
 
-  /* -------------------------------------------------------
-     Profile 操作
-     ------------------------------------------------------- */
-
+  /* Profile 操作 */
   const updateProfile = useCallback(
     (
       author: ICityAuthor,
@@ -980,10 +1072,7 @@ export function ICityProvider({
     []
   );
 
-  /* -------------------------------------------------------
-     用户操作
-     ------------------------------------------------------- */
-
+  /* 用户操作 */
   const addUserPost = useCallback(
     (text: string, files?: File[]) => {
       const trimmed = text.trim();
@@ -1028,6 +1117,15 @@ export function ICityProvider({
         likes: [],
       };
 
+      emitWorldEvent({
+        app: "icity",
+        type: "post",
+        sourceId: postId,
+        actor: "You",
+        title: "你在 iCity 发布了新动态",
+        preview: (trimmed || "（图片）").slice(0, 40),
+      });
+
       commitPosts([newPost, ...postsRef.current]);
       scheduleReactionsToUserPost(newPost);
 
@@ -1047,6 +1145,33 @@ export function ICityProvider({
       })();
     },
     [commitPosts, scheduleReactionsToUserPost]
+  );
+
+  const addTextCardPost = useCallback(
+    (
+      author: "Levi" | "Erwin",
+      snapshot: {
+        author: "Levi" | "Erwin";
+        place: string;
+        weather: string;
+        person: string;
+        action: string;
+        mood: string;
+      },
+      sourceCardId?: string
+    ) => {
+      const newPost: ICityPost = {
+        id: createPostId(),
+        author,
+        text: "",
+        timestamp: Date.now(),
+        likes: [],
+        textCardSnapshot: snapshot,
+        sourcePhotoTextCardId: sourceCardId,
+      };
+      commitPosts([newPost, ...postsRef.current]);
+    },
+    [commitPosts]
   );
 
   const deletePost = useCallback(
@@ -1108,6 +1233,16 @@ export function ICityProvider({
           : p
       );
 
+      if (!liked) {
+        emitWorldEvent({
+          app: "icity",
+          type: "like",
+          sourceId: postId,
+          actor: "You",
+          title: "你赞了一条动态",
+        });
+      }
+
       commitPosts(next);
     },
     [commitPosts]
@@ -1137,6 +1272,15 @@ export function ICityProvider({
         ...commentsRef.current,
         newComment,
       ]);
+
+      emitWorldEvent({
+        app: "icity",
+        type: "comment",
+        sourceId: postId,
+        actor: "You",
+        title: "你评论了一条动态",
+        preview: trimmed.slice(0, 40),
+      });
 
       scheduleReactionsToComment(newComment, 0);
     },
@@ -1194,6 +1338,7 @@ export function ICityProvider({
         setBackgroundFile,
         removeBackground,
         addUserPost,
+        addTextCardPost,
         deletePost,
         toggleLike,
         addUserComment,

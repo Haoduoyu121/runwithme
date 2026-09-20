@@ -59,7 +59,6 @@ export type CharacterNames = {
 
 export type SystemSettings = {
   theme: RunwithmeTheme;
-  /** ★ 视觉风格：马卡龙粉 or 灰黑白 */
   visualStyle: RunwithmeVisualStyle;
 
   lockScreenWallpaper: string;
@@ -75,6 +74,9 @@ export type SystemSettings = {
   chatBackground: string | null;
 
   fontScale: number;
+  chatFontScale: number;
+  chatTextCardChance: number;
+  chatWorldQuoteChance: number;
 
   patMessages: {
     levi: string[];
@@ -130,6 +132,9 @@ const defaultSettings: SystemSettings = {
   chatName: "Levi & Erwin",
   chatBackground: null,
   fontScale: 1,
+  chatFontScale: 1.15,
+  chatTextCardChance: 0.05,
+  chatWorldQuoteChance: 0.3,
   patMessages: {
     levi: [
       "拍了拍 Levi 的头像",
@@ -206,6 +211,27 @@ export function loadSystemSettings(): SystemSettings {
         typeof parsed.fontScale === "number"
           ? Math.min(1.3, Math.max(0.85, parsed.fontScale))
           : 1,
+      chatFontScale:
+        typeof parsed.chatFontScale === "number"
+          ? Math.min(
+              1.3,
+              Math.max(0.9, parsed.chatFontScale)
+            )
+          : 1.15,
+      chatTextCardChance:
+        typeof parsed.chatTextCardChance === "number"
+          ? Math.min(
+              0.5,
+              Math.max(0, parsed.chatTextCardChance)
+            )
+          : 0.05,
+      chatWorldQuoteChance:
+        typeof parsed.chatWorldQuoteChance === "number"
+          ? Math.min(
+              1,
+              Math.max(0, parsed.chatWorldQuoteChance)
+            )
+          : 0.3,
       patMessages: {
         levi:
           Array.isArray(parsed.patMessages?.levi) &&

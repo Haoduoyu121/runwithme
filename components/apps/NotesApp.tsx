@@ -17,18 +17,54 @@ import {
 } from "lucide-react";
 
 import {
+  DIARY_MOODS,
   collectAllTags,
   createNoteId,
   createWishlistItemId,
   formatNoteTime,
+  getDiaryPreview,
   getNoteDisplayTitle,
   getNotePreview,
   getNoteTagPreview,
   normalizeTag,
   type Note,
+  type NoteAuthor,
   type WishlistCard,
   type WishlistItem,
+  type WishlistCompleter,
 } from "@/data/notes";
+
+import {
+  loadMoodCards,
+  loadContentCards,
+  saveMoodCards,
+  saveContentCards,
+} from "@/lib/diaryCardsStorage";
+import { ensureDiaryScheduler } from "@/lib/diaryScheduler";
+import {
+  type DiaryMoodCard,
+  type DiaryContentCard,
+} from "@/data/diaryCards";
+import {
+  createHighlightId,
+  type DiaryHighlight,
+  type HighlightCard,
+} from "@/data/diaryHighlights";
+import {
+  loadHighlights,
+  loadHighlightCards,
+  saveHighlights,
+  saveHighlightCards,
+} from "@/lib/diaryHighlightStorage";
+import {
+  createPendingWish,
+  settlePendingWishes,
+  runAutoJudge,
+} from "@/lib/wishlistScheduler";
+import { pushMemory } from "@/lib/memoryStorage";
+import PoolCenter from "@/components/apps/notes/PoolCenter";
+import DiaryEditorView from "@/components/apps/notes/DiaryEditorView";
+import WishlistCompleteSheet from "@/components/apps/notes/WishlistCompleteSheet";
 
 import { pickWishlistCard } from "@/data/wishlistCards";
 
@@ -41,7 +77,6 @@ import {
   saveWishlistCards,
 } from "@/lib/notesStorage";
 
-import WishlistPoolEditor from "@/components/apps/notes/WishlistPoolEditor";
 import { useCollection } from "@/lib/CollectionContext";
 import {
   useCharacterAvatars,
@@ -52,9 +87,9 @@ type NotesAppProps = {
   onBack: () => void;
 };
 
-export default function NotesApp({
-  onBack,
-}: NotesAppProps) {
+type ViewMode = "notes" | "diary";
+
+export default function NotesApp({ onBack }: NotesAppProps) {
   const { tryAutoCollect } = useCollection();
   const avatars = useCharacterAvatars();
 
@@ -68,6 +103,21 @@ export default function NotesApp({
   );
   const [cards, setCards] = useState<WishlistCard[]>([]);
 
+  const [mode, setMode] = useState<ViewMode>("notes");
+
+  const [moodCards, setMoodCards] = useState<
+    DiaryMoodCard[]
+  >([]);
+  const [contentCards, setContentCards] = useState<
+    DiaryContentCard[]
+  >([]);
+  const [highlights, setHighlights] = useState<
+    DiaryHighlight[]
+  >([]);
+  const [highlightCards, setHighlightCards] = useState<
+    HighlightCard[]
+  >([]);
+
   const [editingNoteId, setEditingNoteId] = useState<
     string | null
   >(null);
@@ -77,6 +127,8 @@ export default function NotesApp({
   const [editingWishId, setEditingWishId] = useState<
     string | null
   >(null);
+  const [completingWish, setCompletingWish] =
+    useState<WishlistItem | null>(null);
 
   const [showPoolEditor, setShowPoolEditor] =
     useState(false);
@@ -86,13 +138,116 @@ export default function NotesApp({
   );
   const [tagDraft, setTagDraft] = useState("");
 
+  // tick 用于 pending 倒计时刷新
+  const [tick, setTick] = useState(0);
+
   /* ---------- 初始化 ---------- */
 
   useEffect(() => {
-    setNotes(loadNotes());
-    setWishlist(loadWishlist());
-    setCards(loadWishlistCards());
+    const initialNotes = loadNotes();
+    const initialWishlist = loadWishlist();
+    const initialCards = loadWishlistCards();
+    const initialMood = loadMoodCards();
+    const initialContent = loadContentCards();
+    const initialHighlights = loadHighlights();
+    const initialHlCards = loadHighlightCards();
+
+    const result = ensureDiaryScheduler(initialNotes);
+
+    if (result.notes.length > 0) {
+      const next = [...result.notes, ...initialNotes];
+      saveNotes(next);
+      setNotes(next);
+    } else {
+      setNotes(initialNotes);
+    }
+
+    if (result.highlights.length > 0) {
+      const merged = [
+        ...result.highlights,
+        ...initialHighlights,
+      ];
+      saveHighlights(merged);
+      setHighlights(merged);
+    } else {
+      setHighlights(initialHighlights);
+    }
+
+    // Wishlist：先结算 pending，再跑 16-24h 判定
+    let w = settlePendingWishes(
+      initialWishlist,
+      initialCards
+    );
+
+    const judgeResult = runAutoJudge(
+      w,
+      initialCards,
+      initialHlCards
+    );
+    w = judgeResult.wishlist;
+
+    if (w !== initialWishlist) {
+      saveWishlist(w);
+    }
+    setWishlist(w);
+
+    // 自动勾选进 Memory
+    judgeResult.autoCompleted.forEach((item) => {
+      try {
+        pushMemory({
+          sourceApp: "wishlist",
+          sourceId: item.id,
+          timestamp: item.completedAt || Date.now(),
+          type: "milestone",
+          title: item.text,
+          preview: item.completionNote || "",
+          meta: {
+            completedBy: (item.completedBy || [])
+              .map((x) => (x === "user" ? "我" : x))
+              .join(" · "),
+            character: item.character,
+            source: item.source,
+            auto: true,
+          },
+        });
+      } catch (e) {
+        console.error(
+          "[wishlist] 自动完成 Memory 联动失败",
+          e
+        );
+      }
+    });
+
+    setCards(initialCards);
+    setMoodCards(initialMood);
+    setContentCards(initialContent);
+    setHighlightCards(initialHlCards);
   }, []);
+
+  // pending 每秒 tick
+  useEffect(() => {
+    const hasPending = wishlist.some(
+      (w) =>
+        typeof w.pendingUntil === "number" && !w.text
+    );
+    if (!hasPending) return;
+
+    const timer = window.setInterval(() => {
+      setTick((t) => t + 1);
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [wishlist]);
+
+  // pending 到点 → 结算
+  useEffect(() => {
+    if (wishlist.length === 0) return;
+    const settled = settlePendingWishes(wishlist, cards);
+    if (settled !== wishlist) {
+      setWishlist(settled);
+      saveWishlist(settled);
+    }
+  }, [tick, wishlist, cards]);
 
   useEffect(() => {
     function onKb(e: Event) {
@@ -139,14 +294,39 @@ export default function NotesApp({
     saveWishlistCards(next);
   }
 
+  function commitMoodCards(next: DiaryMoodCard[]) {
+    setMoodCards(next);
+    saveMoodCards(next);
+  }
+
+  function commitContentCards(next: DiaryContentCard[]) {
+    setContentCards(next);
+    saveContentCards(next);
+  }
+
+  function commitHighlights(next: DiaryHighlight[]) {
+    setHighlights(next);
+    saveHighlights(next);
+  }
+
+  function commitHighlightCards(next: HighlightCard[]) {
+    setHighlightCards(next);
+    saveHighlightCards(next);
+  }
+
   /* ---------- Notes CRUD ---------- */
 
   function createNote() {
+    const isDiary = mode === "diary";
     const note: Note = {
       id: createNoteId(),
+      kind: isDiary ? "diary" : "note",
+      author: "user",
       title: "",
       body: "",
-      tags: tagFilter ? [tagFilter] : [],
+      tags:
+        !isDiary && tagFilter ? [tagFilter] : [],
+      mood: undefined,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -180,6 +360,8 @@ export default function NotesApp({
         originalAt: Date.now(),
         meta: {
           title: updated.title,
+          kind: updated.kind,
+          author: updated.author,
           tagCount: updated.tags.length,
         },
       });
@@ -188,20 +370,26 @@ export default function NotesApp({
 
   function deleteNote(id: string) {
     commitNotes(notes.filter((n) => n.id !== id));
+    commitHighlights(
+      highlights.filter((h) => h.noteId !== id)
+    );
     if (editingNoteId === id) setEditingNoteId(null);
   }
 
   function closeEditor() {
     const note = notes.find((n) => n.id === editingNoteId);
-    if (
-      note &&
-      !note.title.trim() &&
-      !note.body.trim() &&
-      note.tags.length === 0
-    ) {
-      commitNotes(
-        notes.filter((n) => n.id !== editingNoteId)
-      );
+    if (note) {
+      const isEmpty =
+        note.kind === "diary"
+          ? !note.body.trim() && !note.mood
+          : !note.title.trim() &&
+            !note.body.trim() &&
+            note.tags.length === 0;
+      if (isEmpty) {
+        commitNotes(
+          notes.filter((n) => n.id !== editingNoteId)
+        );
+      }
     }
     setEditingNoteId(null);
   }
@@ -209,7 +397,10 @@ export default function NotesApp({
   /* ---------- 标签 ---------- */
 
   const allTags = useMemo(
-    () => collectAllTags(notes),
+    () =>
+      collectAllTags(
+        notes.filter((n) => n.kind !== "diary")
+      ),
     [notes]
   );
 
@@ -258,31 +449,85 @@ export default function NotesApp({
   }
 
   function generateWish() {
-    const card = pickWishlistCard(cards);
-    if (!card) {
-      alert("还没有可用的愿望卡。");
+    const hasPending = wishlist.some(
+      (w) =>
+        typeof w.pendingUntil === "number" && !w.text
+    );
+    if (hasPending) {
+      window.alert("还在酝酿中，稍等。");
       return;
     }
 
-    const item: WishlistItem = {
-      id: createWishlistItemId(),
-      text: card.text,
-      completed: false,
-      source:
-        card.character === "Levi" ? "levi" : "erwin",
-      character: card.character,
-      createdAt: Date.now(),
-    };
-
-    commitWishlist([item, ...wishlist]);
+    const pending = createPendingWish();
+    commitWishlist([pending, ...wishlist]);
   }
 
-  function toggleWish(id: string) {
-    commitWishlist(
-      wishlist.map((w) =>
-        w.id === id ? { ...w, completed: !w.completed } : w
-      )
+  function requestToggleWish(w: WishlistItem) {
+    if (w.completed) {
+      // 取消完成
+      commitWishlist(
+        wishlist.map((it) =>
+          it.id === w.id
+            ? {
+                ...it,
+                completed: false,
+                completedBy: undefined,
+                completedAt: undefined,
+                completionNote: undefined,
+              }
+            : it
+        )
+      );
+      return;
+    }
+
+    // 打开完成 sheet
+    setCompletingWish(w);
+  }
+
+  function confirmComplete(
+    completedBy: WishlistCompleter[],
+    note: string
+  ) {
+    if (!completingWish) return;
+    const now = Date.now();
+
+    const next = wishlist.map((it) =>
+      it.id === completingWish.id
+        ? {
+            ...it,
+            completed: true,
+            completedBy,
+            completedAt: now,
+            completionNote: note || undefined,
+            inMemory: true,
+          }
+        : it
     );
+    commitWishlist(next);
+
+    // 进 Memory
+    try {
+      pushMemory({
+        sourceApp: "wishlist",
+        sourceId: completingWish.id,
+        timestamp: now,
+        type: "milestone",
+        title: completingWish.text,
+        preview: note || "",
+        meta: {
+          completedBy: completedBy
+            .map((x) => (x === "user" ? "我" : x))
+            .join(" · "),
+          character: completingWish.character,
+          source: completingWish.source,
+        },
+      });
+    } catch (e) {
+      console.error("[wishlist] Memory 联动失败", e);
+    }
+
+    setCompletingWish(null);
   }
 
   function deleteWish(id: string) {
@@ -301,9 +546,9 @@ export default function NotesApp({
   /* ---------- 排序 & 过滤 ---------- */
 
   const sortedNotes = useMemo(() => {
-    const list = [...notes].sort(
-      (a, b) => b.updatedAt - a.updatedAt
-    );
+    const list = notes
+      .filter((n) => n.kind !== "diary")
+      .sort((a, b) => b.updatedAt - a.updatedAt);
 
     if (!tagFilter) return list;
 
@@ -311,6 +556,12 @@ export default function NotesApp({
       n.tags.includes(tagFilter)
     );
   }, [notes, tagFilter]);
+
+  const sortedDiaries = useMemo(() => {
+    return notes
+      .filter((n) => n.kind === "diary")
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  }, [notes]);
 
   const sortedWishlist = useMemo(() => {
     return [...wishlist].sort((a, b) => {
@@ -321,11 +572,68 @@ export default function NotesApp({
     });
   }, [wishlist]);
 
+  /* ---------- 心情 chips ---------- */
+
+  function getMoodOptionsFor(): string[] {
+    const set = new Set<string>();
+    moodCards.forEach((c) => {
+      if (c.enabled) set.add(c.mood);
+    });
+
+    if (set.size === 0) {
+      DIARY_MOODS.forEach((m) => set.add(m));
+    }
+
+    return Array.from(set);
+  }
+
   /* ---------- 编辑器视图 ---------- */
 
   const editingNote = editingNoteId
     ? notes.find((n) => n.id === editingNoteId)
     : null;
+
+  if (editingNote && editingNote.kind === "diary") {
+    return (
+      <DiaryEditorView
+        note={editingNote}
+        highlights={highlights.filter(
+          (h) => h.noteId === editingNote.id
+        )}
+        avatars={avatars}
+        moodOptions={getMoodOptionsFor()}
+        onUpdateNote={updateNote}
+        onCreateHighlight={(payload) => {
+          const h: DiaryHighlight = {
+            id: createHighlightId(),
+            noteId: editingNote.id,
+            author: "user",
+            text: payload.text,
+            occurrence: payload.occurrence,
+            note: payload.note,
+            createdAt: Date.now(),
+          };
+          commitHighlights([...highlights, h]);
+        }}
+        onUpdateHighlight={(id, patch) => {
+          commitHighlights(
+            highlights.map((h) =>
+              h.id === id ? { ...h, ...patch } : h
+            )
+          );
+        }}
+        onDeleteHighlight={(id) => {
+          commitHighlights(
+            highlights.filter((h) => h.id !== id)
+          );
+        }}
+        onDeleteNote={deleteNote}
+        onClose={closeEditor}
+      />
+    );
+  }
+
+  /* ---------- 笔记编辑器 ---------- */
 
   if (editingNote) {
     return (
@@ -460,7 +768,9 @@ export default function NotesApp({
         <div className="notes-header-center">
           <div className="notes-header-title">Notes</div>
           <div className="notes-header-sub">
-            {notes.length} notes · {wishlist.length} wishes
+            {sortedNotes.length} notes ·{" "}
+            {sortedDiaries.length} diaries ·{" "}
+            {wishlist.length} wishes
           </div>
         </div>
 
@@ -475,299 +785,512 @@ export default function NotesApp({
         <button
           className="notes-add-btn"
           onClick={createNote}
-          aria-label="新建笔记"
+          aria-label="新建"
         >
           <Plus size={20} strokeWidth={2.4} />
         </button>
       </header>
 
       <div className="notes-scroll">
-        {/* ---------- WISHLIST ---------- */}
-        <section className="notes-wish-section">
-          <div className="notes-wish-header">
-            <div className="notes-wish-label">
-              WISHLIST
-            </div>
+        <div className="notes-tabs">
+          <button
+            className={`notes-tab${
+              mode === "notes" ? " active" : ""
+            }`}
+            onClick={() => setMode("notes")}
+          >
+            笔记
+          </button>
+          <button
+            className={`notes-tab${
+              mode === "diary" ? " active" : ""
+            }`}
+            onClick={() => setMode("diary")}
+          >
+            日记
+          </button>
+        </div>
 
-            <div className="notes-wish-actions">
-              <button
-                className="notes-wish-action"
-                onClick={() => {
-                  setShowWishInput((v) => !v);
-                  setWishInput("");
-                }}
-                aria-label="添加愿望"
-              >
-                <Plus size={16} strokeWidth={2.4} />
-              </button>
+        {mode === "notes" ? (
+          <>
+            {/* ---------- WISHLIST ---------- */}
+            <section className="notes-wish-section">
+              <div className="notes-wish-header">
+                <div className="notes-wish-label">
+                  WISHLIST
+                </div>
 
-              <button
-                className="notes-wish-action"
-                onClick={generateWish}
-                aria-label="随机生成"
-              >
-                <Sparkles size={16} strokeWidth={2} />
-              </button>
-            </div>
-          </div>
-
-          {showWishInput && (
-            <div className="notes-wish-input-row">
-              <input
-                type="text"
-                value={wishInput}
-                onChange={(e) =>
-                  setWishInput(e.target.value)
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addWishFromInput();
-                  }
-                  if (e.key === "Escape") {
-                    setShowWishInput(false);
-                    setWishInput("");
-                  }
-                }}
-                placeholder="写下一个愿望…"
-                maxLength={60}
-                autoFocus
-              />
-              <button
-                className="notes-wish-add"
-                onClick={addWishFromInput}
-              >
-                添加
-              </button>
-            </div>
-          )}
-
-          {sortedWishlist.length === 0 ? (
-            <div className="notes-wish-empty">
-              还没有愿望。点 ＋ 写一个，或 ✦ 让他们说一个。
-            </div>
-          ) : (
-            <ul className="notes-wish-list">
-              {sortedWishlist.map((w) => {
-                const isEditing = editingWishId === w.id;
-                const fromCharacter =
-                  w.character && w.source !== "user"
-                    ? w.character
-                    : null;
-
-                const key = fromCharacter
-                  ? toAvatarKey(fromCharacter)
-                  : null;
-                const avatarUrl = key
-                  ? avatars[key]
-                  : null;
-
-                return (
-                  <li
-                    key={w.id}
-                    className={`notes-wish-item${
-                      w.completed ? " is-completed" : ""
-                    }`}
+                <div className="notes-wish-actions">
+                  <button
+                    className="notes-wish-action"
+                    onClick={() => {
+                      setShowWishInput((v) => !v);
+                      setWishInput("");
+                    }}
+                    aria-label="添加愿望"
                   >
-                    <button
-                      className="notes-wish-check"
-                      onClick={() => toggleWish(w.id)}
-                      aria-label={
-                        w.completed
-                          ? "取消完成"
-                          : "标记完成"
-                      }
-                    >
-                      {w.completed ? "✓" : "♡"}
-                    </button>
+                    <Plus size={16} strokeWidth={2.4} />
+                  </button>
 
-                    {isEditing ? (
-                      <input
-                        className="notes-wish-edit-input"
-                        value={w.text}
-                        onChange={(e) =>
-                          updateWishText(
-                            w.id,
-                            e.target.value
-                          )
-                        }
-                        onBlur={() =>
-                          setEditingWishId(null)
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            setEditingWishId(null);
+                  <button
+                    className="notes-wish-action"
+                    onClick={generateWish}
+                    aria-label="随机生成"
+                  >
+                    <Sparkles size={16} strokeWidth={2} />
+                  </button>
+                </div>
+              </div>
+
+              {showWishInput && (
+                <div className="notes-wish-input-row">
+                  <input
+                    type="text"
+                    value={wishInput}
+                    onChange={(e) =>
+                      setWishInput(e.target.value)
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addWishFromInput();
+                      }
+                      if (e.key === "Escape") {
+                        setShowWishInput(false);
+                        setWishInput("");
+                      }
+                    }}
+                    placeholder="写下一个愿望…"
+                    maxLength={60}
+                    autoFocus
+                  />
+                  <button
+                    className="notes-wish-add"
+                    onClick={addWishFromInput}
+                  >
+                    添加
+                  </button>
+                </div>
+              )}
+
+              {sortedWishlist.length === 0 ? (
+                <div className="notes-wish-empty">
+                  还没有愿望。点 ＋ 写一个，或 ✦ 让他们说一个。
+                </div>
+              ) : (
+                <ul className="notes-wish-list">
+                  {sortedWishlist.map((w) => {
+                    const isPending =
+                      typeof w.pendingUntil ===
+                        "number" && !w.text;
+
+                    if (isPending) {
+                      const remain = Math.max(
+                        0,
+                        Math.ceil(
+                          (w.pendingUntil! -
+                            Date.now()) /
+                            1000
+                        )
+                      );
+                      return (
+                        <li
+                          key={w.id}
+                          className="notes-wish-item notes-wish-pending"
+                        >
+                          <span className="notes-wish-pending-spark">
+                            <Sparkles
+                              size={14}
+                              strokeWidth={2}
+                            />
+                          </span>
+                          <span className="notes-wish-pending-text">
+                            正在酝酿…
+                          </span>
+                          <span className="notes-wish-pending-count">
+                            {remain}s
+                          </span>
+                          <button
+                            className="notes-wish-delete"
+                            onClick={() => deleteWish(w.id)}
+                            aria-label="取消"
+                          >
+                            <X size={14} strokeWidth={2.4} />
+                          </button>
+                        </li>
+                      );
+                    }
+
+                    const isEditing =
+                      editingWishId === w.id;
+                    const fromCharacter =
+                      w.character && w.source !== "user"
+                        ? w.character
+                        : null;
+
+                    const key = fromCharacter
+                      ? toAvatarKey(fromCharacter)
+                      : null;
+                    const avatarUrl = key
+                      ? avatars[key]
+                      : null;
+
+                    const completedByArr =
+                      w.completedBy ?? [];
+                    const completedLabel =
+                      completedByArr
+                        .map((x) =>
+                          x === "user" ? "我" : x
+                        )
+                        .join(" · ");
+
+                    return (
+                      <li
+                        key={w.id}
+                        className={`notes-wish-item${
+                          w.completed
+                            ? " is-completed"
+                            : ""
+                        }`}
+                      >
+                        <button
+                          className="notes-wish-check"
+                          onClick={() =>
+                            requestToggleWish(w)
                           }
-                        }}
-                        maxLength={60}
-                        autoFocus
-                      />
-                    ) : (
-                      <button
-                        className="notes-wish-text"
+                          aria-label={
+                            w.completed
+                              ? "取消完成"
+                              : "标记完成"
+                          }
+                        >
+                          {w.completed ? "✓" : "♡"}
+                        </button>
+
+                        {isEditing ? (
+                          <input
+                            className="notes-wish-edit-input"
+                            value={w.text}
+                            onChange={(e) =>
+                              updateWishText(
+                                w.id,
+                                e.target.value
+                              )
+                            }
+                            onBlur={() =>
+                              setEditingWishId(null)
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                setEditingWishId(null);
+                              }
+                            }}
+                            maxLength={60}
+                            autoFocus
+                          />
+                        ) : (
+                          <button
+                            className="notes-wish-text"
+                            onClick={() =>
+                              setEditingWishId(w.id)
+                            }
+                          >
+                            {fromCharacter && (
+                              <span
+                                className={`notes-wish-source notes-wish-source-${fromCharacter.toLowerCase()}${
+                                  avatarUrl
+                                    ? " has-image"
+                                    : ""
+                                }`}
+                              >
+                                {avatarUrl ? (
+                                  <img
+                                    src={avatarUrl}
+                                    alt={fromCharacter}
+                                  />
+                                ) : (
+                                  fromCharacter.charAt(0)
+                                )}
+                              </span>
+                            )}
+                            <span className="notes-wish-content">
+                              {w.text}
+                              {w.completed &&
+                                completedByArr.length >
+                                  0 && (
+                                  <span className="notes-wish-completed-by">
+                                    {" "}
+                                    · {completedLabel} 完成
+                                  </span>
+                                )}
+                            </span>
+                          </button>
+                        )}
+
+                        <button
+                          className="notes-wish-delete"
+                          onClick={() => deleteWish(w.id)}
+                          aria-label="删除"
+                        >
+                          <X size={14} strokeWidth={2.4} />
+                        </button>
+
+                        {w.completed &&
+                          w.completionNote && (
+                            <div className="notes-wish-note">
+                              「{w.completionNote}」
+                            </div>
+                          )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+
+            {/* ---------- 标签筛选栏 ---------- */}
+            {allTags.length > 0 && (
+              <div className="notes-tag-bar">
+                <button
+                  className={`notes-tag-filter${
+                    tagFilter === null ? " active" : ""
+                  }`}
+                  onClick={() => setTagFilter(null)}
+                >
+                  All
+                </button>
+
+                {allTags.map((t) => (
+                  <button
+                    key={t}
+                    className={`notes-tag-filter${
+                      tagFilter === t ? " active" : ""
+                    }`}
+                    onClick={() => setTagFilter(t)}
+                  >
+                    #{t}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* ---------- MY NOTES ---------- */}
+            <section className="notes-list-section">
+              <div className="notes-list-header">
+                <span className="notes-list-label">
+                  {tagFilter
+                    ? `#${tagFilter}`
+                    : "MY NOTES"}
+                </span>
+
+                {tagFilter && (
+                  <button
+                    className="notes-list-clear-filter"
+                    onClick={() => setTagFilter(null)}
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+
+              {sortedNotes.length === 0 ? (
+                <div className="notes-list-empty">
+                  <div className="notes-list-empty-icon">
+                    <Sparkles
+                      size={34}
+                      strokeWidth={1.4}
+                    />
+                  </div>
+                  <div className="notes-list-empty-title">
+                    {tagFilter
+                      ? "这个标签下还没有笔记"
+                      : "还没有笔记"}
+                  </div>
+                  <div className="notes-list-empty-desc">
+                    点击右上角 ＋ 开始写第一条
+                  </div>
+                </div>
+              ) : (
+                <ul className="notes-list">
+                  {sortedNotes.map((n) => {
+                    const tagPreview =
+                      getNoteTagPreview(n, 3);
+
+                    return (
+                      <li
+                        key={n.id}
+                        className="notes-list-item"
                         onClick={() =>
-                          setEditingWishId(w.id)
+                          setEditingNoteId(n.id)
                         }
                       >
-                        {fromCharacter && (
-                          <span
-                            className={`notes-wish-source notes-wish-source-${fromCharacter.toLowerCase()}${
-                              avatarUrl
-                                ? " has-image"
-                                : ""
-                            }`}
-                          >
-                            {avatarUrl ? (
-                              <img
-                                src={avatarUrl}
-                                alt={fromCharacter}
-                              />
-                            ) : (
-                              fromCharacter.charAt(0)
+                        <div className="notes-list-item-title">
+                          {getNoteDisplayTitle(n)}
+                        </div>
+
+                        {tagPreview.length > 0 && (
+                          <div className="notes-list-item-tags">
+                            {tagPreview.map((t) => (
+                              <span
+                                key={t}
+                                className="notes-tag notes-tag-small"
+                              >
+                                #{t}
+                              </span>
+                            ))}
+                            {n.tags.length > 3 && (
+                              <span className="notes-tag notes-tag-small notes-tag-more">
+                                +{n.tags.length - 3}
+                              </span>
                             )}
-                          </span>
+                          </div>
                         )}
-                        <span className="notes-wish-content">
-                          {w.text}
-                        </span>
-                      </button>
-                    )}
 
-                    <button
-                      className="notes-wish-delete"
-                      onClick={() => deleteWish(w.id)}
-                      aria-label="删除"
-                    >
-                      <X size={14} strokeWidth={2.4} />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        {/* ---------- 标签筛选栏 ---------- */}
-        {allTags.length > 0 && (
-          <div className="notes-tag-bar">
-            <button
-              className={`notes-tag-filter${
-                tagFilter === null ? " active" : ""
-              }`}
-              onClick={() => setTagFilter(null)}
-            >
-              All
-            </button>
-
-            {allTags.map((t) => (
-              <button
-                key={t}
-                className={`notes-tag-filter${
-                  tagFilter === t ? " active" : ""
-                }`}
-                onClick={() => setTagFilter(t)}
-              >
-                #{t}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ---------- MY NOTES ---------- */}
-        <section className="notes-list-section">
-          <div className="notes-list-header">
-            <span className="notes-list-label">
-              {tagFilter
-                ? `#${tagFilter}`
-                : "MY NOTES"}
-            </span>
-
-            {tagFilter && (
-              <button
-                className="notes-list-clear-filter"
-                onClick={() => setTagFilter(null)}
-              >
-                清除
-              </button>
-            )}
-          </div>
-
-          {sortedNotes.length === 0 ? (
-            <div className="notes-list-empty">
-              <div className="notes-list-empty-icon">
-                <Sparkles size={34} strokeWidth={1.4} />
-              </div>
-              <div className="notes-list-empty-title">
-                {tagFilter
-                  ? "这个标签下还没有笔记"
-                  : "还没有笔记"}
-              </div>
-              <div className="notes-list-empty-desc">
-                点击右上角 ＋ 开始写第一条
-              </div>
+                        <div className="notes-list-item-meta">
+                          <span>
+                            {formatNoteTime(n.updatedAt)}
+                          </span>
+                          <span className="notes-list-item-dot">
+                            ·
+                          </span>
+                          <span className="notes-list-item-preview">
+                            {getNotePreview(n)}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          </>
+        ) : (
+          /* ---------- DIARY ---------- */
+          <section className="notes-list-section">
+            <div className="notes-list-header">
+              <span className="notes-list-label">DIARY</span>
             </div>
-          ) : (
-            <ul className="notes-list">
-              {sortedNotes.map((n) => {
-                const tagPreview = getNoteTagPreview(n, 3);
 
-                return (
-                  <li
-                    key={n.id}
-                    className="notes-list-item"
-                    onClick={() =>
-                      setEditingNoteId(n.id)
-                    }
-                  >
-                    <div className="notes-list-item-title">
-                      {getNoteDisplayTitle(n)}
-                    </div>
-
-                    {tagPreview.length > 0 && (
-                      <div className="notes-list-item-tags">
-                        {tagPreview.map((t) => (
-                          <span
-                            key={t}
-                            className="notes-tag notes-tag-small"
-                          >
-                            #{t}
-                          </span>
-                        ))}
-                        {n.tags.length > 3 && (
-                          <span className="notes-tag notes-tag-small notes-tag-more">
-                            +{n.tags.length - 3}
+            {sortedDiaries.length === 0 ? (
+              <div className="notes-list-empty">
+                <div className="notes-list-empty-icon">
+                  <Sparkles size={34} strokeWidth={1.4} />
+                </div>
+                <div className="notes-list-empty-title">
+                  还没有日记
+                </div>
+                <div className="notes-list-empty-desc">
+                  点击右上角 ＋ 写下第一篇
+                </div>
+              </div>
+            ) : (
+              <ul className="notes-diary-list">
+                {sortedDiaries.map((d) => {
+                  const hlCount = highlights.filter(
+                    (h) => h.noteId === d.id
+                  ).length;
+                  return (
+                    <li
+                      key={d.id}
+                      className="notes-diary-item"
+                      onClick={() =>
+                        setEditingNoteId(d.id)
+                      }
+                    >
+                      <div className="notes-diary-item-head">
+                        <DiaryAvatarInline
+                          author={d.author}
+                          avatars={avatars}
+                        />
+                        <span className="notes-diary-author-name">
+                          {d.author === "user"
+                            ? "我"
+                            : d.author}
+                        </span>
+                        {d.mood && (
+                          <span className="notes-diary-mood-tag">
+                            {d.mood}
                           </span>
                         )}
+                        {hlCount > 0 && (
+                          <span className="notes-diary-hl-badge">
+                            {hlCount} 条划线
+                          </span>
+                        )}
+                        <span className="notes-diary-time">
+                          {formatNoteTime(d.updatedAt)}
+                        </span>
                       </div>
-                    )}
-
-                    <div className="notes-list-item-meta">
-                      <span>
-                        {formatNoteTime(n.updatedAt)}
-                      </span>
-                      <span className="notes-list-item-dot">
-                        ·
-                      </span>
-                      <span className="notes-list-item-preview">
-                        {getNotePreview(n)}
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+                      <div className="notes-diary-item-preview">
+                        {getDiaryPreview(d, 90)}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        )}
       </div>
 
       {showPoolEditor && (
-        <WishlistPoolEditor
+        <PoolCenter
           cards={cards}
-          onChange={commitCards}
+          onCardsChange={commitCards}
+          moodCards={moodCards}
+          onMoodCardsChange={commitMoodCards}
+          contentCards={contentCards}
+          onContentCardsChange={commitContentCards}
+          highlightCards={highlightCards}
+          onHighlightCardsChange={commitHighlightCards}
           onClose={() => setShowPoolEditor(false)}
         />
       )}
+
+      {completingWish && (
+        <WishlistCompleteSheet
+          item={completingWish}
+          cards={highlightCards}
+          avatars={avatars}
+          onConfirm={confirmComplete}
+          onCancel={() => setCompletingWish(null)}
+        />
+      )}
     </main>
+  );
+}
+
+/* ---------- 日记列表头像 ---------- */
+
+function DiaryAvatarInline({
+  author,
+  avatars,
+}: {
+  author: NoteAuthor;
+  avatars: Record<string, string | null>;
+}) {
+  if (author === "user") {
+    const url = avatars.you ?? null;
+    return (
+      <span
+        className={`notes-diary-avatar is-user${
+          url ? " has-image" : ""
+        }`}
+      >
+        {url ? <img src={url} alt="我" /> : "我"}
+      </span>
+    );
+  }
+  const key = toAvatarKey(author);
+  const url = key ? avatars[key] : null;
+  return (
+    <span className="notes-diary-avatar">
+      {url ? (
+        <img src={url} alt={author} />
+      ) : (
+        author.charAt(0)
+      )}
+    </span>
   );
 }

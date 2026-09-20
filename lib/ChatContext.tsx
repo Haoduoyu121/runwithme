@@ -11,7 +11,6 @@ import {
 } from "react";
 
 import { cards as defaultCards } from "@/data/cards";
-
 import { loadCards } from "@/lib/storage";
 
 import {
@@ -35,6 +34,22 @@ import { getVoiceFile } from "@/lib/voiceFiles";
 import { useCall } from "@/lib/CallContext";
 import { useSystem } from "@/lib/SystemContext";
 import { useNotifications } from "@/lib/NotificationContext";
+
+import {
+  loadPhotoTextCards,
+} from "@/lib/photoTextStorage";
+import type {
+  PhotoTextCardSnapshot,
+} from "@/data/photoTextCards";
+
+import type { WorldEvent } from "@/data/worldEvents";
+import {
+  loadWorldEvents,
+  loadSeenEventIds,
+  saveSeenEventIds,
+  WORLD_EVENT_DISPATCH,
+} from "@/lib/worldEventsStorage";
+import { convertWorldEvent } from "@/lib/worldEventToChat";
 
 const DEFAULT_MESSAGES: ChatMessage[] = [
   {
@@ -63,6 +78,30 @@ function sleep(ms: number) {
   return new Promise((resolve) =>
     setTimeout(resolve, ms)
   );
+}
+
+function pickTextCardSnapshotFor(
+  character: ChatSender
+): PhotoTextCardSnapshot | null {
+  if (character !== "Levi" && character !== "Erwin") {
+    return null;
+  }
+  const cards = loadPhotoTextCards();
+  const pool = cards.filter(
+    (c) => c.author === character
+  );
+  if (pool.length === 0) return null;
+
+  const card =
+    pool[Math.floor(Math.random() * pool.length)];
+  return {
+    author: card.author,
+    place: card.place,
+    weather: card.weather,
+    person: card.person,
+    action: card.action,
+    mood: card.mood,
+  };
 }
 
 type ChatContextValue = {
@@ -123,24 +162,29 @@ export function ChatProvider({
   const lastUserMessageRef =
     useRef<ChatMessage | null>(null);
 
-  /* 用户上次主动动作时间，用于判断是否该发站内通知 */
   const userLastActiveAtRef = useRef(0);
 
+  const pendingQuoteEventsRef = useRef<WorldEvent[]>(
+    []
+  );
   const settingsRef = useRef(settings);
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
 
-  /* -------------------------------------------------------
-     初始化
-     ------------------------------------------------------- */
+  const messagesInitRef = useRef(false);
 
+  /* 初始化 */
   useEffect(() => {
     setMessages(loadMessages(DEFAULT_MESSAGES));
   }, []);
 
   useEffect(() => {
-    if (messages.length === 0) return;
+    // 首次进入：messages 是从 storage 加载的，不要反过来再保存
+    if (!messagesInitRef.current) {
+      messagesInitRef.current = true;
+      return;
+    }
     const t = window.setTimeout(() => {
       saveMessages(messages);
     }, 400);
@@ -178,10 +222,7 @@ export function ChatProvider({
     };
   }, []);
 
-  /* -------------------------------------------------------
-     媒体恢复
-     ------------------------------------------------------- */
-
+  /* 媒体恢复 */
   useEffect(() => {
     if (messages.length === 0) return;
 
@@ -259,10 +300,7 @@ export function ChatProvider({
     };
   }, [messages]);
 
-  /* -------------------------------------------------------
-     addMessage（带通知）
-     ------------------------------------------------------- */
-
+  /* addMessage */
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, msg]);
 
@@ -282,6 +320,8 @@ export function ChatProvider({
     else if (msg.type === "voice") body = "发来了一条语音";
     else if (msg.type === "sticker") body = "发来了一个表情";
     else if (msg.type === "image") body = "发来了一张图片";
+    else if (msg.type === "textcard")
+      body = "发来了一张照片";
     else if (msg.type === "call") body = "来电";
 
     if (!body) return;
@@ -291,7 +331,6 @@ export function ChatProvider({
       typeof document !== "undefined" &&
       document.visibilityState === "hidden";
 
-    /* 页面隐藏 → 无条件发；页面可见但用户静默 > 60s → 也发 */
     if (isHidden || idleMs > 60_000) {
       notifyRef.current({
         appId: "chat",
@@ -305,14 +344,10 @@ export function ChatProvider({
     }
   }, []);
 
-  /* -------------------------------------------------------
-     ★ 通话结束 → 生成气泡
-     ------------------------------------------------------- */
-
+  /* 通话结束 → 生成气泡 */
   useEffect(() => {
     const unsubscribe = registerCallEndListener(
       (record) => {
-        /* 主叫（你打出去）放右侧；被叫（对方打进来）放左侧 */
         const sender: ChatSender =
           record.direction === "outgoing"
             ? "You"
@@ -336,10 +371,70 @@ export function ChatProvider({
     return unsubscribe;
   }, [registerCallEndListener, addMessage]);
 
-  /* -------------------------------------------------------
-     生成单条回复
-     ------------------------------------------------------- */
+  /* 世界事件消费 */
+  const consumeEvent = useCallback(
+    (ev: WorldEvent) => {
+      const { immediate, quoteCandidate } =
+        convertWorldEvent(ev);
 
+      for (const msg of immediate) {
+        addMessage(msg);
+      }
+
+      if (quoteCandidate) {
+        const list = pendingQuoteEventsRef.current;
+        const next = [quoteCandidate, ...list].slice(
+          0,
+          10
+        );
+        pendingQuoteEventsRef.current = next;
+      }
+    },
+    [addMessage]
+  );
+
+  useEffect(() => {
+    const events = loadWorldEvents();
+    const seen = loadSeenEventIds();
+
+    const unread = events
+      .filter((e) => !seen.has(e.id))
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    for (const ev of unread) {
+      consumeEvent(ev);
+      seen.add(ev.id);
+    }
+    if (unread.length > 0) {
+      saveSeenEventIds(seen);
+    }
+
+    function onEvent(e: Event) {
+      const detail = (e as CustomEvent<WorldEvent>)
+        .detail;
+      if (!detail) return;
+
+      const s = loadSeenEventIds();
+      if (s.has(detail.id)) return;
+      s.add(detail.id);
+      saveSeenEventIds(s);
+
+      consumeEvent(detail);
+    }
+
+    window.addEventListener(
+      WORLD_EVENT_DISPATCH,
+      onEvent
+    );
+    return () => {
+      window.removeEventListener(
+        WORLD_EVENT_DISPATCH,
+        onEvent
+      );
+    };
+  }, [consumeEvent]);
+
+  /* 生成单条回复 */
   const createReplyFromPicked = useCallback(
     async (
       picked: ReturnType<typeof pickCardWithRules>
@@ -353,6 +448,23 @@ export function ChatProvider({
         emojiSuffix,
         standaloneEmoji,
       } = picked;
+
+      const textCardChance =
+        settingsRef.current.chatTextCardChance ?? 0.05;
+      if (Math.random() < textCardChance) {
+        const snapshot =
+          pickTextCardSnapshotFor(character);
+        if (snapshot) {
+          addMessage({
+            id: createMessageId(),
+            sender: character,
+            type: "textcard",
+            timestamp: Date.now(),
+            textCardSnapshot: snapshot,
+          });
+          return;
+        }
+      }
 
       let textOverride: string | undefined;
 
@@ -412,10 +524,7 @@ export function ChatProvider({
     [addMessage]
   );
 
-  /* -------------------------------------------------------
-     生成多条
-     ------------------------------------------------------- */
-
+  /* 生成多条 */
   const generateResponse = useCallback(async () => {
     const latestCards = loadCards(defaultCards);
 
@@ -477,6 +586,50 @@ export function ChatProvider({
         return;
       }
 
+      /* ★ 世界事件引用 */
+      const quoteChance =
+        settingsRef.current.chatWorldQuoteChance ?? 0.3;
+      const pending = pendingQuoteEventsRef.current;
+
+      if (
+        pending.length > 0 &&
+        Math.random() < quoteChance
+      ) {
+        const ev = pending[0];
+        pendingQuoteEventsRef.current =
+          pending.slice(1);
+
+        const sender: ChatSender =
+          ev.actor === "Levi"
+            ? "Erwin"
+            : ev.actor === "Erwin"
+              ? "Levi"
+              : Math.random() < 0.5
+                ? "Levi"
+                : "Erwin";
+
+        const picked = pickCardWithRules(latestCards);
+        const text =
+          picked?.card.text?.trim() ||
+          "刚才看到你发的了。";
+
+        addMessage({
+          id: createMessageId(),
+          sender,
+          type: "text",
+          text,
+          timestamp: Date.now(),
+          quote: {
+            messageId: `world-${ev.id}`,
+            sender: ev.actor,
+            text: ev.preview || ev.title,
+            sourceApp: ev.app,
+            sourceId: ev.sourceId,
+          },
+        });
+        return;
+      }
+
       const picked = pickCardWithRules(latestCards);
       if (!picked) return;
 
@@ -488,11 +641,12 @@ export function ChatProvider({
     }
   }, [
     activeCall,
+    addMessage,
     createReplyFromPicked,
     triggerIncomingCall,
   ]);
 
-  /* 通话开始时清空生成状态，避免通话结束后 typing 卡住 */
+  /* 通话开始时清空生成状态 */
   useEffect(() => {
     if (activeCall) {
       setGeneratingCount(0);

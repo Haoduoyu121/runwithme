@@ -16,6 +16,7 @@ import LetterWidget from "@/components/home/widgets/LetterWidget";
 import StudyWidget from "@/components/home/widgets/StudyWidget";
 import DailyQuoteWidget from "@/components/home/widgets/DailyQuoteWidget";
 import MusicWidget from "@/components/home/widgets/MusicWidget";
+import { getAppUnreadCount } from "@/lib/unreadRegistry";
 
 type AppMeta = {
   id: AppId;
@@ -76,6 +77,9 @@ export default function HomeGrid({
   const [hoveredId, setHoveredId] = useState<string | null>(
     null
   );
+    const [unreadCounts, setUnreadCounts] = useState<
+    Partial<Record<AppId, number>>
+  >({});
 
   const gridRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<
@@ -236,6 +240,51 @@ export default function HomeGrid({
     onChangeItems,
   ]);
 
+  /* ★ 未读计数刷新（独立 effect） */
+  useEffect(() => {
+    function refresh() {
+      const next: Partial<Record<AppId, number>> = {};
+      for (const app of apps) {
+        const c = getAppUnreadCount(app.id);
+        if (c > 0) next[app.id] = c;
+      }
+      setUnreadCounts(next);
+    }
+
+    refresh();
+
+    function onVisible() {
+      if (document.visibilityState === "visible") {
+        refresh();
+      }
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      onVisible
+    );
+    window.addEventListener("focus", refresh);
+    window.addEventListener(
+      "runwithme:unread-update",
+      refresh
+    );
+
+    const interval = window.setInterval(refresh, 5000);
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        onVisible
+      );
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener(
+        "runwithme:unread-update",
+        refresh
+      );
+      window.clearInterval(interval);
+    };
+  }, [apps]);
+
   function findItemAtPoint(
     x: number,
     y: number,
@@ -282,6 +331,7 @@ export default function HomeGrid({
           item={item}
           apps={apps}
           iconUrls={iconUrls}
+          unreadCounts={unreadCounts}
           editing={editing}
           hovered={hoveredId === item.id}
           dragging={dragging?.item.id === item.id}
@@ -332,6 +382,7 @@ function GridItem({
   item,
   apps,
   iconUrls,
+  unreadCounts,
   editing,
   hovered,
   dragging,
@@ -343,6 +394,7 @@ function GridItem({
   item: HomeItem;
   apps: AppMeta[];
   iconUrls: Partial<Record<AppId, string>>;
+  unreadCounts: Partial<Record<AppId, number>>;
   editing: boolean;
   hovered: boolean;
   dragging: boolean;
@@ -383,6 +435,7 @@ function GridItem({
           item={item}
           apps={apps}
           iconUrls={iconUrls}
+          unreadCounts={unreadCounts}
         />
       )}
 
@@ -411,10 +464,12 @@ function AppIconInner({
   item,
   apps,
   iconUrls,
+  unreadCounts,
 }: {
   item: HomeItem;
   apps: AppMeta[];
   iconUrls: Partial<Record<AppId, string>>;
+  unreadCounts?: Partial<Record<AppId, number>>;
 }) {
   if (item.content.kind !== "app") return null;
 
@@ -423,18 +478,31 @@ function AppIconInner({
   if (!app) return null;
 
   const url = iconUrls[appId];
+  const count = unreadCounts?.[appId] ?? 0;
 
   return (
     <div className="home-grid-app">
-      <div
-        className={`app-icon app-${app.color}${
-          url ? " app-icon-custom" : ""
-        }`}
-      >
-        {url ? (
-          <img src={url} alt={app.name} draggable={false} />
-        ) : (
-          <span>{app.icon}</span>
+      <div className="app-icon-wrap">
+        <div
+          className={`app-icon app-${app.color}${
+            url ? " app-icon-custom" : ""
+          }`}
+        >
+          {url ? (
+            <img
+              src={url}
+              alt={app.name}
+              draggable={false}
+            />
+          ) : (
+            <span>{app.icon}</span>
+          )}
+        </div>
+
+        {count > 0 && (
+          <span className="home-grid-unread-badge">
+            {count > 99 ? "99+" : count}
+          </span>
         )}
       </div>
 

@@ -4444,11 +4444,12 @@ body {
 }
 
 .message-quote-sender {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-bottom: 2px;
-
   font-size: 8px;
   font-weight: 700;
-
   opacity: 0.7;
 }
 
@@ -57674,7 +57675,6 @@ html[data-runwithme-theme="dark"]
 /* Card Studio 内部：细边框、半透 */
 
 .fridge-cs-tabs,
-.fridge-cs-kind,
 .fridge-cs-subtabs {
   background: rgba(255, 255, 255, 0.4) !important;
   border: 1px solid rgba(255, 255, 255, 0.6) !important;
@@ -57683,14 +57683,12 @@ html[data-runwithme-theme="dark"]
 }
 
 html[data-runwithme-theme="dark"] .fridge-cs-tabs,
-html[data-runwithme-theme="dark"] .fridge-cs-kind,
 html[data-runwithme-theme="dark"] .fridge-cs-subtabs {
   background: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .fridge-cs-tabs button.active,
-.fridge-cs-kind button.active,
 .fridge-cs-subtabs button.active {
   background: rgba(252, 190, 195, 0.85) !important;
   color: #8e656f !important;
@@ -58006,4 +58004,2202 @@ html[data-runwithme-theme="dark"]
   button.active {
   background: rgba(252, 190, 195, 0.4) !important;
   color: #4f3940 !important;
+}
+/* ---------- 冰箱贴/便利贴选择（独立按钮，无胶囊） ---------- */
+
+.fridge-cs-kind {
+  display: flex;
+  gap: 8px;
+  margin: 12px 20px 0;
+}
+
+.fridge-cs-kind button {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid rgba(142, 101, 111, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  color: rgba(142, 101, 111, 0.7);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.fridge-cs-kind button:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.fridge-cs-kind button.active {
+  background: rgba(252, 190, 195, 0.75);
+  border-color: rgba(252, 190, 195, 1);
+  color: #8e656f;
+  font-weight: 700;
+}
+
+html[data-runwithme-theme="dark"] .fridge-cs-kind button {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(217, 188, 196, 0.7);
+}
+
+html[data-runwithme-theme="dark"] .fridge-cs-kind button.active {
+  background: rgba(252, 190, 195, 0.28);
+  border-color: rgba(252, 190, 195, 0.5);
+  color: #fff2e9;
+}
+
+/* =========================================================
+   Home · 未读数字角标
+   ========================================================= */
+
+.app-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.home-grid-unread-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #e05d5d;
+  color: #fff2e9;
+
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: 0 1px 3px rgba(224, 93, 93, 0.4);
+  -webkit-text-stroke: 0;
+
+  z-index: 5;
+  pointer-events: none;
+
+  animation: unread-pop 0.35s
+    cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes unread-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+html[data-runwithme-theme="dark"]
+  .home-grid-unread-badge {
+  background: #e05d5d;
+  color: #fff2e9;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+/* ---------- Tabs ---------- */
+.notes-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px 12px;
+}
+
+.notes-tab {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(60, 45, 40, 0.6);
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.notes-tab.active {
+  background: rgba(0, 0, 0, 0.12);
+  color: #3a2f2a;
+  font-weight: 600;
+}
+
+html[data-runwithme-theme="dark"] .notes-tab {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 244, 239, 0.6);
+}
+
+html[data-runwithme-theme="dark"] .notes-tab.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff2e9;
+}
+
+/* ---------- Diary 列表 ---------- */
+.notes-diary-list {
+  list-style: none;
+  padding: 0 16px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notes-diary-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.notes-diary-item:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.notes-diary-item:active {
+  transform: scale(0.99);
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.notes-diary-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.notes-diary-item-preview {
+  font-size: 13px;
+  color: rgba(60, 45, 40, 0.75);
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-item-preview {
+  color: rgba(255, 244, 239, 0.75);
+}
+
+/* ---------- Avatar ---------- */
+.notes-diary-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: 11px;
+  color: rgba(60, 45, 40, 0.75);
+  flex-shrink: 0;
+}
+
+.notes-diary-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.notes-diary-avatar.is-user {
+  background: rgba(0, 0, 0, 0.14);
+  color: rgba(60, 45, 40, 0.85);
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-avatar {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 244, 239, 0.8);
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-avatar.is-user {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 244, 239, 0.9);
+}
+
+.notes-diary-author-name {
+  font-size: 13px;
+  color: #3a2f2a;
+  font-weight: 600;
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-author-name {
+  color: #fff2e9;
+}
+
+.notes-diary-time {
+  margin-left: auto;
+  font-size: 11px;
+  color: rgba(60, 45, 40, 0.45);
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-time {
+  color: rgba(255, 244, 239, 0.45);
+}
+
+.notes-diary-mood-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(60, 45, 40, 0.75);
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-mood-tag {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 244, 239, 0.8);
+}
+
+/* ---------- Diary 编辑器 ---------- */
+.notes-diary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notes-diary-author-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notes-diary-moods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.notes-diary-mood-chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(60, 45, 40, 0.65);
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.notes-diary-mood-chip.active {
+  background: rgba(0, 0, 0, 0.18);
+  color: #3a2f2a;
+  font-weight: 600;
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-mood-chip {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 244, 239, 0.65);
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-mood-chip.active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff2e9;
+}
+
+.notes-diary-content {
+  flex: 1;
+  min-height: 240px;
+}
+.notes-pool-modal .notes-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+/* =========================================================
+   A3 · 划线评价系统
+   ========================================================= */
+
+/* ---------- 日记正文：只读视图 ---------- */
+
+.notes-diary-view-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notes-diary-edit-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notes-diary-view {
+  flex: 1;
+  min-height: 240px;
+  overflow-y: auto;
+  padding: 4px 0;
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.notes-diary-edit-btn,
+.notes-diary-edit-done {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.notes-diary-edit-btn:hover,
+.notes-diary-edit-done:hover {
+  background: rgba(142, 101, 111, 0.2);
+}
+
+html[data-runwithme-theme="dark"] .notes-diary-edit-btn,
+html[data-runwithme-theme="dark"] .notes-diary-edit-done {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9bcc4;
+}
+
+/* ---------- 高亮底 ---------- */
+
+.diary-hl {
+  border-radius: 3px;
+  padding: 0 1px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.diary-hl-user {
+  background: rgba(252, 190, 195, 0.55);
+}
+.diary-hl-levi {
+  background: rgba(160, 215, 175, 0.55);
+}
+.diary-hl-erwin {
+  background: rgba(160, 195, 230, 0.55);
+}
+
+.diary-hl:active {
+  filter: brightness(0.94);
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-user {
+  background: rgba(252, 190, 195, 0.35);
+}
+html[data-runwithme-theme="dark"] .diary-hl-levi {
+  background: rgba(160, 215, 175, 0.35);
+}
+html[data-runwithme-theme="dark"] .diary-hl-erwin {
+  background: rgba(160, 195, 230, 0.35);
+}
+
+/* ---------- 评价尾巴 ---------- */
+
+.diary-hl-tail {
+  display: block;
+  margin: 4px 0 8px 6px;
+  padding-left: 8px;
+  border-left: 2px solid currentColor;
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.5;
+  opacity: 0.75;
+}
+
+.diary-hl-tail-user {
+  color: #8e656f;
+  border-left-color: rgba(252, 190, 195, 0.85);
+}
+.diary-hl-tail-levi {
+  color: #4d7a56;
+  border-left-color: rgba(160, 215, 175, 0.85);
+}
+.diary-hl-tail-erwin {
+  color: #4a6d94;
+  border-left-color: rgba(160, 195, 230, 0.85);
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-tail-user {
+  color: #d9bcc4;
+}
+html[data-runwithme-theme="dark"] .diary-hl-tail-levi {
+  color: #a8d8b4;
+}
+html[data-runwithme-theme="dark"] .diary-hl-tail-erwin {
+  color: #b3cde0;
+}
+
+/* ---------- 浮动菜单 ---------- */
+
+.diary-hl-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: transparent;
+}
+
+.diary-hl-menu {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  z-index: 100;
+  display: flex;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(255, 250, 245, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 14px 36px rgba(90, 60, 65, 0.24),
+    0 3px 8px rgba(90, 60, 65, 0.1);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  animation: diaryHlMenuIn 0.16s ease;
+}
+
+@keyframes diaryHlMenuIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% + 4px))
+      scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
+.diary-hl-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #4f3940;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.diary-hl-menu-btn:active {
+  background: rgba(252, 190, 195, 0.4);
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-menu {
+  background: rgba(30, 26, 30, 0.98);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-menu-btn {
+  color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"]
+  .diary-hl-menu-btn:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- 评价 Sheet ---------- */
+
+.diary-hl-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(30, 22, 28, 0.42);
+  backdrop-filter: blur(8px) saturate(1.4);
+  -webkit-backdrop-filter: blur(8px) saturate(1.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.diary-hl-sheet {
+  width: 100%;
+  max-width: 520px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  background: rgba(255, 252, 248, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 -12px 40px rgba(60, 40, 45, 0.24);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  animation: diaryHlSheetIn 0.24s cubic-bezier(0.34, 1.2, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@keyframes diaryHlSheetIn {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.diary-hl-sheet h3 {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: #4f3940;
+}
+
+.diary-hl-quote {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(252, 190, 195, 0.22);
+  color: #8e656f;
+  font-size: 13px;
+  line-height: 1.6;
+  max-height: 100px;
+  overflow-y: auto;
+  word-break: break-word;
+}
+
+.diary-hl-input {
+  width: 100%;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.diary-hl-input:focus {
+  border-color: rgba(252, 190, 195, 0.9);
+}
+
+.diary-hl-input[readonly] {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.diary-hl-sheet-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.diary-hl-btn {
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.diary-hl-btn:active {
+  transform: scale(0.97);
+}
+
+.diary-hl-btn.primary {
+  background: #8e656f;
+  color: #fff2e9;
+  box-shadow: 0 6px 14px rgba(142, 101, 111, 0.24);
+}
+
+.diary-hl-btn.ghost {
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+}
+
+.diary-hl-btn.danger {
+  background: rgba(224, 93, 93, 0.14);
+  color: #c94d4d;
+  margin-right: auto;
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-sheet {
+  background: rgba(30, 26, 30, 0.98);
+  border-top-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-sheet h3 {
+  color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-quote {
+  background: rgba(252, 190, 195, 0.12);
+  color: #d9bcc4;
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-btn.primary {
+  background: #fcbec3;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-btn.ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9bcc4;
+}
+
+html[data-runwithme-theme="dark"] .diary-hl-btn.danger {
+  background: rgba(224, 93, 93, 0.2);
+  color: #eb9090;
+}
+
+/* ---------- 日记列表里的划线数 badge ---------- */
+
+.notes-diary-hl-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(142, 101, 111, 0.12);
+  color: #8e656f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+html[data-runwithme-theme="dark"]
+  .notes-diary-hl-badge {
+  background: rgba(255, 255, 255, 0.1);
+  color: #d9bcc4;
+}
+/* =========================================================
+   A4 · Wishlist 改造
+   ========================================================= */
+
+/* ---------- pending 占位卡 ---------- */
+
+.notes-wish-pending {
+  background: linear-gradient(
+    145deg,
+    rgba(252, 190, 195, 0.35),
+    rgba(207, 222, 227, 0.25)
+  );
+  border: 1px dashed rgba(142, 101, 111, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+html[data-runwithme-theme="dark"]
+  .notes-wish-pending {
+  background: linear-gradient(
+    145deg,
+    rgba(252, 190, 195, 0.12),
+    rgba(207, 222, 227, 0.08)
+  );
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.notes-wish-pending-spark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8e656f;
+  animation: wishPendingSpin 2s linear infinite;
+}
+
+@keyframes wishPendingSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+html[data-runwithme-theme="dark"]
+  .notes-wish-pending-spark {
+  color: #d9bcc4;
+}
+
+.notes-wish-pending-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-style: italic;
+  opacity: 0.7;
+  color: inherit;
+}
+
+.notes-wish-pending-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+  color: inherit;
+}
+
+/* ---------- 完成者标注 ---------- */
+
+.notes-wish-completed-by {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.55;
+}
+
+/* ---------- 心得 ---------- */
+
+.notes-wish-note {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(142, 101, 111, 0.06);
+  border-left: 2px solid rgba(252, 190, 195, 0.85);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.5;
+  opacity: 0.85;
+  word-break: break-word;
+}
+
+html[data-runwithme-theme="dark"] .notes-wish-note {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ---------- 完成 Sheet ---------- */
+
+.wish-complete-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: rgba(30, 22, 28, 0.45);
+  backdrop-filter: blur(8px) saturate(1.4);
+  -webkit-backdrop-filter: blur(8px) saturate(1.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: wishCompleteFade 0.2s ease;
+}
+
+@keyframes wishCompleteFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.wish-complete-sheet {
+  width: 100%;
+  max-width: 520px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  background: rgba(255, 252, 248, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 -12px 40px rgba(60, 40, 45, 0.24);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  animation: wishCompleteIn 0.26s cubic-bezier(0.34, 1.2, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@keyframes wishCompleteIn {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.wish-complete-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wish-complete-header h3 {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: #4f3940;
+}
+
+.wish-complete-close {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  cursor: pointer;
+}
+
+.wish-complete-quote {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(252, 190, 195, 0.22);
+  color: #8e656f;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.wish-complete-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wish-complete-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #a58a90;
+}
+
+.wish-complete-who {
+  display: flex;
+  gap: 8px;
+}
+
+.wish-complete-who-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px 10px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wish-complete-who-btn.active {
+  background: rgba(252, 190, 195, 0.35);
+  border-color: rgba(252, 190, 195, 0.85);
+}
+
+.wish-complete-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff2e9;
+  font-family: var(--rw-font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 2px 6px rgba(80, 50, 60, 0.12);
+}
+
+.wish-complete-avatar-user {
+  background: linear-gradient(140deg, #ffd4d8, #fcbec3);
+  color: #8e656f;
+}
+
+.wish-complete-avatar-levi {
+  background: linear-gradient(140deg, #b08a93, #8e656f);
+}
+
+.wish-complete-avatar-erwin {
+  background: linear-gradient(140deg, #b89aa0, #9b7f86);
+}
+
+.wish-complete-avatar.has-image {
+  padding: 0;
+  background: none;
+  color: transparent;
+}
+
+.wish-complete-avatar.has-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.wish-complete-input {
+  width: 100%;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.wish-complete-input:focus {
+  border-color: rgba(252, 190, 195, 0.9);
+}
+
+.wish-complete-pool-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.18);
+  border-radius: 999px;
+  background: transparent;
+  color: #8e656f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wish-complete-pool-btn:active {
+  background: rgba(252, 190, 195, 0.3);
+}
+
+.wish-complete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.wish-complete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.wish-complete-btn:active {
+  transform: scale(0.97);
+}
+
+.wish-complete-btn.primary {
+  background: #8e656f;
+  color: #fff2e9;
+  box-shadow: 0 6px 14px rgba(142, 101, 111, 0.24);
+}
+
+.wish-complete-btn.ghost {
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+}
+
+/* ---------- 深色 ---------- */
+
+html[data-runwithme-theme="dark"] .wish-complete-sheet {
+  background: rgba(30, 26, 30, 0.98);
+  border-top-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+}
+
+html[data-runwithme-theme="dark"] .wish-complete-header h3 {
+  color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"] .wish-complete-quote {
+  background: rgba(252, 190, 195, 0.12);
+  color: #d9bcc4;
+}
+
+html[data-runwithme-theme="dark"] .wish-complete-who-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"]
+  .wish-complete-who-btn.active {
+  background: rgba(252, 190, 195, 0.15);
+  border-color: rgba(252, 190, 195, 0.4);
+}
+
+html[data-runwithme-theme="dark"] .wish-complete-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"] .wish-complete-pool-btn {
+  color: #d9bcc4;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+html[data-runwithme-theme="dark"] .wish-complete-btn.primary {
+  background: #fcbec3;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"] .wish-complete-btn.ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9bcc4;
+}
+.wish-complete-btn.primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+/* =========================================================
+   B1 · 文字相册
+   ========================================================= */
+
+/* ---------- 网格 ---------- */
+
+.photo-text-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+@media (min-width: 600px) {
+  .photo-text-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.photo-text-grid-cell {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+
+.photo-text-grid-cell:active {
+  transform: scale(0.97);
+}
+
+/* ---------- 卡片本体 ---------- */
+
+.photo-text-card {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 18px 16px 14px;
+  border-radius: 14px;
+
+  background: #fffaf5;
+  border: 1px solid rgba(142, 101, 111, 0.12);
+  box-shadow:
+    0 6px 18px rgba(90, 60, 65, 0.08),
+    0 1px 3px rgba(90, 60, 65, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #4f3940;
+  text-align: left;
+}
+
+html[data-runwithme-theme="dark"] .photo-text-card {
+  background: #2a2428;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #fff2e9;
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.photo-text-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.photo-text-card-place {
+  font-family: var(--rw-font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+}
+
+.photo-text-card-line {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  opacity: 0.75;
+}
+
+.photo-text-card-mood {
+  align-self: flex-end;
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- 全屏查看器 ---------- */
+
+.photo-text-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: #fff8f3;
+  display: flex;
+  flex-direction: column;
+  animation: photoTextViewerIn 0.2s ease;
+}
+
+html[data-runwithme-theme="dark"] .photo-text-viewer {
+  background: #17131a;
+}
+
+@keyframes photoTextViewerIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.photo-text-viewer-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: calc(env(safe-area-inset-top) + 12px) 14px 12px;
+}
+
+.photo-text-viewer-header .photo-viewer-btn {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-text-viewer-header
+  .photo-viewer-btn-danger:active {
+  background: rgba(224, 93, 93, 0.2);
+  color: #c94d4d;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-header
+  .photo-viewer-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9bcc4;
+}
+
+.photo-text-viewer-title {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.photo-text-viewer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 16px calc(32px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.photo-text-viewer-cardwrap {
+  max-width: 320px;
+  margin: 0 auto;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+}
+
+.photo-text-viewer-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 420px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.photo-text-viewer-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.photo-text-viewer-field:active {
+  background: rgba(252, 190, 195, 0.15);
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-field {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.photo-text-viewer-field-label {
+  flex-shrink: 0;
+  min-width: 44px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.photo-text-viewer-field-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.photo-text-viewer-field-hint {
+  flex-shrink: 0;
+  font-size: 10px;
+  opacity: 0.35;
+  font-style: italic;
+}
+
+/* ---------- 换词 Sheet ---------- */
+
+.photo-text-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9800;
+  background: rgba(30, 22, 28, 0.45);
+  backdrop-filter: blur(8px) saturate(1.4);
+  -webkit-backdrop-filter: blur(8px) saturate(1.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.photo-text-picker {
+  width: 100%;
+  max-width: 520px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px 22px 0 0;
+  background: rgba(255, 252, 248, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 -12px 40px rgba(60, 40, 45, 0.24);
+  animation: photoTextPickerIn 0.24s
+    cubic-bezier(0.34, 1.2, 0.64, 1);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+html[data-runwithme-theme="dark"] .photo-text-picker {
+  background: rgba(30, 26, 30, 0.98);
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes photoTextPickerIn {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.photo-text-picker-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 10px;
+}
+
+.photo-text-picker-header h3 {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-picker-header
+  h3 {
+  color: #fff2e9;
+}
+
+.photo-text-picker-close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-text-picker-add {
+  display: flex;
+  gap: 8px;
+  padding: 4px 18px 12px;
+}
+
+.photo-text-picker-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-picker-add
+  input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff2e9;
+}
+
+.photo-text-picker-add button {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #8e656f;
+  color: #fff2e9;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.photo-text-picker-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.photo-text-picker-empty {
+  padding: 30px 12px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.photo-text-picker-item {
+  padding: 12px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.photo-text-picker-item:active {
+  background: rgba(252, 190, 195, 0.2);
+}
+
+.photo-text-picker-item.active {
+  background: rgba(252, 190, 195, 0.35);
+  border-color: rgba(252, 190, 195, 0.7);
+  font-weight: 600;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-picker-item {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- 词库编辑：词条列表 ---------- */
+
+.photo-text-pool-item {
+  padding: 0 !important;
+  background: rgba(142, 101, 111, 0.06) !important;
+}
+
+.photo-text-pool-item-text {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.photo-text-pool-item-text:active {
+  background: rgba(252, 190, 195, 0.2);
+}
+/* =========================================================
+   B1.6 · 上传中 / 结果浮层（替换原 pending 占位格）
+   ========================================================= */
+
+.photo-text-float {
+  position: fixed;
+  left: 50%;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 9999;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 8px 16px 8px 8px;
+  border-radius: 999px;
+
+  background: rgba(255, 250, 245, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 12px 32px rgba(90, 60, 65, 0.22),
+    0 3px 8px rgba(90, 60, 65, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+
+  backdrop-filter: blur(24px) saturate(1.7);
+  -webkit-backdrop-filter: blur(24px) saturate(1.7);
+
+  font-size: 13px;
+  font-weight: 600;
+  color: #4f3940;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  max-width: calc(100vw - 40px);
+
+  animation: photoTextFloatIn 0.36s
+    cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes photoTextFloatIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(16px)
+      scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+html[data-runwithme-theme="dark"] .photo-text-float {
+  background: rgba(45, 40, 44, 0.96);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #fff2e9;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.photo-text-float-toast {
+  padding: 10px 18px;
+}
+
+.photo-text-float-avatars {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.photo-text-float-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+
+  color: #fff2e9;
+  font-size: 11px;
+  font-weight: 700;
+
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(80, 50, 60, 0.15);
+}
+
+.photo-text-float-avatar + .photo-text-float-avatar {
+  margin-left: -8px;
+}
+
+.photo-text-float-avatar-levi {
+  background: linear-gradient(140deg, #b08a93, #8e656f);
+}
+
+.photo-text-float-avatar-erwin {
+  background: linear-gradient(140deg, #b89aa0, #9b7f86);
+}
+
+.photo-text-float-avatar.has-image {
+  padding: 0;
+  background: none;
+  color: transparent;
+}
+
+.photo-text-float-avatar.has-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-float-avatar {
+  border-color: rgba(50, 44, 48, 0.9);
+}
+
+.photo-text-float-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.photo-text-float-count {
+  flex-shrink: 0;
+  margin-left: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #8e656f;
+  opacity: 0.75;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-float-count {
+  color: #d9bcc4;
+}
+/* =========================================================
+   B1.7 · 卡片布局修正（顶部纯文字，底部头像+角色）
+   ========================================================= */
+
+/* ---------- 卡片本体：覆盖 B1.5 顶部头像布局 ---------- */
+
+.photo-text-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.photo-text-card-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+/* 底部一行：头像 + 角色 + 情绪 */
+
+.photo-text-card-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(142, 101, 111, 0.1);
+  margin-top: 8px;
+}
+
+html[data-runwithme-theme="dark"] .photo-text-card-footer {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+.photo-text-card-footer-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+
+  color: #fff2e9;
+  font-size: 11px;
+  font-weight: 700;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(80, 50, 60, 0.12);
+}
+
+.photo-text-card-footer-avatar-levi {
+  background: linear-gradient(140deg, #b08a93, #8e656f);
+}
+
+.photo-text-card-footer-avatar-erwin {
+  background: linear-gradient(140deg, #b89aa0, #9b7f86);
+}
+
+.photo-text-card-footer-avatar.has-image {
+  padding: 0;
+  background: none;
+  color: transparent;
+}
+
+.photo-text-card-footer-avatar.has-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.photo-text-card-footer-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.photo-text-card-footer-mood {
+  margin-left: auto;
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.55;
+  white-space: nowrap;
+}
+
+/* ---------- 兜底：卡片内所有图片不得超过自身容器 ---------- */
+
+.photo-text-card img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* ---------- 查看器：顶部卡片下方的元信息行 ---------- */
+
+.photo-text-viewer-meta {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8e656f;
+  opacity: 0.6;
+  margin-top: -4px;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-meta {
+  color: #d9bcc4;
+}
+
+/* ---------- 卡片本体在查看器里：竖版、内容居中 ---------- */
+
+.photo-text-viewer-cardwrap .photo-text-card {
+  width: 100%;
+  height: 100%;
+}
+
+.photo-text-viewer-cardwrap .photo-text-card-main {
+  justify-content: center;
+}
+
+.photo-text-viewer-cardwrap .photo-text-card-place {
+  font-size: 28px;
+}
+
+.photo-text-viewer-cardwrap .photo-text-card-line {
+  font-size: 15px;
+}
+/* =========================================================
+   B1.8 · 文字卡片查看器按钮（浅/深色都可见）
+   ========================================================= */
+
+.photo-text-viewer-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid rgba(142, 101, 111, 0.12);
+  border-radius: 50%;
+
+  background: rgba(142, 101, 111, 0.08);
+  color: #8e656f;
+
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.photo-text-viewer-btn:hover {
+  background: rgba(142, 101, 111, 0.16);
+}
+
+.photo-text-viewer-btn:active {
+  transform: scale(0.94);
+}
+
+.photo-text-viewer-btn-danger {
+  color: #c94d4d;
+}
+
+.photo-text-viewer-btn-danger:hover {
+  background: rgba(224, 93, 93, 0.15);
+}
+
+.photo-text-viewer-btn svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ---------- 深色模式 ---------- */
+
+html[data-runwithme-theme="dark"] .photo-text-viewer-btn {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d9bcc4;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-btn-danger {
+  color: #eb9090;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-btn-danger:hover {
+  background: rgba(224, 93, 93, 0.2);
+}
+
+/* ---------- 顺便把旧的多余规则压掉 ---------- */
+
+.photo-text-viewer-header .photo-viewer-btn {
+  /* 若你 CSS 里还有这条旧规则，让它不再影响视觉 */
+  background: unset;
+  color: unset;
+  border: unset;
+  box-shadow: unset;
+  backdrop-filter: unset;
+  -webkit-backdrop-filter: unset;
+}
+/* =========================================================
+   Chat 字号缩放
+   ========================================================= */
+
+.chat-page {
+  --chat-fs-scale: 1.15;
+}
+
+.chat-page[data-fs="sm"] {
+  --chat-fs-scale: 0.9;
+}
+
+.chat-page[data-fs="md"] {
+  --chat-fs-scale: 1;
+}
+
+.chat-page[data-fs="lg"] {
+  --chat-fs-scale: 1.15;
+}
+
+.chat-page[data-fs="xl"] {
+  --chat-fs-scale: 1.3;
+}
+
+/* 气泡正文 */
+.chat-page .message-bubble {
+  font-size: calc(12px * var(--chat-fs-scale)) !important;
+}
+
+/* 名字 */
+.chat-page .message-name {
+  font-size: calc(9px * var(--chat-fs-scale)) !important;
+}
+
+/* 时间 / 已送达 */
+.chat-page .message-time,
+.chat-page .message-status {
+  font-size: calc(9px * var(--chat-fs-scale)) !important;
+}
+
+/* 输入框 */
+.chat-page .chat-input {
+  font-size: calc(13px * var(--chat-fs-scale)) !important;
+}
+
+/* 拍一拍 */
+.chat-page .chat-pat-message {
+  font-size: calc(11px * var(--chat-fs-scale)) !important;
+}
+
+/* 系统消息 */
+.chat-page .chat-system-message {
+  font-size: calc(8px * var(--chat-fs-scale)) !important;
+}
+
+/* 引用块 */
+.chat-page .message-quote-text {
+  font-size: calc(9px * var(--chat-fs-scale)) !important;
+}
+
+/* 语音转文字 */
+.chat-page .chat-voice-text {
+  font-size: calc(12px * var(--chat-fs-scale)) !important;
+}
+
+/* 设置面板里的分段控件 */
+.chat-settings-font-segment {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(142, 101, 111, 0.08);
+}
+
+.chat-settings-font-segment button {
+  flex: 1;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.chat-settings-font-segment button.active {
+  background: #fcbec3;
+  color: #8e656f;
+  font-weight: 700;
+}
+
+html[data-runwithme-theme="dark"]
+  .chat-settings-font-segment {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html[data-runwithme-theme="dark"]
+  .chat-settings-font-segment
+  button.active {
+  background: rgba(252, 190, 195, 0.3);
+  color: #f3dfe4;
+}
+/* =========================================================
+   B2 · 文字卡发到 Chat / iCity
+   ========================================================= */
+
+/* ---------- Chat 里的文字卡片气泡 ---------- */
+
+.chat-textcard-message {
+  display: inline-block;
+  max-width: 240px;
+  width: 200px;
+}
+
+.chat-textcard-message .photo-text-card {
+  padding: 12px 14px 10px;
+  border-radius: 16px;
+}
+
+.chat-textcard-message .photo-text-card-place {
+  font-size: 16px;
+}
+
+.chat-textcard-message .photo-text-card-line {
+  font-size: 11px;
+}
+
+.chat-textcard-message .photo-text-card-footer {
+  padding-top: 6px;
+  margin-top: 6px;
+}
+
+.chat-textcard-message
+  .photo-text-card-footer-avatar {
+  width: 18px;
+  height: 18px;
+  font-size: 9px;
+}
+
+.chat-textcard-message
+  .photo-text-card-footer-name {
+  font-size: 9px;
+}
+
+.chat-textcard-message
+  .photo-text-card-footer-mood {
+  font-size: 10px;
+}
+
+/* ---------- iCity 帖子里的文字卡片 ---------- */
+
+.icity-textcard {
+  margin: 4px 0 10px;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  max-width: 320px;
+}
+
+.icity-textcard .photo-text-card {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+}
+
+/* ---------- Photos 卡片上的"已发到"小标 ---------- */
+
+.photo-text-card-sent {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 3px;
+  z-index: 3;
+}
+
+.photo-text-card-sent span {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(142, 101, 111, 0.85);
+  color: #fff2e9;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------- 查看器里的"发到"按钮 ---------- */
+
+.photo-text-viewer-send {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.photo-text-viewer-send-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 11px 14px;
+  border: 1px solid rgba(142, 101, 111, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  color: #4f3940;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.photo-text-viewer-send-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.photo-text-viewer-send-btn:hover:not(:disabled) {
+  background: rgba(252, 190, 195, 0.3);
+}
+
+.photo-text-viewer-send-btn.is-sent,
+.photo-text-viewer-send-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+  background: rgba(142, 101, 111, 0.1);
+}
+
+.photo-text-viewer-send-btn svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-send-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-send-btn:hover:not(:disabled) {
+  background: rgba(252, 190, 195, 0.15);
+}
+
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-send-btn.is-sent,
+html[data-runwithme-theme="dark"]
+  .photo-text-viewer-send-btn:disabled {
+  background: rgba(255, 255, 255, 0.03);
+  color: #d9bcc4;
+}
+/* =========================================================
+   E1 · 世界事件系统
+   ========================================================= */
+
+/* iCity 的引用块（复用 chat 的 message-quote） */
+.message-quote-source-tag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(142, 101, 111, 0.12);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+/* =========================================================
+   Chat 滚动兜底
+   ========================================================= */
+
+.chat-page .chat-messages {
+  overscroll-behavior-y: contain;
+  scroll-behavior: auto;
+}
+
+.chat-page .chat-messages > * {
+  scroll-margin-bottom: 8px;
 }

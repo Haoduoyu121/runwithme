@@ -40,8 +40,6 @@ const AVATAR_KEYS = [
   { key: "erwin" as const, label: "Erwin", fallback: "E" },
 ];
 
-
-
 const COMPRESS_KEEP = 100;
 
 function notifyStickersUpdated() {
@@ -252,10 +250,6 @@ export default function ChatSettingsPanel({
     });
   }
 
-  /* -------------------------------------------------------
-     ★ 数据管理
-     ------------------------------------------------------- */
-
   function handleClearAll() {
     if (messages.length === 0) {
       alert("当前没有聊天记录。");
@@ -290,10 +284,6 @@ export default function ChatSettingsPanel({
       prev.slice(-COMPRESS_KEEP)
     );
   }
-
-  /* -------------------------------------------------------
-     上传 / 表情
-     ------------------------------------------------------- */
 
   async function uploadBg(file: File) {
     await saveChatFile("chat-bg", file);
@@ -438,7 +428,7 @@ export default function ChatSettingsPanel({
         </div>
 
         <div className="chat-settings-body">
-          {/* ★ 聊天数据管理 */}
+          {/* 聊天数据 */}
           <section className="chat-settings-section">
             <div className="chat-settings-section-title">
               聊天数据
@@ -475,6 +465,135 @@ export default function ChatSettingsPanel({
 
             <div className="chat-settings-hint">
               提示：长按任意聊天气泡也能进入多选模式批量删除。
+            </div>
+          </section>
+
+          {/* 字号 */}
+          <section className="chat-settings-section">
+            <div className="chat-settings-section-title">
+              聊天气泡字号
+            </div>
+            <div className="chat-settings-font-segment">
+              {(
+                [
+                  { label: "小", value: 0.9 },
+                  { label: "中", value: 1 },
+                  { label: "大", value: 1.15 },
+                  { label: "特大", value: 1.3 },
+                ] as const
+              ).map((opt) => {
+                const active =
+                  Math.abs(
+                    settings.chatFontScale - opt.value
+                  ) < 0.01;
+                return (
+                  <button
+                    key={opt.label}
+                    className={active ? "active" : ""}
+                    onClick={() =>
+                      updateSettings({
+                        chatFontScale: opt.value,
+                      })
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="chat-settings-hint">
+              调整消息气泡 / 名字 / 时间戳 / 输入框的字号。当前约{" "}
+              {Math.round(
+                settings.chatFontScale * 100
+              )}
+              %。
+            </div>
+          </section>
+
+          {/* 甩照片概率 */}
+          <section className="chat-settings-section">
+            <div className="chat-settings-section-title">
+              甩照片概率
+            </div>
+            <div className="chat-settings-reply-row">
+              <span className="chat-settings-reply-label">
+                每次回复有几率变成照片
+              </span>
+              <label className="chat-settings-num">
+                <span className="chat-settings-num-label">
+                  0~50
+                  <small className="chat-settings-num-suffix">
+                    %
+                  </small>
+                </span>
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.chatTextCardChance * 100
+                  )}
+                  min={0}
+                  max={50}
+                  onChange={(e) =>
+                    updateSettings({
+                      chatTextCardChance:
+                        Math.min(
+                          50,
+                          Math.max(
+                            0,
+                            Number(e.target.value) || 0
+                          )
+                        ) / 100,
+                    })
+                  }
+                />
+              </label>
+            </div>
+            <div className="chat-settings-hint">
+              例：设为 5 表示每次回复有 5% 概率甩一张照片。
+              照片来自 Photos → 文字里对应角色拍的照片。
+            </div>
+          </section>
+
+          {/* 引用 iCity 概率 */}
+          <section className="chat-settings-section">
+            <div className="chat-settings-section-title">
+              引用 iCity 概率
+            </div>
+            <div className="chat-settings-reply-row">
+              <span className="chat-settings-reply-label">
+                角色主动提你动态的几率
+              </span>
+              <label className="chat-settings-num">
+                <span className="chat-settings-num-label">
+                  0~100
+                  <small className="chat-settings-num-suffix">
+                    %
+                  </small>
+                </span>
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.chatWorldQuoteChance * 100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      chatWorldQuoteChance:
+                        Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            Number(e.target.value) || 0
+                          )
+                        ) / 100,
+                    })
+                  }
+                />
+              </label>
+            </div>
+            <div className="chat-settings-hint">
+              当你在 iCity 发帖 / 评论后，角色下次主动回复时有几率引用一句。
             </div>
           </section>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Plus, X } from "lucide-react";
 
 import {
   createWishlistCardId,
@@ -11,12 +12,14 @@ type Props = {
   cards: WishlistCard[];
   onChange: (next: WishlistCard[]) => void;
   onClose: () => void;
+  embedded?: boolean;
 };
 
 export default function WishlistPoolEditor({
   cards,
   onChange,
   onClose,
+  embedded = false,
 }: Props) {
   const [tab, setTab] =
     useState<"Levi" | "Erwin">("Levi");
@@ -27,7 +30,6 @@ export default function WishlistPoolEditor({
   function handleAdd() {
     const text = newText.trim();
     if (!text) return;
-
     onChange([
       ...cards,
       {
@@ -54,9 +56,90 @@ export default function WishlistPoolEditor({
 
   function handleRename(id: string, text: string) {
     onChange(
-      cards.map((c) => (c.id === id ? { ...c, text } : c))
+      cards.map((c) =>
+        c.id === id ? { ...c, text } : c
+      )
     );
   }
+
+  const inner = (
+    <>
+      <div className="notes-segment notes-pool-tabs">
+        <button
+          className={tab === "Levi" ? "active" : ""}
+          onClick={() => setTab("Levi")}
+        >
+          Levi
+        </button>
+        <button
+          className={tab === "Erwin" ? "active" : ""}
+          onClick={() => setTab("Erwin")}
+        >
+          Erwin
+        </button>
+      </div>
+
+      <div className="notes-pool-add">
+        <input
+          type="text"
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+          placeholder="新增一条愿望…"
+          maxLength={60}
+        />
+        <button onClick={handleAdd}>
+          <Plus size={14} strokeWidth={2.4} />
+        </button>
+      </div>
+
+      <div className="notes-pool-list">
+        {list.length === 0 ? (
+          <div className="notes-pool-empty">
+            还没有愿望卡
+          </div>
+        ) : (
+          list.map((c) => (
+            <div
+              key={c.id}
+              className={`notes-pool-item${
+                c.enabled ? "" : " is-disabled"
+              }`}
+            >
+              <input
+                type="text"
+                value={c.text}
+                onChange={(e) =>
+                  handleRename(c.id, e.target.value)
+                }
+                maxLength={60}
+              />
+              <button
+                className="notes-pool-toggle"
+                onClick={() => handleToggle(c.id)}
+              >
+                {c.enabled ? "停用" : "启用"}
+              </button>
+              <button
+                className="notes-pool-delete"
+                onClick={() => handleDelete(c.id)}
+                aria-label="删除"
+              >
+                <X size={12} strokeWidth={2.4} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </>
+  );
+
+  if (embedded) return inner;
 
   return (
     <div
@@ -69,94 +152,17 @@ export default function WishlistPoolEditor({
       >
         <div className="notes-modal-header">
           <h2>Wishlist 卡池</h2>
-
           <button
             className="notes-modal-close"
             onClick={onClose}
             aria-label="关闭"
           >
-            ×
+            <X size={16} strokeWidth={2.4} />
           </button>
         </div>
-
-        <div className="notes-segment notes-pool-tabs">
-          <button
-            className={tab === "Levi" ? "active" : ""}
-            onClick={() => setTab("Levi")}
-          >
-            Levi
-          </button>
-          <button
-            className={tab === "Erwin" ? "active" : ""}
-            onClick={() => setTab("Erwin")}
-          >
-            Erwin
-          </button>
-        </div>
-
-        <div className="notes-pool-add">
-          <input
-            type="text"
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAdd();
-              }
-            }}
-            placeholder="新增一条愿望…"
-            maxLength={60}
-          />
-          <button onClick={handleAdd}>添加</button>
-        </div>
-
-        <div className="notes-pool-list">
-          {list.length === 0 ? (
-            <div className="notes-pool-empty">
-              还没有愿望卡
-            </div>
-          ) : (
-            list.map((c) => (
-              <div
-                key={c.id}
-                className={`notes-pool-item${
-                  c.enabled ? "" : " is-disabled"
-                }`}
-              >
-                <input
-                  type="text"
-                  value={c.text}
-                  onChange={(e) =>
-                    handleRename(c.id, e.target.value)
-                  }
-                  maxLength={60}
-                />
-
-                <button
-                  className="notes-pool-toggle"
-                  onClick={() => handleToggle(c.id)}
-                >
-                  {c.enabled ? "停用" : "启用"}
-                </button>
-
-                <button
-                  className="notes-pool-delete"
-                  onClick={() => handleDelete(c.id)}
-                  aria-label="删除"
-                >
-                  ×
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
+        {inner}
         <div className="notes-modal-footer">
-          <button
-            className="notes-btn"
-            onClick={onClose}
-          >
+          <button className="notes-btn" onClick={onClose}>
             完成
           </button>
         </div>

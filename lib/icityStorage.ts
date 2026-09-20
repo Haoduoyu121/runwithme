@@ -99,15 +99,23 @@ export function loadProfiles(): ICityProfiles {
             : fallback.name,
         handle:
           typeof input?.handle === "string"
-            ? input.handle.trim()
+            ? input.handle.trim().replace(/^@/, "")
             : fallback.handle,
+        bio:
+          typeof input?.bio === "string"
+            ? input.bio
+            : fallback.bio ?? "",
+        lastBioUpdate:
+          typeof input?.lastBioUpdate === "number"
+            ? input.lastBioUpdate
+            : fallback.lastBioUpdate ?? 0,
       };
     }
 
     return {
-      Yui: { name: "...", handle: "...", bio: "", lastBioUpdate: 0 },
-      Levi: { name: "...", handle: "...", bio: "", lastBioUpdate: 0 },
-      Erwin: { name: "...", handle: "...", bio: "", lastBioUpdate: 0 },
+      Yui: normalize("Yui"),
+      Levi: normalize("Levi"),
+      Erwin: normalize("Erwin"),
     };
   } catch {
     return DEFAULT_PROFILES;

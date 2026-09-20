@@ -22,6 +22,8 @@ import {
 
 import { useICity } from "@/lib/ICityContext";
 import { useCollection } from "@/lib/CollectionContext";
+import TextCard from "@/components/apps/photos/TextCard";
+import { useCharacterAvatars } from "@/lib/useCharacterAvatars";
 
 import NewPostModal from "@/components/apps/icity/NewPostModal";
 import PostDetail from "@/components/apps/icity/PostDetail";
@@ -55,6 +57,7 @@ export default function ICityApp({
   } = useICity();
 
   const { tryAutoCollect } = useCollection();
+  const charAvatars = useCharacterAvatars();
   const [tab, setTab] = useState<Tab>("world");
   const [showNewPost, setShowNewPost] = useState(false);
   const [showDockMenu, setShowDockMenu] = useState(false);
@@ -235,6 +238,7 @@ export default function ICityApp({
                 }
                 onOpenProfile={openProfile}
                 onOpenImage={openLightbox}
+                charAvatars={charAvatars}
               />
             ))
           )}
@@ -400,6 +404,7 @@ function PostCard({
   onToggleLike,
   onOpenProfile,
   onOpenImage,
+  charAvatars,
 }: {
   post: ICityPost;
   profiles: ICityProfiles; 
@@ -410,6 +415,7 @@ function PostCard({
   onToggleLike: () => void;
   onOpenProfile: (a: ICityAuthor) => void;
   onOpenImage: (images: string[], index: number) => void;
+  charAvatars: Record<string, string | null>;
 }) {
   const author = getAuthorDisplay(post.author, profiles);
   const likedByUser = post.likes.includes("Yui");
@@ -442,14 +448,25 @@ function PostCard({
         </div>
       </div>
 
-      {post.text && (
+      {post.textCardSnapshot ? (
+        <div
+          className="icity-textcard"
+          onClick={onOpen}
+        >
+          <TextCard
+            card={post.textCardSnapshot}
+            variant="full"
+            avatars={charAvatars}
+          />
+        </div>
+      ) : post.text ? (
         <div
           className="icity-post-text"
           onClick={onOpen}
         >
           {post.text}
         </div>
-      )}
+      ) : null}
 
       {imageUrls.length > 0 && (
         <div

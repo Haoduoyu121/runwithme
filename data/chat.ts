@@ -5,7 +5,8 @@ export type ChatMessageType =
   | "voice"
   | "call"
   | "pat"
-  | "system";
+  | "system"
+  | "textcard";
 
 export type ChatSender = "You" | "Levi" | "Erwin";
 
@@ -37,6 +38,14 @@ export type ChatMessage = {
 
   mediaUrl?: string;
   mediaId?: string;
+    textCardSnapshot?: {
+    author: "Levi" | "Erwin";
+    place: string;
+    weather: string;
+    person: string;
+    action: string;
+    mood: string;
+  };
 
   duration?: number;
 
@@ -48,7 +57,15 @@ export type ChatMessage = {
   recalled?: boolean;
   deleted?: boolean;
 
-  quote?: ChatQuote;
+    quote?: {
+    messageId: string;
+    sender: ChatSender;
+    text: string;
+    /** 引用的来源 App（如 "icity"）；E1 阶段仅存储，不跳转 */
+    sourceApp?: string;
+    /** 引用的来源对象 id */
+    sourceId?: string;
+  };
 };
 
 export function createMessageId(): string {

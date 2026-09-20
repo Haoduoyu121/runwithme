@@ -20,6 +20,7 @@ import SearchApp from "@/components/apps/SearchApp";
 import ReadApp from "@/components/apps/ReadApp";
 import FridgeApp from "@/components/apps/FridgeApp";
 import { runWorldCompensation } from "@/lib/worldClock";
+import { markAppAllRead } from "@/lib/unreadRegistry";
 
 import {
   loadSystemSettings,
@@ -879,6 +880,12 @@ export default function Home() {
         ? prev
         : [...prev, currentApp]
     );
+  }, [currentApp]);
+
+  /* 进入 App 时清未读 */
+  useEffect(() => {
+    if (!currentApp) return;
+    markAppAllRead(currentApp);
   }, [currentApp]);
 
   useEffect(() => {

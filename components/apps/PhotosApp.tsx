@@ -8,6 +8,11 @@ import {
 } from "react";
 
 import {
+  Image as ImageIcon,
+  FileText,
+} from "lucide-react";
+
+import {
   loadPhotos,
   savePhotos,
   loadCategories,
@@ -27,6 +32,28 @@ import {
 
 import { compressImage } from "@/lib/photoUtils";
 import { useCollection } from "@/lib/CollectionContext";
+import {
+  useCharacterAvatars,
+  toAvatarKey,
+} from "@/lib/useCharacterAvatars";
+
+import {
+  loadPhotoTextCards,
+  savePhotoTextCards,
+  loadPhotoTextPools,
+  savePhotoTextPools,
+  loadPhotoTextPending,
+  savePhotoTextPending,
+} from "@/lib/photoTextStorage";
+import {
+  runPhotoTextScheduler,
+  createPendingShoot,
+} from "@/lib/photoTextScheduler";
+import type {
+  PhotoTextCard,
+  PhotoTextPending,
+  PhotoTextPools,
+} from "@/data/photoTextCards";
 
 import PhotoViewer from "@/components/apps/photos/PhotoViewer";
 import CategoryManager from "@/components/apps/photos/CategoryManager";
@@ -35,16 +62,26 @@ import PhotoNamingModal, {
   displayPhotoName,
   type PhotoNamingItem,
 } from "@/components/apps/photos/PhotoNamingModal";
+import TextCard from "@/components/apps/photos/TextCard";
+import TextCardViewer from "@/components/apps/photos/TextCardViewer";
+import TextPoolEditor from "@/components/apps/photos/TextPoolEditor";
 
 type PhotosAppProps = {
   onBack: () => void;
 };
 
+type ViewMode = "photos" | "text";
+
 export default function PhotosApp({
   onBack,
 }: PhotosAppProps) {
   const { tryAutoCollect } = useCollection();
+  const avatars = useCharacterAvatars();
 
+  const [viewMode, setViewMode] =
+    useState<ViewMode>("photos");
+
+  /* ---------- 照片 ---------- */
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [categories, setCategories] = useState<
     PhotoCategory[]
@@ -59,7 +96,6 @@ export default function PhotosApp({
     string
   >("__all__");
 
-  /* 查看器（用 photoId 追踪，避免分类切换导致索引失效） */
   const [viewerPhotoId, setViewerPhotoId] = useState<
     string | null
   >(null);
@@ -78,9 +114,29 @@ export default function PhotosApp({
     PhotoNamingItem[] | null
   >(null);
 
+  /* ---------- 文字卡片 ---------- */
+  const [textCards, setTextCards] = useState<
+    PhotoTextCard[]
+  >([]);
+  const [pools, setPools] = useState<PhotoTextPools>({
+    place: [],
+    weather: [],
+    person: [],
+    action: [],
+    mood: [],
+  });
+  const [pending, setPending] =
+    useState<PhotoTextPending | null>(null);
+  const [viewerTextCardId, setViewerTextCardId] =
+    useState<string | null>(null);
+  const [showTextPoolEditor, setShowTextPoolEditor] =
+    useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+
   const fileInputRef = useRef<HTMLInputElement | null>(
-  null
-);
+    null
+  );
 
   const longPressTimer = useRef<
     ReturnType<typeof setTimeout> | null
@@ -105,13 +161,30 @@ export default function PhotosApp({
       setPhotos(meta);
       setCategories(loadCategories());
 
+      const initialPools = loadPhotoTextPools();
+      setPools(initialPools);
+
+      const existingCards = loadPhotoTextCards();
+      const generated =
+        runPhotoTextScheduler(initialPools);
+
+      if (generated.length > 0) {
+        const merged = [...generated, ...existingCards];
+        savePhotoTextCards(merged);
+        setTextCards(merged);
+      } else {
+        setTextCards(existingCards);
+      }
+
+      const existingPending = loadPhotoTextPending();
+      setPending(existingPending);
+
       const nextUrls: Record<string, string> = {};
 
       for (const item of meta) {
         try {
           const blob = await getPhotoFile(item.id);
           if (!blob) continue;
-
           const url = URL.createObjectURL(blob);
           createdUrlsRef.current.add(url);
           nextUrls[item.id] = url;
@@ -147,17 +220,55 @@ export default function PhotosApp({
     };
   }, []);
 
+  /* pending 每秒 tick */
+  useEffect(() => {
+    if (!pending) return;
+    const timer = window.setInterval(() => {
+      setTick((t) => t + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [pending]);
+
+  /* pending 到点 → 结算 */
+  useEffect(() => {
+    if (!pending) return;
+    if (Date.now() < pending.resolveAt) return;
+
+    if (pending.cards.length > 0) {
+      const next = [...pending.cards, ...textCards];
+      setTextCards(next);
+      savePhotoTextCards(next);
+
+      const authors = Array.from(
+        new Set(pending.cards.map((c) => c.author))
+      );
+      const label =
+        authors.length === 2
+          ? "Levi 和 Erwin"
+          : authors[0];
+      const count = pending.cards.length;
+      setToast(`${label}上传了 ${count} 张`);
+    } else {
+      setToast("还没有人拍照哦");
+    }
+
+    setPending(null);
+    savePhotoTextPending(null);
+
+    const delay =
+      pending.cards.length > 0 ? 3000 : 2400;
+    window.setTimeout(() => setToast(null), delay);
+  }, [tick, pending, textCards]);
+
   /* -------------------------------------------------------
-     过滤后的照片
+     照片：过滤
      ------------------------------------------------------- */
 
   const visiblePhotos = useMemo(() => {
     if (activeCategory === "__all__") return photos;
-
     if (activeCategory === UNCATEGORIZED) {
       return photos.filter((p) => !p.categoryId);
     }
-
     return photos.filter(
       (p) => p.categoryId === activeCategory
     );
@@ -171,7 +282,6 @@ export default function PhotosApp({
     return idx >= 0 ? idx : null;
   }, [visiblePhotos, viewerPhotoId]);
 
-  /* 如果当前查看的照片因为分类切换离开了视图，关闭它 */
   useEffect(() => {
     if (viewerPhotoId && viewerIndex === null) {
       setViewerPhotoId(null);
@@ -179,7 +289,7 @@ export default function PhotosApp({
   }, [viewerPhotoId, viewerIndex]);
 
   /* -------------------------------------------------------
-     上传（带压缩）
+     照片：上传
      ------------------------------------------------------- */
 
   async function handleUpload(files: FileList) {
@@ -194,7 +304,6 @@ export default function PhotosApp({
       const newItems: PhotoItem[] = [];
       const newUrls: Record<string, string> = {};
 
-      /* 上传时如果当前在某具体分类下，自动归入该分类 */
       let defaultCategory: string | null = null;
       if (
         activeCategory !== "__all__" &&
@@ -206,10 +315,8 @@ export default function PhotosApp({
       for (const file of list) {
         try {
           const { blob } = await compressImage(file);
-
           const id = createPhotoId();
           await savePhotoFile(id, blob);
-
           const url = URL.createObjectURL(blob);
           createdUrlsRef.current.add(url);
 
@@ -220,7 +327,6 @@ export default function PhotosApp({
             createdAt: Date.now(),
             categoryId: defaultCategory,
           });
-
           newUrls[id] = url;
         } catch (e) {
           console.error("保存照片失败:", e);
@@ -239,7 +345,6 @@ export default function PhotosApp({
 
       setUrls((prev) => ({ ...prev, ...newUrls }));
 
-      /* 打开命名弹窗；收藏判定延后到命名完成 */
       setNamingItems(
         ordered.map((it) => ({
           id: it.id,
@@ -252,14 +357,11 @@ export default function PhotosApp({
     }
   }
 
-  /* ---------- 命名完成 ---------- */
-
   function handleNamingConfirm(
     names: Record<string, string>
   ) {
     if (!namingItems) return;
 
-    /* 1. 写回 description */
     setPhotos((prev) => {
       const next = prev.map((p) => {
         if (!(p.id in names)) return p;
@@ -270,10 +372,10 @@ export default function PhotosApp({
       return next;
     });
 
-    /* 2. 逐张触发系统收藏（1%~5%），content 优先用用户起的名字 */
     for (const it of namingItems) {
       const raw = (names[it.id] ?? "").trim();
-      const displayName = raw || displayPhotoName(it.fileName);
+      const displayName =
+        raw || displayPhotoName(it.fileName);
 
       tryAutoCollect({
         source: "photos",
@@ -306,7 +408,7 @@ export default function PhotosApp({
   }
 
   /* -------------------------------------------------------
-     更新
+     照片：更新 / 分类 / 删除
      ------------------------------------------------------- */
 
   function handleUpdateDescription(
@@ -336,10 +438,6 @@ export default function PhotosApp({
     });
   }
 
-  /* -------------------------------------------------------
-     删除
-     ------------------------------------------------------- */
-
   async function handleDelete(ids: string[]) {
     for (const id of ids) {
       try {
@@ -347,7 +445,6 @@ export default function PhotosApp({
       } catch (e) {
         console.error("删除照片文件失败:", e);
       }
-
       const url = urls[id];
       if (url) {
         URL.revokeObjectURL(url);
@@ -435,7 +532,7 @@ export default function PhotosApp({
   }
 
   /* -------------------------------------------------------
-     多选
+     照片：多选
      ------------------------------------------------------- */
 
   function enterSelectionMode(initialId: string) {
@@ -465,7 +562,7 @@ export default function PhotosApp({
   }
 
   /* -------------------------------------------------------
-     长按 / 点击
+     照片：长按 / 点击
      ------------------------------------------------------- */
 
   function handlePointerDown(
@@ -496,7 +593,6 @@ export default function PhotosApp({
     const dx = e.clientX - start.x;
     const dy = e.clientY - start.y;
 
-    /* 移动超过 10px 就认为是滚动，取消长按 */
     if (dx * dx + dy * dy > 100) {
       if (longPressTimer.current) {
         clearTimeout(longPressTimer.current);
@@ -518,26 +614,89 @@ export default function PhotosApp({
       longPressTriggered.current = false;
       return;
     }
-
     if (selectionMode) {
       toggleSelect(id);
       return;
     }
-
     setViewerPhotoId(id);
-
-    /* 保持索引一致，避免闭包过期 */
     void index;
+  }
+
+  /* -------------------------------------------------------
+     文字卡片：CRUD
+     ------------------------------------------------------- */
+
+  function commitTextCards(next: PhotoTextCard[]) {
+    setTextCards(next);
+    savePhotoTextCards(next);
+  }
+
+  function commitPools(next: PhotoTextPools) {
+    setPools(next);
+    savePhotoTextPools(next);
+  }
+
+  /** 点 ✦ → 创建 pending（1-3 min 后结算） */
+  function handleShoot() {
+    if (pending) {
+      setToast("他们还在拍，等一下");
+      window.setTimeout(() => setToast(null), 2000);
+      return;
+    }
+
+    const p = createPendingShoot(pools);
+    if (!p) {
+      setToast("词库是空的，先到 ☰ 里补充");
+      window.setTimeout(() => setToast(null), 2600);
+      return;
+    }
+
+    setPending(p);
+    savePhotoTextPending(p);
+  }
+
+  function handleUpdateTextCard(next: PhotoTextCard) {
+    commitTextCards(
+      textCards.map((c) => (c.id === next.id ? next : c))
+    );
+  }
+
+  function handleDeleteTextCard(id: string) {
+    commitTextCards(
+      textCards.filter((c) => c.id !== id)
+    );
+    if (viewerTextCardId === id) {
+      setViewerTextCardId(null);
+    }
+  }
+
+
+
+
+  const viewerTextCard = viewerTextCardId
+    ? textCards.find((c) => c.id === viewerTextCardId) ??
+      null
+    : null;
+
+  function formatCountdown(ms: number): string {
+    const total = Math.max(0, Math.ceil(ms / 1000));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${String(m).padStart(2, "0")}:${String(
+      s
+    ).padStart(2, "0")}`;
   }
 
   /* -------------------------------------------------------
      Render
      ------------------------------------------------------- */
 
+  const isPhotoMode = viewMode === "photos";
+
   return (
     <main className="app-screen photos-app">
       <header className="photos-app-header">
-        {selectionMode ? (
+        {selectionMode && isPhotoMode ? (
           <>
             <button
               className="photos-app-back"
@@ -589,32 +748,67 @@ export default function PhotosApp({
 
             <div className="photos-app-title">
               <div className="photos-app-title-main">
-                Photos
+                {isPhotoMode ? "Photos" : "Text"}
               </div>
               <div className="photos-app-title-sub">
-                {photos.length > 0
-                  ? `${photos.length} 张照片`
-                  : "还没有照片"}
+                {isPhotoMode
+                  ? photos.length > 0
+                    ? `${photos.length} 张照片`
+                    : "还没有照片"
+                  : textCards.length > 0
+                    ? `${textCards.length} 张文字`
+                    : "还没有文字卡片"}
               </div>
             </div>
 
             <button
               className="photos-app-upload"
-              onClick={() =>
-                setShowCategoryManager(true)
-              }
-              aria-label="分类管理"
+              onClick={() => {
+                if (isPhotoMode) {
+                  setShowCategoryManager(true);
+                } else {
+                  setShowTextPoolEditor(true);
+                }
+              }}
+              aria-label={isPhotoMode ? "分类管理" : "词库"}
             >
               ☰
             </button>
 
             <button
               className="photos-app-upload"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              aria-label="上传照片"
+              onClick={() => {
+                if (isPhotoMode) {
+                  fileInputRef.current?.click();
+                } else {
+                  handleShoot();
+                }
+              }}
+              disabled={
+                (isPhotoMode && uploading) ||
+                (!isPhotoMode && !!pending)
+              }
+              aria-label={isPhotoMode ? "上传照片" : "拍一张"}
             >
-              {uploading ? "…" : "＋"}
+              {isPhotoMode ? (uploading ? "…" : "＋") : "✦"}
+            </button>
+
+            <button
+              className="photos-app-upload"
+              onClick={() =>
+                setViewMode(
+                  isPhotoMode ? "text" : "photos"
+                )
+              }
+              aria-label={
+                isPhotoMode ? "切到文字" : "切到照片"
+              }
+            >
+              {isPhotoMode ? (
+                <FileText size={18} strokeWidth={2} />
+              ) : (
+                <ImageIcon size={18} strokeWidth={2} />
+              )}
             </button>
           </>
         )}
@@ -634,160 +828,220 @@ export default function PhotosApp({
           e.target.value = "";
         }}
       />
-      {/* 分类 tabs */}
-      {!selectionMode && (
-        <div className="photos-app-tabs">
-          <button
-            className={
-              activeCategory === "__all__"
-                ? "photos-app-tab active"
-                : "photos-app-tab"
-            }
-            onClick={() => setActiveCategory("__all__")}
-          >
-            全部
-            <span className="photos-app-tab-count">
-              {photos.length}
-            </span>
-          </button>
 
-          {categories.map((c) => {
-            const count = photos.filter(
-              (p) => p.categoryId === c.id
-            ).length;
-
-            return (
+      {/* ---------- 照片模式 ---------- */}
+      {isPhotoMode && (
+        <>
+          {!selectionMode && (
+            <div className="photos-app-tabs">
               <button
-                key={c.id}
                 className={
-                  activeCategory === c.id
+                  activeCategory === "__all__"
                     ? "photos-app-tab active"
                     : "photos-app-tab"
                 }
-                onClick={() => setActiveCategory(c.id)}
+                onClick={() =>
+                  setActiveCategory("__all__")
+                }
               >
-                {c.name}
+                全部
                 <span className="photos-app-tab-count">
-                  {count}
+                  {photos.length}
                 </span>
               </button>
-            );
-          })}
 
-          <button
-            className={
-              activeCategory === UNCATEGORIZED
-                ? "photos-app-tab active"
-                : "photos-app-tab"
-            }
-            onClick={() =>
-              setActiveCategory(UNCATEGORIZED)
-            }
+              {categories.map((c) => {
+                const count = photos.filter(
+                  (p) => p.categoryId === c.id
+                ).length;
+                return (
+                  <button
+                    key={c.id}
+                    className={
+                      activeCategory === c.id
+                        ? "photos-app-tab active"
+                        : "photos-app-tab"
+                    }
+                    onClick={() =>
+                      setActiveCategory(c.id)
+                    }
+                  >
+                    {c.name}
+                    <span className="photos-app-tab-count">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+
+              <button
+                className={
+                  activeCategory === UNCATEGORIZED
+                    ? "photos-app-tab active"
+                    : "photos-app-tab"
+                }
+                onClick={() =>
+                  setActiveCategory(UNCATEGORIZED)
+                }
+              >
+                未分类
+                <span className="photos-app-tab-count">
+                  {
+                    photos.filter((p) => !p.categoryId)
+                      .length
+                  }
+                </span>
+              </button>
+            </div>
+          )}
+
+          <div
+            className={`photos-app-content${
+              selectionMode ? " has-selection-bar" : ""
+            }`}
           >
-            未分类
-            <span className="photos-app-tab-count">
-              {
-                photos.filter((p) => !p.categoryId)
-                  .length
-              }
-            </span>
-          </button>
+            {loading ? (
+              <div className="photos-app-empty">
+                正在加载…
+              </div>
+            ) : visiblePhotos.length === 0 ? (
+              <div className="photos-app-empty">
+                <div className="photos-app-empty-icon">
+                  ▧
+                </div>
+                <div className="photos-app-empty-title">
+                  {photos.length === 0
+                    ? "还没有照片"
+                    : "这个分类下还没有照片"}
+                </div>
+                <div className="photos-app-empty-desc">
+                  点右上角 ＋ 上传
+                </div>
+                <button
+                  className="photos-app-empty-btn"
+                  onClick={() =>
+                    fileInputRef.current?.click()
+                  }
+                >
+                  上传照片
+                </button>
+              </div>
+            ) : (
+              <div className="photos-app-grid">
+                {visiblePhotos.map((photo, idx) => {
+                  const url = urls[photo.id];
+                  const selected = selectedIds.includes(
+                    photo.id
+                  );
+                  return (
+                    <button
+                      key={photo.id}
+                      className={`photos-app-cell${
+                        selectionMode
+                          ? " is-selecting"
+                          : ""
+                      }${selected ? " is-selected" : ""}`}
+                      onClick={() =>
+                        handleCellClick(photo.id, idx)
+                      }
+                      onPointerDown={(e) =>
+                        handlePointerDown(photo.id, e)
+                      }
+                      onPointerMove={handlePointerMove}
+                      onPointerUp={handlePointerUp}
+                      onPointerCancel={handlePointerUp}
+                      onPointerLeave={handlePointerUp}
+                      type="button"
+                    >
+                      {url ? (
+                        <img
+                          src={url}
+                          alt={photo.fileName}
+                        />
+                      ) : (
+                        <span className="photos-app-cell-loading">
+                          …
+                        </span>
+                      )}
+                      {photo.description && (
+                        <span className="photos-app-cell-dot" />
+                      )}
+                      {selectionMode && (
+                        <span className="photos-app-cell-check">
+                          {selected ? "✓" : ""}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ---------- 文字模式 ---------- */}
+      {!isPhotoMode && (
+        <div className="photos-app-content">
+          {textCards.length === 0 ? (
+            <div className="photos-app-empty">
+              <div className="photos-app-empty-icon">
+                ✦
+              </div>
+              <div className="photos-app-empty-title">
+                {pending
+                  ? "他们正在上传…"
+                  : "还没有人拍照"}
+              </div>
+              <div className="photos-app-empty-desc">
+                {pending
+                  ? "稍等一下"
+                  : "点右上角 ✦ 让他们拍一张"}
+              </div>
+              {!pending && (
+                <button
+                  className="photos-app-empty-btn"
+                  onClick={handleShoot}
+                >
+                  拍一张
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="photo-text-grid">
+              {textCards.map((card) => (
+                <button
+                  key={card.id}
+                  className="photo-text-grid-cell"
+                  onClick={() =>
+                    setViewerTextCardId(card.id)
+                  }
+                  type="button"
+                >
+                  <TextCard
+                    card={card}
+                    variant="grid"
+                    avatars={avatars}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      <div
-        className={`photos-app-content${
-          selectionMode ? " has-selection-bar" : ""
-        }`}
-      >
-        {loading ? (
-          <div className="photos-app-empty">
-            正在加载…
-          </div>
-        ) : visiblePhotos.length === 0 ? (
-          <div className="photos-app-empty">
-            <div className="photos-app-empty-icon">
-              ▧
-            </div>
-            <div className="photos-app-empty-title">
-              {photos.length === 0
-                ? "还没有照片"
-                : "这个分类下还没有照片"}
-            </div>
-            <div className="photos-app-empty-desc">
-              点右上角 ＋ 上传
-            </div>
-
-            <button
-              className="photos-app-empty-btn"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              上传照片
-            </button>
-          </div>
-        ) : (
-          <div className="photos-app-grid">
-            {visiblePhotos.map((photo, idx) => {
-              const url = urls[photo.id];
-              const selected = selectedIds.includes(
-                photo.id
-              );
-
-              return (
-                <button
-                  key={photo.id}
-                  className={`photos-app-cell${
-                    selectionMode ? " is-selecting" : ""
-                  }${selected ? " is-selected" : ""}`}
-                  onClick={() =>
-                    handleCellClick(photo.id, idx)
-                  }
-                  onPointerDown={(e) =>
-                    handlePointerDown(photo.id, e)
-                  }
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                  onPointerCancel={handlePointerUp}
-                  onPointerLeave={handlePointerUp}
-                  type="button"
-                >
-                  {url ? (
-                    <img src={url} alt={photo.fileName} />
-                  ) : (
-                    <span className="photos-app-cell-loading">
-                      …
-                    </span>
-                  )}
-
-                  {photo.description && (
-                    <span className="photos-app-cell-dot" />
-                  )}
-
-                  {selectionMode && (
-                    <span className="photos-app-cell-check">
-                      {selected ? "✓" : ""}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {selectionMode && (
+      {/* ---------- 照片：底部多选条 ---------- */}
+      {isPhotoMode && selectionMode && (
         <div className="photos-app-selection-bar">
           <button
             className="photos-app-selection-btn photos-app-selection-delete"
             disabled={selectedIds.length === 0}
             onClick={() => {
               if (selectedIds.length === 0) return;
-
               const confirmed = window.confirm(
                 `确定删除已选的 ${selectedIds.length} 张照片吗？`
               );
               if (!confirmed) return;
-
               void handleDelete(selectedIds);
               exitSelectionMode();
             }}
@@ -805,28 +1059,48 @@ export default function PhotosApp({
         </div>
       )}
 
-      {viewerIndex !== null && visiblePhotos[viewerIndex] && (
-        <PhotoViewer
-          photos={visiblePhotos}
-          urls={urls}
-          index={viewerIndex}
-          categories={categories}
-          onClose={() => setViewerPhotoId(null)}
-          onNavigate={(next) => {
-            if (
-              next >= 0 &&
-              next < visiblePhotos.length
-            ) {
-              setViewerPhotoId(visiblePhotos[next].id);
+      {isPhotoMode &&
+        viewerIndex !== null &&
+        visiblePhotos[viewerIndex] && (
+          <PhotoViewer
+            photos={visiblePhotos}
+            urls={urls}
+            index={viewerIndex}
+            categories={categories}
+            onClose={() => setViewerPhotoId(null)}
+            onNavigate={(next) => {
+              if (
+                next >= 0 &&
+                next < visiblePhotos.length
+              ) {
+                setViewerPhotoId(
+                  visiblePhotos[next].id
+                );
+              }
+            }}
+            onUpdateDescription={
+              handleUpdateDescription
             }
-          }}
-          onUpdateDescription={handleUpdateDescription}
-          onSetCategory={(id, categoryId) =>
-            handleSetCategory([id], categoryId)
+            onSetCategory={(id, categoryId) =>
+              handleSetCategory([id], categoryId)
+            }
+            onDelete={(id) => {
+              void handleDelete([id]);
+            }}
+          />
+        )}
+
+      {viewerTextCard && (
+        <TextCardViewer
+          card={viewerTextCard}
+          pools={pools}
+          avatars={avatars}
+          onChange={handleUpdateTextCard}
+          onDelete={() =>
+            handleDeleteTextCard(viewerTextCard.id)
           }
-          onDelete={(id) => {
-            void handleDelete([id]);
-          }}
+          onPoolsChange={commitPools}
+          onClose={() => setViewerTextCardId(null)}
         />
       )}
 
@@ -853,12 +1127,60 @@ export default function PhotosApp({
         />
       )}
 
+      {showTextPoolEditor && (
+        <TextPoolEditor
+          pools={pools}
+          onChange={commitPools}
+          onClose={() => setShowTextPoolEditor(false)}
+        />
+      )}
+
       {namingItems && (
         <PhotoNamingModal
           items={namingItems}
           onConfirm={handleNamingConfirm}
           onSkip={handleNamingSkip}
         />
+      )}
+
+      {/* ---------- 文字浮层提醒 ---------- */}
+      {!isPhotoMode && pending && (
+        <div className="photo-text-float">
+          <div className="photo-text-float-avatars">
+            {(["Levi", "Erwin"] as const).map((c) => {
+              const key = toAvatarKey(c);
+              const url = key ? avatars[key] : null;
+              return (
+                <span
+                  key={c}
+                  className={`photo-text-float-avatar photo-text-float-avatar-${c.toLowerCase()}${
+                    url ? " has-image" : ""
+                  }`}
+                >
+                  {url ? (
+                    <img src={url} alt={c} />
+                  ) : (
+                    c.charAt(0)
+                  )}
+                </span>
+              );
+            })}
+          </div>
+          <span className="photo-text-float-label">
+            正在上传图片…
+          </span>
+          <span className="photo-text-float-count">
+            {formatCountdown(pending.resolveAt - Date.now())}
+          </span>
+        </div>
+      )}
+
+      {!isPhotoMode && !pending && toast && (
+        <div className="photo-text-float photo-text-float-toast">
+          <span className="photo-text-float-label">
+            {toast}
+          </span>
+        </div>
       )}
     </main>
   );

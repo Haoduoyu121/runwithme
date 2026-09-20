@@ -42,6 +42,15 @@ export type ICityPost = {
   timestamp: number;
   likes: ICityAuthor[];
   imageIds?: string[];
+  textCardSnapshot?: {
+    author: "Levi" | "Erwin";
+    place: string;
+    weather: string;
+    person: string;
+    action: string;
+    mood: string;
+  };
+  sourcePhotoTextCardId?: string;
 };
 
 export type ICityComment = {
