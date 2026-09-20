@@ -37,7 +37,6 @@ import {
 import { loadMusic, saveMusic } from "@/lib/musicStorage";
 
 type NeteasePanelProps = {
-  /* 添加成功后通知父级刷新 MusicContext */
   onAdded?: () => void;
 };
 
@@ -50,7 +49,6 @@ type QrStatus =
 export default function NeteasePanel({
   onAdded,
 }: NeteasePanelProps) {
-  /* session === undefined：还没从 localStorage 读完 */
   const [session, setSession] = useState<
     NeteaseSession | null | undefined
   >(undefined);
@@ -70,6 +68,8 @@ export default function NeteasePanel({
 
   const pollRef = useRef<number | null>(null);
   const cookieAccumRef = useRef<string>("");
+  /* ★ 用一个 ref 表示"本次扫码流程是否已被取消" */
+  const flowIdRef = useRef(0);
 
   /* -------- 初次读 session -------- */
   useEffect(() => {
@@ -107,6 +107,8 @@ export default function NeteasePanel({
   /* -------- 扫码流程 -------- */
   const startQrFlow = useCallback(async () => {
     stopPoll();
+    const myFlow = ++flowIdRef.current;
+
     setQrStatus("loading");
     setQrImg("");
     cookieAccumRef.current = "";
@@ -115,23 +117,51 @@ export default function NeteasePanel({
     try {
       key = await fetchQrKey();
       const img = await fetchQrImage(key);
+      if (myFlow !== flowIdRef.current) return;
       setQrImg(img);
       setQrStatus("waiting");
     } catch (e) {
       console.error(e);
+      if (myFlow !== flowIdRef.current) return;
       setQrStatus("expired");
       return;
     }
 
+    let interval = 700;
+    let firstDelay = 300;
+
     const tick = async () => {
+      if (myFlow !== flowIdRef.current) return;
+
       try {
         const r = await checkQr(
           key,
           cookieAccumRef.current
         );
-        if (r.cookie) {
-          cookieAccumRef.current = r.cookie;
+        if (myFlow !== flowIdRef.current) return;
+
+        /* ★ 803 判断必须最先，且不能覆盖 cookie */
+        if (r.code === 803) {
+          if (r.cookie) cookieAccumRef.current = r.cookie;
+          const finalCookie = cookieAccumRef.current;
+          if (finalCookie) {
+            const s = saveNeteaseSession({
+              cookie: finalCookie,
+              userId: r.userId ?? 0,
+              nickname: r.nickname ?? "网易云用户",
+              avatarUrl: r.avatarUrl ?? "",
+            });
+            setSession(s);
+          } else {
+            console.warn(
+              "803 但没有 cookie，无法保存 session"
+            );
+          }
+          return;
         }
+
+        /* 累积 cookie（801/802 都会带） */
+        if (r.cookie) cookieAccumRef.current = r.cookie;
 
         if (r.code === 800) {
           setQrStatus("expired");
@@ -142,31 +172,25 @@ export default function NeteasePanel({
           setQrStatus("waiting");
         } else if (r.code === 802) {
           setQrStatus("scanned");
-        } else if (r.code === 803) {
-          /* 成功：写 session → 自动切到已登录视图 */
-          if (r.cookie) {
-            const s = saveNeteaseSession({
-              cookie: r.cookie,
-              userId: r.userId ?? 0,
-              nickname: r.nickname ?? "网易云用户",
-              avatarUrl: r.avatarUrl ?? "",
-            });
-            setSession(s);
-          }
-          return;
+          /* ★ 已扫码 → 加速到 400ms，抢 803 窗口 */
+          interval = 400;
         }
 
         pollRef.current = window.setTimeout(
           tick,
-          2000
+          interval
         );
       } catch (e) {
         console.error(e);
-        pollRef.current = window.setTimeout(tick, 3000);
+        if (myFlow !== flowIdRef.current) return;
+        pollRef.current = window.setTimeout(tick, 1200);
       }
     };
 
-    pollRef.current = window.setTimeout(tick, 1500);
+    pollRef.current = window.setTimeout(
+      tick,
+      firstDelay
+    );
   }, [stopPoll]);
 
   /* -------- 未登录时启动扫码 -------- */
@@ -174,8 +198,9 @@ export default function NeteasePanel({
     if (session === undefined) return;
     if (session) return;
     void startQrFlow();
-    return () => stopPoll();
-  }, [session, startQrFlow, stopPoll]);
+    /* ★ 注意：不在这里 return stopPoll，
+       否则 session 一变会误取消进行中的流程 */
+  }, [session, startQrFlow]);
 
   /* -------- 搜索 -------- */
   async function handleSearch() {
@@ -237,6 +262,9 @@ export default function NeteasePanel({
   /* -------- 退出登录 -------- */
   function handleLogout() {
     if (!window.confirm("退出网易云登录？")) return;
+    /* ★ 取消进行中的扫码 */
+    flowIdRef.current++;
+    stopPoll();
     clearNeteaseSession();
     setSession(null);
     setResults([]);
@@ -248,7 +276,6 @@ export default function NeteasePanel({
      渲染
      =================================================== */
 
-  /* 未加载完 */
   if (session === undefined) {
     return (
       <div className="music-nt-panel">
@@ -259,7 +286,6 @@ export default function NeteasePanel({
     );
   }
 
-  /* 未登录：二维码 */
   if (!session) {
     return (
       <div className="music-nt-panel">
@@ -304,7 +330,6 @@ export default function NeteasePanel({
     );
   }
 
-  /* 已登录：搜索 + 结果 */
   return (
     <div className="music-nt-panel">
       <div className="music-nt-user">

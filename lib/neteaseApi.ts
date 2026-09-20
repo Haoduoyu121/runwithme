@@ -1,12 +1,44 @@
 // lib/neteaseApi.ts
-// 所有网易云 fetch 封装，统一走 /api/netease/*
+// 所有网易云 fetch 封装，统一走 api.yulewin.cn/api/netease/*
 
-const BASE = "/api/netease";
+const BASE =
+  process.env.NEXT_PUBLIC_API_BASE
+    ? `${process.env.NEXT_PUBLIC_API_BASE}/api/netease`
+    : "https://api.yulewin.cn/api/netease";
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) throw new Error(`netease api ${res.status}`);
-  return (await res.json()) as T;
+  const url = `${BASE}${path}`;
+
+  let lastErr: unknown = null;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        cache: "no-store",
+        credentials: "omit",
+      });
+      if (!res.ok) {
+        throw new Error(`netease api ${res.status}`);
+      }
+      return (await res.json()) as T;
+    } catch (e) {
+      lastErr = e;
+      /* 网络层错误 → 等 300ms 重试；HTTP 错误 → 直接抛 */
+      if (
+        e instanceof Error &&
+        e.message.startsWith("netease api ")
+      ) {
+        throw e;
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error("netease fetch failed");
 }
 
 /* ---------- 扫码登录 ---------- */
