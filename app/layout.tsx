@@ -21,6 +21,7 @@ import KeyboardInsetListener from "@/components/system/KeyboardInsetListener";
 import { WatchInviteScheduler } from "@/lib/WatchInviteScheduler";
 import { KeepAliveProvider } from "@/lib/KeepAliveContext";
 import ReadInviteScheduler from "@/components/system/ReadInviteScheduler";
+import PWAUpdatePrompt from "@/components/system/PWAUpdatePrompt";
 
 export const metadata: Metadata = {
   title: "RunWithme",
@@ -86,7 +87,8 @@ export default function RootLayout({
                             <FocusOverlay />
                             <NotificationOverlay />
                               <ReadInviteScheduler />
-                            <KeyboardInsetListener />
+                             <KeyboardInsetListener />
+                             <PWAUpdatePrompt />
                           </PomodoroProvider>
                         </ICityProvider>
                       </LetterProvider>

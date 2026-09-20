@@ -1,4 +1,4 @@
-const API_BASE = "https://api.rwm101230.top";
+const API_BASE = "https://api.yulewin.cn";
 
 export type WorldEventType =
   | "post"
