@@ -17,6 +17,12 @@ import {
 } from "@/data/cards";
 
 import { loadCards } from "@/lib/storage";
+import type { WorldEvent } from "@/data/worldEvents";
+import {
+  loadWorldEvents,
+  WORLD_EVENT_DISPATCH,
+} from "@/lib/worldEventsStorage";
+import { tryConvertToICityPost } from "@/lib/worldEventToICity";
 
 import {
   loadPosts,
@@ -259,6 +265,40 @@ function normalizeProfiles(
     };
   }
   return next;
+}
+
+const ICITY_SEEN_KEY =
+  "runwithme_world_events_icity_seen_v1";
+
+function loadICitySeen(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(
+      ICITY_SEEN_KEY
+    );
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(
+      parsed.filter(
+        (x): x is string => typeof x === "string"
+      )
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function saveICitySeen(ids: Set<string>): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      ICITY_SEEN_KEY,
+      JSON.stringify(Array.from(ids))
+    );
+  } catch {
+    /* 忽略 */
+  }
 }
 
 /* -------------------------------------------------------
@@ -537,6 +577,49 @@ export function ICityProvider({
     },
     []
   );
+
+    /* 世界事件消费（watch → iCity post） */
+  useEffect(() => {
+    const events = loadWorldEvents();
+    const seen = loadICitySeen();
+
+    for (const ev of events) {
+      if (seen.has(ev.id)) continue;
+      const post = tryConvertToICityPost(ev);
+      if (post) {
+        commitPosts([post, ...postsRef.current]);
+      }
+      seen.add(ev.id);
+    }
+    saveICitySeen(seen);
+
+    function onEvent(e: Event) {
+      const detail = (e as CustomEvent<WorldEvent>)
+        .detail;
+      if (!detail) return;
+
+      const s = loadICitySeen();
+      if (s.has(detail.id)) return;
+      s.add(detail.id);
+      saveICitySeen(s);
+
+      const post = tryConvertToICityPost(detail);
+      if (post) {
+        commitPosts([post, ...postsRef.current]);
+      }
+    }
+
+    window.addEventListener(
+      WORLD_EVENT_DISPATCH,
+      onEvent
+    );
+    return () => {
+      window.removeEventListener(
+        WORLD_EVENT_DISPATCH,
+        onEvent
+      );
+    };
+  }, [commitPosts]);
 
   /* 通知扫描 */
   useEffect(() => {

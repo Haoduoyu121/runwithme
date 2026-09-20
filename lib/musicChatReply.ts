@@ -28,8 +28,19 @@ export type MusicReply = {
 };
 
 /* 随机抽一条回复，如果没有可用卡返回 null */
-export function generateMusicReply(): MusicReply | null {
-  const cards = getEnabledMusicCards();
+export function generateMusicReply(
+  allowedSenders?: ("Levi" | "Erwin")[]
+): MusicReply | null {
+  let cards = getEnabledMusicCards();
+
+  if (allowedSenders && allowedSenders.length > 0) {
+    cards = cards.filter((c) =>
+      allowedSenders.includes(
+        c.character as "Levi" | "Erwin"
+      )
+    );
+  }
+
   if (cards.length === 0) return null;
 
   const picked = pickCardWithRules(cards);
@@ -43,6 +54,16 @@ export function generateMusicReply(): MusicReply | null {
   } = picked;
 
   if (card.type !== "text") return null;
+
+  if (
+    allowedSenders &&
+    allowedSenders.length > 0 &&
+    !allowedSenders.includes(
+      character as "Levi" | "Erwin"
+    )
+  ) {
+    return null;
+  }
 
   let text = card.text;
   if (emojiPrefix) text = `${emojiPrefix} ${text}`;

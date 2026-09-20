@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { Send, Settings, X } from "lucide-react";
+import {
+  Send,
+  Settings,
+  PenLine,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import { createMessageId } from "@/data/chat";
 
@@ -13,8 +19,11 @@ type MusicChatPanelProps = {
   messages: MusicChatMessage[];
   onAddMessage: (msg: MusicChatMessage) => void;
   onClose: () => void;
+  onOpenPartners: () => void;
   onOpenSettings: () => void;
+  onClearChat: () => void;
   partnerName: string;
+  presentPartners: ("Levi" | "Erwin")[];
   disabled: boolean;
 };
 
@@ -25,8 +34,11 @@ export default function MusicChatPanel({
   messages,
   onAddMessage,
   onClose,
+  onOpenPartners,
   onOpenSettings,
+  onClearChat,
   partnerName,
+  presentPartners,
   disabled,
 }: MusicChatPanelProps) {
   const [input, setInput] = useState("");
@@ -70,7 +82,7 @@ export default function MusicChatPanel({
       Math.random() * (USER_REPLY_MAX_MS - USER_REPLY_MIN_MS);
 
     const timer = window.setTimeout(() => {
-      const reply = generateMusicReply();
+      const reply = generateMusicReply(presentPartners);
       if (reply) {
         onAddMessage({
           id: createMessageId(),
@@ -96,11 +108,30 @@ export default function MusicChatPanel({
 
         <button
           className="music-chat-icon-btn"
+          onClick={onOpenPartners}
+          title="一起听设置"
+          aria-label="一起听设置"
+        >
+          <Settings size={16} strokeWidth={2} />
+        </button>
+
+        <button
+          className="music-chat-icon-btn"
           onClick={onOpenSettings}
           title="卡片设置"
           aria-label="卡片设置"
         >
-          <Settings size={16} strokeWidth={2} />
+          <PenLine size={16} strokeWidth={2} />
+        </button>
+
+        <button
+          className="music-chat-icon-btn music-chat-clear-btn"
+          onClick={onClearChat}
+          title="清空聊天记录"
+          aria-label="清空聊天记录"
+          disabled={messages.length === 0}
+        >
+          <Trash2 size={16} strokeWidth={2} />
         </button>
 
         <button
@@ -125,23 +156,39 @@ export default function MusicChatPanel({
                 还没有消息，聊点什么吧
               </div>
             ) : (
-              messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`music-chat-msg music-chat-msg-${
-                    m.sender === "You" ? "you" : "other"
-                  }`}
-                >
-                  {m.sender !== "You" && (
-                    <div className="music-chat-msg-name">
-                      {m.sender}
+              messages.map((m) => {
+                if (
+                  m.type === "system" ||
+                  m.sender === "System"
+                ) {
+                  return (
+                    <div
+                      key={m.id}
+                      className="music-chat-system"
+                    >
+                      {m.text}
                     </div>
-                  )}
-                  <div className="music-chat-msg-bubble">
-                    {m.text}
+                  );
+                }
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`music-chat-msg music-chat-msg-${
+                      m.sender === "You" ? "you" : "other"
+                    }`}
+                  >
+                    {m.sender !== "You" && (
+                      <div className="music-chat-msg-name">
+                        {m.sender}
+                      </div>
+                    )}
+                    <div className="music-chat-msg-bubble">
+                      {m.text}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
 
             {waitingReply && (

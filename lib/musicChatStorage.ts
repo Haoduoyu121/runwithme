@@ -2,8 +2,8 @@ const STORAGE_KEY = "runwithme_music_chat_messages";
 
 export type MusicChatMessage = {
   id: string;
-  sender: "You" | "Levi" | "Erwin";
-  type: "text";
+  sender: "You" | "Levi" | "Erwin" | "System";
+  type: "text" | "system";
   text: string;
   timestamp: number;
 };
@@ -15,7 +15,29 @@ export function loadMusicChatMessages(): MusicChatMessage[] {
   try {
     const parsed = JSON.parse(saved);
     if (!Array.isArray(parsed)) return [];
-    return parsed;
+    return parsed
+      .filter(
+        (m) =>
+          m &&
+          typeof m.id === "string" &&
+          typeof m.text === "string" &&
+          typeof m.timestamp === "number"
+      )
+      .map(
+        (m): MusicChatMessage => ({
+          id: m.id,
+          sender:
+            m.sender === "You" ||
+            m.sender === "Levi" ||
+            m.sender === "Erwin" ||
+            m.sender === "System"
+              ? m.sender
+              : "You",
+          type: m.type === "system" ? "system" : "text",
+          text: m.text,
+          timestamp: m.timestamp,
+        })
+      );
   } catch {
     return [];
   }

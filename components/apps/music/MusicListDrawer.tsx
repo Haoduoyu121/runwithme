@@ -1,18 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ChevronLeft,
   Ellipsis,
   Folder,
+  ImagePlus,
   Music2,
+  Play,
   Plus,
+  Trash2,
   X,
 } from "lucide-react";
 
 import { useMusic } from "@/lib/MusicContext";
 import { getMusicCover } from "@/lib/musicCoverFiles";
+
+import {
+  savePlaylistCover,
+  getPlaylistCover,
+  deletePlaylistCover,
+} from "@/lib/playlistCoverFiles";
 
 import {
   loadPlaylists,
@@ -24,6 +33,7 @@ import {
 type MusicListDrawerProps = {
   onClose: () => void;
   onSelect: (index: number) => void;
+  onCloseList: () => void;
 };
 
 type Tab = "all" | "playlists";
@@ -31,14 +41,23 @@ type Tab = "all" | "playlists";
 export default function MusicListDrawer({
   onClose,
   onSelect,
+  onCloseList,
 }: MusicListDrawerProps) {
-  const { music, currentIndex, isPlaying } = useMusic();
+  const {
+    music,
+    currentTrack,
+    isPlaying,
+    setQueue,
+    playFromQueue,
+  } = useMusic();
 
   const [tab, setTab] = useState<Tab>("all");
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [coverUrls, setCoverUrls] = useState<
     Record<string, string>
   >({});
+  const [playlistCoverUrls, setPlaylistCoverUrls] =
+    useState<Record<string, string>>({});
 
   const [addToPlaylistFor, setAddToPlaylistFor] = useState<
     string | null
@@ -48,6 +67,13 @@ export default function MusicListDrawer({
     string | null
   >(null);
 
+  const coverInputRef = useRef<HTMLInputElement | null>(
+    null
+  );
+
+  const currentTrackId = currentTrack?.id ?? null;
+
+  /* 加载音乐封面 */
   useEffect(() => {
     let cancelled = false;
     const created: string[] = [];
@@ -77,6 +103,36 @@ export default function MusicListDrawer({
     };
   }, [music]);
 
+  /* 加载歌单封面 */
+  useEffect(() => {
+    let cancelled = false;
+    const created: string[] = [];
+
+    async function load() {
+      const next: Record<string, string> = {};
+      for (const pl of playlists) {
+        if (!pl.coverId) continue;
+        try {
+          const blob = await getPlaylistCover(pl.coverId);
+          if (!blob || cancelled) continue;
+          const url = URL.createObjectURL(blob);
+          created.push(url);
+          next[pl.id] = url;
+        } catch (e) {
+          console.error("加载歌单封面失败:", e);
+        }
+      }
+      if (!cancelled) setPlaylistCoverUrls(next);
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      created.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [playlists]);
+
   useEffect(() => {
     setPlaylists(loadPlaylists());
   }, []);
@@ -84,6 +140,11 @@ export default function MusicListDrawer({
   function commitPlaylists(next: Playlist[]) {
     setPlaylists(next);
     savePlaylists(next);
+    try {
+      window.dispatchEvent(
+        new Event("runwithme:playlists-updated")
+      );
+    } catch {}
   }
 
   function createPlaylist(name: string) {
@@ -106,9 +167,19 @@ export default function MusicListDrawer({
     );
   }
 
-  function deletePlaylist(id: string) {
+  async function deletePlaylist(id: string) {
     if (!window.confirm("删除这个歌单？音乐本身不会被删除。"))
       return;
+
+    const pl = playlists.find((p) => p.id === id);
+    if (pl?.coverId) {
+      try {
+        await deletePlaylistCover(pl.coverId);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     commitPlaylists(playlists.filter((p) => p.id !== id));
     if (openedPlaylistId === id) setOpenedPlaylistId(null);
   }
@@ -147,9 +218,67 @@ export default function MusicListDrawer({
     );
   }
 
+  async function handlePlaylistCoverUpload(
+    playlistId: string,
+    file: File
+  ) {
+    if (!file.type.startsWith("image/")) {
+      alert("请选择图片文件。");
+      return;
+    }
+
+    const coverId = `playlist-cover-${playlistId}`;
+
+    try {
+      await savePlaylistCover(coverId, file);
+
+      const next = playlists.map((p) =>
+        p.id === playlistId ? { ...p, coverId } : p
+      );
+      commitPlaylists(next);
+
+      const url = URL.createObjectURL(file);
+      setPlaylistCoverUrls((prev) => ({
+        ...prev,
+        [playlistId]: url,
+      }));
+    } catch (e) {
+      console.error("保存歌单封面失败:", e);
+      alert("封面保存失败。");
+    }
+  }
+
+  async function handlePlaylistCoverRemove(
+    playlistId: string
+  ) {
+    const pl = playlists.find((p) => p.id === playlistId);
+    if (!pl?.coverId) return;
+
+    try {
+      await deletePlaylistCover(pl.coverId);
+    } catch (e) {
+      console.error(e);
+    }
+
+    const next = playlists.map((p) =>
+      p.id === playlistId
+        ? { ...p, coverId: undefined }
+        : p
+    );
+    commitPlaylists(next);
+
+    setPlaylistCoverUrls((prev) => {
+      const copy = { ...prev };
+      const u = copy[playlistId];
+      if (u) URL.revokeObjectURL(u);
+      delete copy[playlistId];
+      return copy;
+    });
+  }
+
   function renderCover(
     item: { id: string; coverId?: string },
-    idx: number
+    isCurrent: boolean
   ) {
     const url = coverUrls[item.id];
     if (url) {
@@ -161,8 +290,6 @@ export default function MusicListDrawer({
         />
       );
     }
-    const isCurrent =
-      idx === currentIndex && isPlaying;
     return (
       <div className="music-v2-drawer-item-cover">
         <Music2
@@ -185,35 +312,40 @@ export default function MusicListDrawer({
 
     return (
       <>
-        {music.map((item, index) => (
-          <div
-            key={item.id}
-            className={
-              index === currentIndex
-                ? "music-v2-drawer-item active"
-                : "music-v2-drawer-item"
-            }
-          >
-            <button
-              className="music-v2-drawer-item-main"
-              onClick={() => onSelect(index)}
+        {music.map((item, index) => {
+          const isCurrent = item.id === currentTrackId;
+          return (
+            <div
+              key={item.id}
+              className={
+                isCurrent
+                  ? "music-v2-drawer-item active"
+                  : "music-v2-drawer-item"
+              }
             >
-              {renderCover(item, index)}
-              <div className="music-v2-drawer-item-info">
-                <strong>{item.title}</strong>
-                <small>{item.artist || "RunWithme"}</small>
-              </div>
-            </button>
+              <button
+                className="music-v2-drawer-item-main"
+                onClick={() => onSelect(index)}
+              >
+                {renderCover(item, isCurrent)}
+                <div className="music-v2-drawer-item-info">
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.artist || "RunWithme"}
+                  </small>
+                </div>
+              </button>
 
-            <button
-              className="music-v2-drawer-item-menu"
-              onClick={() => setAddToPlaylistFor(item.id)}
-              aria-label="添加到歌单"
-            >
-              <Ellipsis size={18} strokeWidth={2} />
-            </button>
-          </div>
-        ))}
+              <button
+                className="music-v2-drawer-item-menu"
+                onClick={() => setAddToPlaylistFor(item.id)}
+                aria-label="添加到歌单"
+              >
+                <Ellipsis size={18} strokeWidth={2} />
+              </button>
+            </div>
+          );
+        })}
       </>
     );
   }
@@ -248,39 +380,82 @@ export default function MusicListDrawer({
             还没有歌单
           </div>
         ) : (
-          playlists.map((pl) => (
-            <div
-              key={pl.id}
-              className="music-playlist-item"
-            >
-              <button
-                className="music-playlist-item-main"
-                onClick={() => setOpenedPlaylistId(pl.id)}
+          playlists.map((pl) => {
+            const coverUrl = playlistCoverUrls[pl.id];
+            return (
+              <div
+                key={pl.id}
+                className="music-playlist-item"
               >
-                <div className="music-playlist-item-icon">
-                  <Folder size={18} strokeWidth={1.8} />
-                </div>
-                <div className="music-playlist-item-info">
-                  <strong>{pl.name}</strong>
-                  <small>{pl.musicIds.length} 首</small>
-                </div>
-              </button>
+                <button
+                  className="music-playlist-item-main"
+                  onClick={() => setOpenedPlaylistId(pl.id)}
+                >
+                  <div className="music-playlist-item-icon">
+                    {coverUrl ? (
+                      <img
+                        src={coverUrl}
+                        alt=""
+                        className="music-playlist-item-cover-img"
+                      />
+                    ) : (
+                      <Folder
+                        size={18}
+                        strokeWidth={1.8}
+                      />
+                    )}
+                  </div>
+                  <div className="music-playlist-item-info">
+                    <strong>{pl.name}</strong>
+                    <small>{pl.musicIds.length} 首</small>
+                  </div>
+                </button>
 
-              <button
-                className="music-v2-drawer-item-menu"
-                onClick={() => deletePlaylist(pl.id)}
-                aria-label="删除歌单"
-              >
-                <X size={16} strokeWidth={2.2} />
-              </button>
-            </div>
-          ))
+                <button
+                  className="music-v2-drawer-item-menu"
+                  onClick={() => deletePlaylist(pl.id)}
+                  aria-label="删除歌单"
+                >
+                  <X size={16} strokeWidth={2.2} />
+                </button>
+              </div>
+            );
+          })
         )}
       </>
     );
   }
 
+  function handlePlayAll(pl: Playlist) {
+    if (pl.musicIds.length === 0) {
+      window.alert("歌单里还没有歌。");
+      return;
+    }
+    setQueue({
+      id: pl.id,
+      name: pl.name,
+      musicIds: pl.musicIds,
+    });
+    void playFromQueue(0);
+    onCloseList();
+  }
+
+  function handlePlayFromPlaylist(
+    pl: Playlist,
+    indexInPlaylist: number
+  ) {
+    setQueue({
+      id: pl.id,
+      name: pl.name,
+      musicIds: pl.musicIds,
+    });
+    void playFromQueue(indexInPlaylist);
+    onCloseList();
+  }
+
   function renderPlaylistDetail(pl: Playlist) {
+    const coverUrl = playlistCoverUrls[pl.id];
+
     return (
       <>
         <button
@@ -290,6 +465,56 @@ export default function MusicListDrawer({
           <ChevronLeft size={14} strokeWidth={2.6} />
           返回歌单
         </button>
+
+        {/* 大封面 + 改名 */}
+        <div className="music-playlist-detail-cover-wrap">
+          <button
+            type="button"
+            className="music-playlist-detail-cover"
+            onClick={() =>
+              coverInputRef.current?.click()
+            }
+            aria-label="更换封面"
+          >
+            {coverUrl ? (
+              <img src={coverUrl} alt="" />
+            ) : (
+              <div className="music-playlist-detail-cover-empty">
+                <ImagePlus
+                  size={32}
+                  strokeWidth={1.6}
+                />
+                <span>选择封面</span>
+              </div>
+            )}
+          </button>
+
+          {pl.coverId && (
+            <button
+              type="button"
+              className="music-playlist-detail-cover-remove"
+              onClick={() =>
+                void handlePlaylistCoverRemove(pl.id)
+              }
+              aria-label="移除封面"
+            >
+              <Trash2 size={14} strokeWidth={2} />
+            </button>
+          )}
+
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            className="ios-file-input-detached"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f)
+                void handlePlaylistCoverUpload(pl.id, f);
+              e.target.value = "";
+            }}
+          />
+        </div>
 
         <div className="music-playlist-detail-header">
           <input
@@ -305,30 +530,47 @@ export default function MusicListDrawer({
           </span>
         </div>
 
+        {pl.musicIds.length > 0 && (
+          <button
+            className="music-playlist-play-all"
+            onClick={() => handlePlayAll(pl)}
+          >
+            <Play
+              size={14}
+              strokeWidth={2.4}
+              fill="currentColor"
+            />
+            播放全部
+          </button>
+        )}
+
         {pl.musicIds.length === 0 ? (
           <div className="music-v2-drawer-empty">
             还没有歌，去「全部」里点击 ⋯ 添加
           </div>
         ) : (
-          pl.musicIds.map((id) => {
+          pl.musicIds.map((id, indexInPl) => {
             const item = music.find((m) => m.id === id);
             if (!item) return null;
-            const idx = music.findIndex((m) => m.id === id);
+
+            const isCurrent = item.id === currentTrackId;
 
             return (
               <div
                 key={id}
                 className={
-                  idx === currentIndex
+                  isCurrent
                     ? "music-v2-drawer-item active"
                     : "music-v2-drawer-item"
                 }
               >
                 <button
                   className="music-v2-drawer-item-main"
-                  onClick={() => onSelect(idx)}
+                  onClick={() =>
+                    handlePlayFromPlaylist(pl, indexInPl)
+                  }
                 >
-                  {renderCover(item, idx)}
+                  {renderCover(item, isCurrent)}
                   <div className="music-v2-drawer-item-info">
                     <strong>{item.title}</strong>
                     <small>

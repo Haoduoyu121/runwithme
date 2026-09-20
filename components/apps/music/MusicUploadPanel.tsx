@@ -23,15 +23,23 @@ import {
   deleteMusicCover,
 } from "@/lib/musicCoverFiles";
 
+import { useMusic } from "@/lib/MusicContext";
+
+import NeteasePanel from "./NeteasePanel";
+
 type MusicUploadPanelProps = {
   onClose: () => void;
 };
 
+type Tab = "add" | "manage" | "netease";
+
 export default function MusicUploadPanel({
   onClose,
 }: MusicUploadPanelProps) {
+  const { reload } = useMusic();
+
   const [music, setMusic] = useState<MusicItem[]>([]);
-  const [tab, setTab] = useState<"add" | "manage">("add");
+  const [tab, setTab] = useState<Tab>("add");
 
   const [source, setSource] = useState<MusicSource>("file");
   const [title, setTitle] = useState("");
@@ -137,6 +145,7 @@ export default function MusicUploadPanel({
 
         updateList([...music, newItem]);
         resetForm();
+        reload();
       } catch (e) {
         console.error(e);
         alert("保存失败，请查看控制台。");
@@ -165,6 +174,7 @@ export default function MusicUploadPanel({
 
     updateList([...music, newItem]);
     resetForm();
+    reload();
   }
 
   async function handleDelete(item: MusicItem) {
@@ -189,6 +199,7 @@ export default function MusicUploadPanel({
     }
 
     updateList(music.filter((m) => m.id !== item.id));
+    reload();
   }
 
   function handleToggle(item: MusicItem) {
@@ -199,9 +210,13 @@ export default function MusicUploadPanel({
           : m
       )
     );
+    reload();
   }
 
-  async function handleCoverFile(itemId: string, file: File) {
+  async function handleCoverFile(
+    itemId: string,
+    file: File
+  ) {
     if (!file.type.startsWith("image/")) {
       alert("请选择图片文件。");
       return;
@@ -282,6 +297,13 @@ export default function MusicUploadPanel({
             onClick={() => setTab("manage")}
           >
             管理 ({music.length})
+          </button>
+
+          <button
+            className={tab === "netease" ? "active" : ""}
+            onClick={() => setTab("netease")}
+          >
+            网易云
           </button>
         </div>
 
@@ -366,15 +388,17 @@ export default function MusicUploadPanel({
             ) : (
               music.map((item) => {
                 const coverUrl = coverUrls[item.id];
+                const displayCover =
+                  coverUrl || item.remoteCover;
 
                 return (
                   <div
                     key={item.id}
                     className="music-v2-panel-item"
                   >
-                    {coverUrl ? (
+                    {displayCover ? (
                       <img
-                        src={coverUrl}
+                        src={displayCover}
                         alt=""
                         className="music-v2-panel-item-cover"
                       />
@@ -388,9 +412,12 @@ export default function MusicUploadPanel({
                       <strong>{item.title}</strong>
                       <small>
                         {item.artist || "RunWithme"}
-                        {item.fileName
-                          ? ` · ${item.fileName}`
-                          : ""}
+                        {item.source === "netease" &&
+                        item.neteaseId
+                          ? ` · 网易云 ${item.neteaseId}`
+                          : item.fileName
+                            ? ` · ${item.fileName}`
+                            : ""}
                       </small>
                     </div>
 
@@ -405,7 +432,8 @@ export default function MusicUploadPanel({
                         accept="image/*"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
-                          if (f) void handleCoverFile(item.id, f);
+                          if (f)
+                            void handleCoverFile(item.id, f);
                           e.target.value = "";
                         }}
                       />
@@ -445,6 +473,16 @@ export default function MusicUploadPanel({
           </div>
         )}
 
+        {tab === "netease" && (
+          <div className="music-v2-panel-netease">
+            <NeteasePanel
+              onAdded={() => {
+                setMusic(loadMusic(defaultMusic));
+                reload();
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

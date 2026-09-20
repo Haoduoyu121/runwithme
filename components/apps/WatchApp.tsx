@@ -32,6 +32,7 @@ import {
   type WatchSettings,
 } from "@/lib/watchSettings";
 import WatchCardEditor from "@/components/watch/WatchCardEditor";
+import { emitWorldEvent } from "@/lib/worldEventsStorage";
 
 import {
   useCharacterAvatars,
@@ -161,6 +162,7 @@ export default function WatchApp({ onBack }: WatchAppProps) {
   const [watchSettings, setWatchSettings] =
     useState<WatchSettings>({
       autoMessageEnabled: true,
+      icityPostChance: 0.5,
     });
   const [showChatSettings, setShowChatSettings] =
     useState(false);
@@ -191,6 +193,7 @@ export default function WatchApp({ onBack }: WatchAppProps) {
   const autoMsgFirstSentRef = useRef(false);
   const autoMsgTimerRef = useRef<number | null>(null);
   const hasPlayedOnceRef = useRef(false);
+  const sessionEndEmittedRef = useRef(false);
 
   function clearInviteTimers() {
     inviteTimersRef.current.forEach((id) =>
@@ -417,6 +420,7 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     setChatInput("");
     setTypingPartner(null);
     autoMsgFirstSentRef.current = false;
+    sessionEndEmittedRef.current = false;
     if (autoMsgTimerRef.current !== null) {
       window.clearTimeout(autoMsgTimerRef.current);
       autoMsgTimerRef.current = null;
@@ -490,6 +494,38 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     setShowRateMenu(false);
   }
 
+    function emitSessionEnd() {
+    if (sessionEndEmittedRef.current) return;
+    if (presentPartners.length === 0) return;
+    if (!source) return;
+
+    sessionEndEmittedRef.current = true;
+
+    const title =
+      source.kind === "local"
+        ? source.name
+        : source.bvid;
+
+    const partnerNames = presentPartners.map(
+      (p) => PARTNER_NAME[p]
+    );
+
+    emitWorldEvent({
+      app: "watch",
+      type: "session-end",
+      actor: "You",
+      title: `你和 ${partnerNames.join(
+        "、"
+      )} 看完了《${title}》`,
+      preview: title,
+      meta: {
+        partners: presentPartners,
+        title,
+        sourceKind: source.kind,
+      },
+    });
+  }
+
   function handleBack() {
     setIsFullscreen(false);
     setIsRotated(false);
@@ -512,6 +548,7 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     setChatMode(false);
     setTypingPartner(null);
     autoMsgFirstSentRef.current = false;
+    sessionEndEmittedRef.current = false;
     if (autoMsgTimerRef.current !== null) {
       window.clearTimeout(autoMsgTimerRef.current);
       autoMsgTimerRef.current = null;
@@ -567,7 +604,8 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     setInvite(null);
     setChatMode(false);
     setMessages([]);
-    autoMsgFirstSentRef.current = false;
+        autoMsgFirstSentRef.current = false;
+    sessionEndEmittedRef.current = false;
     if (autoMsgTimerRef.current !== null) {
       window.clearTimeout(autoMsgTimerRef.current);
       autoMsgTimerRef.current = null;
@@ -691,7 +729,8 @@ export default function WatchApp({ onBack }: WatchAppProps) {
     setMessages([]);
     setTypingPartner(null);
     setInvite(null);
-    autoMsgFirstSentRef.current = false;
+        autoMsgFirstSentRef.current = false;
+    sessionEndEmittedRef.current = false;
     if (autoMsgTimerRef.current !== null) {
       window.clearTimeout(autoMsgTimerRef.current);
       autoMsgTimerRef.current = null;
@@ -824,7 +863,10 @@ export default function WatchApp({ onBack }: WatchAppProps) {
                     e.currentTarget.playbackRate =
                       playbackRate;
                   }}
-                  onEnded={() => setPlaying(false)}
+                  onEnded={() => {
+                    setPlaying(false);
+                    emitSessionEnd();
+                  }}
                 />
 
                 {!showChatLayout && (
@@ -1588,6 +1630,48 @@ export default function WatchApp({ onBack }: WatchAppProps) {
               >
                 <span />
               </button>
+            </div>
+
+                        <div className="watch-settings-row">
+              <div className="watch-settings-row-info">
+                <strong>看完后发 iCity 动态</strong>
+                <small>
+                  你们一起看完视频后，角色主动在 iCity
+                  分享的概率。0 表示不发。
+                </small>
+              </div>
+              <div className="watch-settings-slider">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={Math.round(
+                    watchSettings.icityPostChance * 100
+                  )}
+                  onChange={(e) => {
+                    const next = {
+                      ...watchSettings,
+                      icityPostChance:
+                        Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            Number(e.target.value) || 0
+                          )
+                        ) / 100,
+                    };
+                    setWatchSettings(next);
+                    saveWatchSettings(next);
+                  }}
+                />
+                <span>
+                  {Math.round(
+                    watchSettings.icityPostChance * 100
+                  )}
+                  %
+                </span>
+              </div>
             </div>
 
             <button

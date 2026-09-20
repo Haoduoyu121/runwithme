@@ -10,7 +10,13 @@ export type WorldEventApp =
 
 export type WorldEventActor = "You" | "Levi" | "Erwin";
 
-export type WorldEventType = "post" | "like" | "comment";
+export type WorldEventType =
+  | "post"
+  | "like"
+  | "comment"
+  | "session-end"
+  | "invite-accepted"
+  | "track-change";
 
 export type WorldEvent = {
   id: string;

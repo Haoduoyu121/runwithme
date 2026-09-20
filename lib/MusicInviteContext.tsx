@@ -13,6 +13,7 @@ import {
 import { useMusic } from "@/lib/MusicContext";
 import { useChat } from "@/lib/ChatContext";
 import { createMessageId } from "@/data/chat";
+import { emitWorldEvent } from "@/lib/worldEventsStorage";
 
 import {
   loadListenPartner,
@@ -276,6 +277,14 @@ export function MusicInviteProvider({
       type: "text",
       text: "好啊。",
       timestamp: Date.now(),
+    });
+
+    const who = from === "Both" ? "Levi & Erwin" : from;
+    emitWorldEvent({
+      app: "music",
+      type: "invite-accepted",
+      actor: "You",
+      title: `${who} 邀请你一起听，开始了`,
     });
 
     const delay =

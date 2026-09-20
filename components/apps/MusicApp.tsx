@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   Check,
   ChevronLeft,
-  List,
-  MessageCircle,
+  Folder,
+  ImagePlus,
   Music as MusicIcon,
   Pause,
   Play,
-  Plus,
-  SkipBack,
-  SkipForward,
   Upload,
   X,
 } from "lucide-react";
@@ -29,22 +30,27 @@ import {
   type ListenPartner,
 } from "@/lib/listenTogetherStorage";
 
-import { createMessageId } from "@/data/chat";
-import { defaultMusic } from "@/data/music";
+import {
+  loadTogetherStart,
+  saveTogetherStart,
+} from "@/lib/togetherSessionStorage";
 
-import { loadMusic, saveMusic } from "@/lib/musicStorage";
+import { createMessageId } from "@/data/chat";
+import { emitWorldEvent } from "@/lib/worldEventsStorage";
 
 import {
-  saveMusicCover,
-  getMusicCover,
-} from "@/lib/musicCoverFiles";
+  loadPlaylists,
+  type Playlist,
+} from "@/lib/playlistStorage";
+
+import { getMusicCover } from "@/lib/musicCoverFiles";
+import { getPlaylistCover } from "@/lib/playlistCoverFiles";
 
 import {
   loadMusicChatMessages,
   saveMusicChatMessages,
   type MusicChatMessage,
 } from "@/lib/musicChatStorage";
-import { generateMusicReply } from "@/lib/musicChatReply";
 
 import { pushMemory } from "@/lib/memoryStorage";
 
@@ -52,6 +58,8 @@ import MusicListDrawer from "@/components/apps/music/MusicListDrawer";
 import MusicUploadPanel from "@/components/apps/music/MusicUploadPanel";
 import MusicChatPanel from "@/components/apps/music/MusicChatPanel";
 import MusicChatSettings from "@/components/apps/music/MusicChatSettings";
+import TogetherAvatars from "@/components/apps/music/TogetherAvatars";
+import FullPlayer from "@/components/apps/music/FullPlayer";
 
 type MusicAppProps = { onBack: () => void };
 type AvatarKey = "you" | "levi" | "erwin";
@@ -79,44 +87,15 @@ const REJECT_LINES = [
   "先不听了。",
 ];
 
-const TRACK_CHANGE_MIN_MS = 3 * 1000;
-const TRACK_CHANGE_MAX_MS = 10 * 1000;
-const PLAY_STATE_MIN_MS = 5 * 1000;
-const PLAY_STATE_MAX_MS = 12 * 1000;
-const SYSTEM_COOLDOWN_MS = 30 * 1000;
+/** 切歌系统消息 5 分钟限流 */
+const TRACK_CHANGE_COOLDOWN_MS = 5 * 60 * 1000;
 
-/* session 至少 3 秒才写入 Memory，防御短命 session */
 const MIN_SESSION_MS = 3 * 1000;
-
-/* iOS 上传修复：不用屏幕外 / 不用 zIndex: -1
-   ref.click() 场景 → fixed 右下角 1x1 */
-const IOS_SAFE_FILE_STYLE: React.CSSProperties = {
-  position: "fixed",
-  bottom: 0,
-  right: 0,
-  width: 1,
-  height: 1,
-  opacity: 0,
-  overflow: "hidden",
-};
 
 function pickLine(list: string[]) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-/* ★ Step 2：把毫秒差格式化成 01:24:36 */
-function formatTogetherDuration(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) ms = 0;
-  const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  return `${String(h).padStart(2, "0")}:${String(
-    m
-  ).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-/* ★ Step 3：时长的人类可读标签（给 Memory 标题用） */
 function formatSessionLength(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(totalSec / 3600);
@@ -127,6 +106,8 @@ function formatSessionLength(ms: number): string {
   return `${s} 秒`;
 }
 
+type LibraryTab = "playlists" | "songs";
+
 export default function MusicApp({ onBack }: MusicAppProps) {
   const {
     music,
@@ -136,12 +117,13 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     error,
     isPlaying,
     currentTrack,
+    playMode,
     reload,
     playTrack,
     togglePlay,
     nextTrack,
-    previousTrack,
     seek,
+    cyclePlayMode,
   } = useMusic();
 
   const { settings } = useSystem();
@@ -163,42 +145,139 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     MusicChatMessage[]
   >([]);
 
+  const [showFullPlayer, setShowFullPlayer] =
+    useState(false);
+
+  const [libraryTab, setLibraryTab] =
+    useState<LibraryTab>("playlists");
+  const [openedPlaylistId, setOpenedPlaylistId] =
+    useState<string | null>(null);
+  const [playlists, setPlaylists] = useState<Playlist[]>(
+    []
+  );
+  const [playlistCoverUrls, setPlaylistCoverUrls] =
+    useState<Record<string, string>>({});
+
   const [avatarUrls, setAvatarUrls] = useState<
     Record<AvatarKey, string | null>
   >({ you: null, levi: null, erwin: null });
 
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(
+    null
+  );
+  const coverInputRef = useRef<HTMLInputElement | null>(
+    null
+  );
 
-  /* ★ Step 2：一起听计时（纯运行时） */
   const [togetherStartAt, setTogetherStartAt] = useState<
     number | null
   >(null);
-  const [togetherElapsed, setTogetherElapsed] =
-    useState(0);
+  const [togetherElapsed, setTogetherElapsed] = useState(0);
 
-  const systemCooldownRef = useRef(0);
-  const systemTimerRef = useRef<number | null>(null);
+  const trackChangeCooldownRef = useRef(0);
 
-  /* ★ Step 3：session 追踪 refs */
   const prevPartnerRef = useRef<ListenPartner>("Solo");
   const sessionStartAtRef = useRef<number | null>(null);
   const sessionTrackIdsRef = useRef<Set<string>>(new Set());
   const sessionStartMsgCountRef = useRef(0);
 
-  /* 让 effect 内读到最新 chatMessages.length，不受闭包限制 */
   const chatMessagesRef = useRef<MusicChatMessage[]>([]);
   useEffect(() => {
     chatMessagesRef.current = chatMessages;
   }, [chatMessages]);
 
-  /* -------------------------------------------------------
-     初始化
-     ------------------------------------------------------- */
+  const currentTrackRef = useRef(currentTrack);
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
 
+  const partnerRef = useRef(partner);
+  useEffect(() => {
+    partnerRef.current = partner;
+  }, [partner]);
+
+  /* 加载头像 */
+  useEffect(() => {
+    let cancelled = false;
+    const created: string[] = [];
+
+    async function load() {
+      const next: Record<AvatarKey, string | null> = {
+        you: null,
+        levi: null,
+        erwin: null,
+      };
+      for (const key of [
+        "you",
+        "levi",
+        "erwin",
+      ] as AvatarKey[]) {
+        if (!settings.avatars[key]) continue;
+        const file = await getChatFile(`avatar-${key}`);
+        if (!file) continue;
+        const url = URL.createObjectURL(file);
+        created.push(url);
+        next[key] = url;
+      }
+      if (!cancelled) setAvatarUrls(next);
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+      created.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [settings.avatars]);
+
+  /* 加载封面 */
+  useEffect(() => {
+    if (!currentTrack) {
+      setCoverUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    let url: string | null = null;
+
+    async function load() {
+      const coverId = currentTrack!.coverId;
+      if (!coverId) {
+        setCoverUrl(null);
+        return;
+      }
+      const blob = await getMusicCover(coverId);
+      if (!blob || cancelled) return;
+      url = URL.createObjectURL(blob);
+      setCoverUrl(url);
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [currentTrack?.id, currentTrack?.coverId]);
+
+  /* 初始化 */
   useEffect(() => {
     setPartner(loadListenPartner());
     setChatMessages(loadMusicChatMessages());
+    setPlaylists(loadPlaylists());
+
+    function onPlaylistsUpdated() {
+      setPlaylists(loadPlaylists());
+    }
+    window.addEventListener(
+      "runwithme:playlists-updated",
+      onPlaylistsUpdated
+    );
+    return () => {
+      window.removeEventListener(
+        "runwithme:playlists-updated",
+        onPlaylistsUpdated
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -222,23 +301,51 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     saveMusicChatMessages(chatMessages);
   }, [chatMessages]);
 
-  /* -------------------------------------------------------
-     ★ Step 2 + Step 3：一起听 session 生命周期
-     - 进入非 Solo：开始计时 + 开 session
-     - 回到 Solo：结束 session + 写入 Memory
-     - 非 Solo → 另一个非 Solo：先结束旧的，再开新的
-     ------------------------------------------------------- */
+  /* 加载歌单封面 */
+  useEffect(() => {
+    let cancelled = false;
+    const created: string[] = [];
 
+    async function load() {
+      const next: Record<string, string> = {};
+      for (const pl of playlists) {
+        if (!pl.coverId) continue;
+        try {
+          const blob = await getPlaylistCover(pl.coverId);
+          if (!blob || cancelled) continue;
+          const url = URL.createObjectURL(blob);
+          created.push(url);
+          next[pl.id] = url;
+        } catch (e) {
+          console.error("加载歌单封面失败:", e);
+        }
+      }
+      if (!cancelled) setPlaylistCoverUrls(next);
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      created.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [playlists]);
+
+  /* 一起听计时 */
   useEffect(() => {
     if (partner === "Solo") {
       setTogetherStartAt(null);
       setTogetherElapsed(0);
+      saveTogetherStart(null);
       return;
     }
 
-    const start = Date.now();
+    const stored = loadTogetherStart();
+    const start = stored ?? Date.now();
+    if (!stored) saveTogetherStart(start);
+
     setTogetherStartAt(start);
-    setTogetherElapsed(0);
+    setTogetherElapsed(Date.now() - start);
 
     const timer = window.setInterval(() => {
       setTogetherElapsed(Date.now() - start);
@@ -249,16 +356,15 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     };
   }, [partner]);
 
+  /* session 生命周期 */
   useEffect(() => {
     const prev = prevPartnerRef.current;
     const next = partner;
 
-    /* 结束旧 session（prev 非 Solo 且曾经真的开过） */
     if (prev !== "Solo" && sessionStartAtRef.current !== null) {
       finalizeSession(prev);
     }
 
-    /* 开始新 session */
     if (next !== "Solo") {
       startSession();
     }
@@ -268,27 +374,31 @@ export default function MusicApp({ onBack }: MusicAppProps) {
   }, [partner]);
 
   function startSession() {
-    sessionStartAtRef.current = Date.now();
+    const stored = loadTogetherStart();
+    const start = stored ?? Date.now();
+    if (!stored) saveTogetherStart(start);
+    sessionStartAtRef.current = start;
     sessionTrackIdsRef.current = new Set();
     sessionStartMsgCountRef.current =
       chatMessagesRef.current.length;
 
-    /* 把当前正在播的歌也算进 session */
-    if (currentTrack?.id) {
-      sessionTrackIdsRef.current.add(currentTrack.id);
+    if (currentTrackRef.current?.id) {
+      sessionTrackIdsRef.current.add(
+        currentTrackRef.current.id
+      );
     }
   }
 
   function finalizeSession(endedPartner: ListenPartner) {
     const startAt = sessionStartAtRef.current;
     sessionStartAtRef.current = null;
+    saveTogetherStart(null);
 
     if (startAt === null) return;
 
     const endAt = Date.now();
     const durationMs = endAt - startAt;
 
-    /* 太短就丢弃，避免误写 */
     if (durationMs < MIN_SESSION_MS) return;
 
     const trackCount = sessionTrackIdsRef.current.size;
@@ -331,182 +441,84 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     });
   }
 
-  useEffect(() => {
-    let cancelled = false;
-    const created: string[] = [];
+  /* ---------- 系统消息统一入口 ---------- */
 
-    async function load() {
-      const next: Record<AvatarKey, string | null> = {
-        you: null,
-        levi: null,
-        erwin: null,
-      };
-      for (const key of ["you", "levi", "erwin"] as AvatarKey[]) {
-        if (!settings.avatars[key]) continue;
-        const file = await getChatFile(`avatar-${key}`);
-        if (!file) continue;
-        const url = URL.createObjectURL(file);
-        created.push(url);
-        next[key] = url;
-      }
-      if (!cancelled) setAvatarUrls(next);
-    }
+  function emitMusicSystem(
+    text: string,
+    worldType:
+      | "invite-accepted"
+      | "track-change"
+  ) {
+    /* 1. 加到 Music 聊天面板 */
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        id: createMessageId(),
+        sender: "System",
+        type: "system",
+        text,
+        timestamp: Date.now(),
+      },
+    ]);
 
-    void load();
-    return () => {
-      cancelled = true;
-      created.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [settings.avatars]);
+    /* 2. 广播到 Chat App（走 worldEvents） */
+    emitWorldEvent({
+      app: "music",
+      type: worldType,
+      actor: "You",
+      title: text,
+    });
+  }
 
-  useEffect(() => {
-    if (!currentTrack) {
-      setCoverUrl(null);
-      return;
-    }
-
-    let cancelled = false;
-    let url: string | null = null;
-
-    async function load() {
-      const coverId = currentTrack!.coverId;
-      if (!coverId) {
-        setCoverUrl(null);
-        return;
-      }
-      const blob = await getMusicCover(coverId);
-      if (!blob || cancelled) return;
-      url = URL.createObjectURL(blob);
-      setCoverUrl(url);
-    }
-
-    void load();
-
-    return () => {
-      cancelled = true;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [currentTrack?.id, currentTrack?.coverId]);
-
-  /* -------------------------------------------------------
-     系统主动发消息（切歌 / 播放 / 暂停）
-     ★ Step 3：切歌时顺便把 trackId 计入当前 session
-     ------------------------------------------------------- */
-
+  /* 切歌系统消息（5 分钟限流） */
   useEffect(() => {
     if (partner === "Solo") return;
 
-    function fireSystemMessage(
-      reason: string,
-      minMs: number,
-      maxMs: number
-    ) {
-      const now = Date.now();
-      if (now - systemCooldownRef.current < SYSTEM_COOLDOWN_MS)
-        return;
-      systemCooldownRef.current = now;
-
-      const delay = minMs + Math.random() * (maxMs - minMs);
-      console.log(
-        `[MusicChat] ${reason} · ${(delay / 1000).toFixed(
-          1
-        )}s 后回复`
-      );
-
-      if (systemTimerRef.current) {
-        window.clearTimeout(systemTimerRef.current);
-      }
-
-      systemTimerRef.current = window.setTimeout(() => {
-        systemTimerRef.current = null;
-        const reply = generateMusicReply();
-        if (!reply) return;
-        setChatMessages((prev) => [
-          ...prev,
-          {
-            id: createMessageId(),
-            sender: reply.sender,
-            type: "text",
-            text: reply.text,
-            timestamp: Date.now(),
-          },
-        ]);
-      }, delay);
-    }
-
     const onTrackChange = (e: Event) => {
-      fireSystemMessage(
-        "切歌",
-        TRACK_CHANGE_MIN_MS,
-        TRACK_CHANGE_MAX_MS
-      );
+      const ce = e as CustomEvent<{
+        item?: { id?: string; title?: string };
+      }>;
+      const item = ce.detail?.item;
+      if (!item?.title) return;
 
-      /* ★ Step 3：收集 session 内的曲目 id */
-      try {
-        const ce = e as CustomEvent<{
-          index: number;
-          item?: { id?: string };
-        }>;
-        const id = ce.detail?.item?.id;
-        if (id) sessionTrackIdsRef.current.add(id);
-      } catch {
-        /* ignore */
+      if (item.id) {
+        sessionTrackIdsRef.current.add(item.id);
       }
+
+      const now = Date.now();
+      if (
+        now - trackChangeCooldownRef.current <
+        TRACK_CHANGE_COOLDOWN_MS
+      ) {
+        return;
+      }
+      trackChangeCooldownRef.current = now;
+
+      emitMusicSystem(
+        `切到了《${item.title}》`,
+        "track-change"
+      );
     };
-    const onPlay = () =>
-      fireSystemMessage(
-        "播放",
-        PLAY_STATE_MIN_MS,
-        PLAY_STATE_MAX_MS
-      );
-    const onPause = () =>
-      fireSystemMessage(
-        "暂停",
-        PLAY_STATE_MIN_MS,
-        PLAY_STATE_MAX_MS
-      );
 
     window.addEventListener(
       "runwithme:music-track-change",
       onTrackChange
     );
-    window.addEventListener("runwithme:music-play", onPlay);
-    window.addEventListener("runwithme:music-pause", onPause);
-
     return () => {
       window.removeEventListener(
         "runwithme:music-track-change",
         onTrackChange
       );
-      window.removeEventListener(
-        "runwithme:music-play",
-        onPlay
-      );
-      window.removeEventListener(
-        "runwithme:music-pause",
-        onPause
-      );
-      if (systemTimerRef.current) {
-        window.clearTimeout(systemTimerRef.current);
-        systemTimerRef.current = null;
-      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partner]);
 
-  /* -------------------------------------------------------
-     派生数据
-     ------------------------------------------------------- */
-
-  const progress =
-    duration > 0
-      ? Math.min(100, (currentTime / duration) * 100)
-      : 0;
-
-  const listeners: AvatarKey[] = ["you"];
+  /* 派生 */
+  const presentPartners: ("Levi" | "Erwin")[] = [];
   if (partner === "Levi" || partner === "Both")
-    listeners.push("levi");
+    presentPartners.push("Levi");
   if (partner === "Erwin" || partner === "Both")
-    listeners.push("erwin");
+    presentPartners.push("Erwin");
 
   const partnerName =
     partner === "Solo"
@@ -515,16 +527,22 @@ export default function MusicApp({ onBack }: MusicAppProps) {
         ? "Levi & Erwin"
         : partner;
 
-  function handleSeek(e: React.ChangeEvent<HTMLInputElement>) {
-    seek(Number(e.target.value));
-  }
+  const openedPlaylist = openedPlaylistId
+    ? playlists.find((p) => p.id === openedPlaylistId) ??
+      null
+    : null;
 
-  /* -------------------------------------------------------
-     封面
-     ------------------------------------------------------- */
-
+  /* 封面 */
   async function handleCoverUpload(file: File) {
     if (!currentTrack) return;
+    const { saveMusicCover } = await import(
+      "@/lib/musicCoverFiles"
+    );
+    const { loadMusic, saveMusic } = await import(
+      "@/lib/musicStorage"
+    );
+    const { defaultMusic } = await import("@/data/music");
+
     const coverId = `cover-${currentTrack.id}`;
     try {
       await saveMusicCover(coverId, file);
@@ -542,10 +560,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     }
   }
 
-  /* -------------------------------------------------------
-     用户主动邀请
-     ------------------------------------------------------- */
-
+  /* 邀请 */
   function handleSelectPartner(p: ListenPartner) {
     setShowPartnerPicker(false);
 
@@ -639,7 +654,40 @@ export default function MusicApp({ onBack }: MusicAppProps) {
       rejectedBy: rejected,
     });
 
+    /* ★ 邀请被接受的系统消息 */
+    if (accepted.length > 0) {
+      const who =
+        accepted.length === 2
+          ? "Levi & Erwin"
+          : accepted[0];
+      emitMusicSystem(
+        `${who} 接受了你的邀请，开始一起听`,
+        "invite-accepted"
+      );
+    }
+
     window.setTimeout(() => setInvitation(null), 6000);
+  }
+
+  function handleAvatarClick() {
+    if (partner === "Solo") {
+      setShowPartnerPicker(true);
+    } else {
+      setShowChat(true);
+    }
+  }
+
+  function handleClearChat() {
+    if (chatMessages.length === 0) return;
+    if (
+      !window.confirm(
+        "清空所有一起听聊天记录？此操作不可恢复。"
+      )
+    ) {
+      return;
+    }
+    setChatMessages([]);
+    saveMusicChatMessages([]);
   }
 
   /* -------------------------------------------------------
@@ -648,247 +696,185 @@ export default function MusicApp({ onBack }: MusicAppProps) {
 
   return (
     <main className="phone-screen app-screen music-app-v2">
-      <header className="music-v2-header">
-        <button
-          className="music-v2-back"
-          onClick={onBack}
-          aria-label="返回"
-        >
-          <ChevronLeft size={26} strokeWidth={2.4} />
-        </button>
-
-        <button
-          className="music-v2-listeners"
-          onClick={() => setShowPartnerPicker(true)}
-          aria-label="一起听"
-        >
-          {listeners.map((key) => (
-            <div
-              key={key}
-              className={`music-v2-listener-avatar music-v2-listener-${key}`}
-            >
-              {avatarUrls[key] ? (
-                <img src={avatarUrls[key]!} alt={key} />
-              ) : (
-                <span>
-                  {key === "you"
-                    ? "Y"
-                    : key === "levi"
-                      ? "L"
-                      : "E"}
-                </span>
-              )}
-            </div>
-          ))}
-          <div className="music-v2-listener-add">
-            <Plus size={20} strokeWidth={2.4} />
-          </div>
-        </button>
-
-        <button
-          className="music-v2-upload-btn"
-          onClick={() => setShowUpload(true)}
-          aria-label="音乐管理"
-        >
-          <Upload size={20} strokeWidth={2.2} />
-        </button>
-      </header>
-
-      {/* ★ Step 2：一起听计时条 */}
-      {partner !== "Solo" && togetherStartAt !== null && (
-        <div className="music-v2-together-timer">
-          <span className="music-v2-together-timer-dot" />
-          <span>
-            Together {partnerName}
-          </span>
-          <span className="music-v2-together-timer-time">
-            {formatTogetherDuration(togetherElapsed)}
-          </span>
-        </div>
-      )}
-
-      {invitation && (
-        <div
-          className={`music-v2-invite-banner music-v2-invite-${invitation.status}`}
-        >
-          {invitation.status === "pending" && (
-            <>
-              <span className="music-v2-invite-dot" />
-              正在等待回应…
-            </>
-          )}
-          {invitation.status === "accepted" && (
-            <>
-              <Check size={14} strokeWidth={2.6} />
-              <span>
-                {invitation.acceptedBy.join(" & ")} 加入了
-                {invitation.rejectedBy.length > 0 &&
-                  ` · ${invitation.rejectedBy.join(
-                    " & "
-                  )} 没有接受`}
-              </span>
-            </>
-          )}
-          {invitation.status === "rejected" && (
-            <>
-              <X size={14} strokeWidth={2.6} />
-              <span>没有回应，继续一个人听吧</span>
-            </>
-          )}
-        </div>
-      )}
-
-      <section className="music-v2-disc-area">
-        <button
-          type="button"
-          className={`music-v2-disc${
-            isPlaying ? " is-playing" : ""
-          }`}
-          onClick={() => {
+      {showFullPlayer && (
+        <FullPlayer
+          partner={partner}
+          avatarUrls={avatarUrls}
+          togetherElapsed={togetherElapsed}
+          coverUrl={coverUrl}
+          onClose={() => setShowFullPlayer(false)}
+          onOpenList={() => setShowList(true)}
+          onOpenChat={() => setShowChat(true)}
+          onOpenPicker={() => setShowPartnerPicker(true)}
+          onPickCover={() => {
             if (!currentTrack) {
               alert("先添加一首音乐吧");
               return;
             }
             coverInputRef.current?.click();
           }}
-          aria-label="上传专辑封面"
-        >
-          <div
-            className={`music-v2-disc-cover${
-              coverUrl ? " has-image" : ""
-            }`}
-          >
-            {coverUrl ? (
-              <img src={coverUrl} alt="专辑封面" />
-            ) : (
-              <MusicIcon size={54} strokeWidth={1.2} />
-            )}
-          </div>
-        </button>
-
-        <input
-          ref={coverInputRef}
-          type="file"
-          accept="image/*"
-          className="ios-file-input-detached"
-          style={IOS_SAFE_FILE_STYLE}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleCoverUpload(file);
-            e.target.value = "";
-          }}
         />
-      </section>
+      )}
 
-      <section className="music-v2-info">
-        {currentTrack ? (
-          <>
-            <div className="music-v2-title">
-              {currentTrack.title}
-            </div>
-            <div className="music-v2-artist">
-              {currentTrack.artist || "RunWithme"}
-            </div>
-            <div className="music-v2-progress-area">
-              <input
-                className="music-v2-progress"
-                type="range"
-                min="0"
-                max={duration || 0}
-                step="0.1"
-                value={Math.min(
-                  currentTime,
-                  duration || 0
-                )}
-                onChange={handleSeek}
-                style={
-                  {
-                    "--music-progress": `${progress}%`,
-                  } as React.CSSProperties
+      {!showFullPlayer && (
+        <>
+          <header className="music-v2-header">
+            <button
+              className="music-v2-back"
+              onClick={() => {
+                if (openedPlaylistId) {
+                  setOpenedPlaylistId(null);
+                } else {
+                  onBack();
                 }
-              />
-              <div className="music-v2-time-row">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+              }}
+              aria-label="返回"
+            >
+              <ChevronLeft size={26} strokeWidth={2.4} />
+            </button>
+
+            <div className="music-v2-title-wrap">
+              <div className="music-v2-page-title">
+                {openedPlaylist
+                  ? openedPlaylist.name
+                  : "Music"}
+              </div>
+              <div className="music-v2-page-sub">
+                {openedPlaylist
+                  ? `${openedPlaylist.musicIds.length} 首`
+                  : "library"}
               </div>
             </div>
-          </>
-        ) : (
-          <div className="music-v2-empty">
-            还没有音乐，点右上角 ↑ 添加
-          </div>
-        )}
-        {error && (
-          <div className="music-v2-error">{error}</div>
-        )}
-      </section>
 
-      <section className="music-v2-controls">
-        <button
-          className="music-v2-btn"
-          onClick={() => void previousTrack()}
-          aria-label="上一首"
-          type="button"
-        >
-          <SkipBack
-            size={24}
-            strokeWidth={1.8}
-            fill="currentColor"
-          />
-        </button>
+            <button
+              className="music-v2-upload-btn"
+              onClick={() => setShowUpload(true)}
+              aria-label="音乐管理"
+            >
+              <Upload size={20} strokeWidth={2.2} />
+            </button>
+          </header>
 
-        <button
-          className="music-v2-play-btn"
-          onClick={() => void togglePlay()}
-          aria-label={isPlaying ? "暂停" : "播放"}
-          type="button"
-        >
-          {loading ? (
-            <span className="music-v2-play-dots">•••</span>
-          ) : isPlaying ? (
-            <Pause
-              size={26}
-              strokeWidth={1.8}
-              fill="currentColor"
+          <div className="music-together-bar">
+            <TogetherAvatars
+              partner={partner}
+              avatarUrls={avatarUrls}
+              elapsedMs={togetherElapsed}
+              showTimer={true}
+              size={44}
+              onClick={handleAvatarClick}
             />
-          ) : (
-            <Play
-              size={26}
-              strokeWidth={1.8}
-              fill="currentColor"
+          </div>
+
+          {invitation && (
+            <div
+              className={`music-v2-invite-banner music-v2-invite-${invitation.status}`}
+            >
+              {invitation.status === "pending" && (
+                <>
+                  <span className="music-v2-invite-dot" />
+                  正在等待回应…
+                </>
+              )}
+              {invitation.status === "accepted" && (
+                <>
+                  <Check size={14} strokeWidth={2.6} />
+                  <span>
+                    {invitation.acceptedBy.join(" & ")} 加入了
+                    {invitation.rejectedBy.length > 0 &&
+                      ` · ${invitation.rejectedBy.join(
+                        " & "
+                      )} 没有接受`}
+                  </span>
+                </>
+              )}
+              {invitation.status === "rejected" && (
+                <>
+                  <X size={14} strokeWidth={2.6} />
+                  <span>没有回应，继续一个人听吧</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {!openedPlaylist && (
+            <div className="music-tabs">
+              <button
+                className={
+                  libraryTab === "playlists"
+                    ? "active"
+                    : ""
+                }
+                onClick={() => setLibraryTab("playlists")}
+              >
+                歌单
+              </button>
+              <button
+                className={
+                  libraryTab === "songs" ? "active" : ""
+                }
+                onClick={() => setLibraryTab("songs")}
+              >
+                歌曲
+              </button>
+            </div>
+          )}
+
+          <div className="music-v2-scroll">
+            {openedPlaylist ? (
+              <PlaylistDetailInline
+                playlist={openedPlaylist}
+                music={music}
+                coverUrl={
+                  playlistCoverUrls[openedPlaylist.id]
+                }
+                currentTrackId={currentTrack?.id ?? null}
+                onPlayFromPlaylist={(index) => {
+                  void playTrack(index);
+                  setOpenedPlaylistId(null);
+                }}
+              />
+            ) : libraryTab === "playlists" ? (
+              <PlaylistsGrid
+                playlists={playlists}
+                coverUrls={playlistCoverUrls}
+                onOpen={(id) => setOpenedPlaylistId(id)}
+              />
+            ) : (
+              <SongsList
+                music={music}
+                currentTrackId={currentTrack?.id ?? null}
+                onSelect={(index) => void playTrack(index)}
+              />
+            )}
+          </div>
+
+          {currentTrack && (
+            <MiniPlayer
+              coverUrl={coverUrl}
+              title={currentTrack.title}
+              artist={currentTrack.artist || "RunWithme"}
+              isPlaying={isPlaying}
+              loading={loading}
+              onExpand={() => setShowFullPlayer(true)}
+              onTogglePlay={() => void togglePlay()}
+              onNext={() => void nextTrack()}
             />
           )}
-        </button>
+        </>
+      )}
 
-        <button
-          className="music-v2-btn"
-          onClick={() => void nextTrack()}
-          aria-label="下一首"
-          type="button"
-        >
-          <SkipForward
-            size={24}
-            strokeWidth={1.8}
-            fill="currentColor"
-          />
-        </button>
-      </section>
-
-      <button
-        className="music-chat-fab"
-        onClick={() => setShowChat((v) => !v)}
-        aria-label="一起听聊天"
-      >
-        <MessageCircle size={20} strokeWidth={2} />
-      </button>
-
-      <button
-        className="music-v2-list-btn"
-        onClick={() => setShowList(true)}
-        aria-label="播放列表"
-      >
-        <List size={20} strokeWidth={2.2} />
-      </button>
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        className="ios-file-input-detached"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void handleCoverUpload(file);
+          e.target.value = "";
+        }}
+      />
 
       {showList && (
         <MusicListDrawer
@@ -897,6 +883,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
             void playTrack(index);
             setShowList(false);
           }}
+          onCloseList={() => setShowList(false)}
         />
       )}
 
@@ -916,9 +903,15 @@ export default function MusicApp({ onBack }: MusicAppProps) {
             setChatMessages((prev) => [...prev, msg])
           }
           onClose={() => setShowChat(false)}
+          onOpenPartners={() => {
+            setShowChat(false);
+            setShowPartnerPicker(true);
+          }}
           onOpenSettings={() => setShowChatSettings(true)}
+          onClearChat={handleClearChat}
           partnerName={partnerName}
-          disabled={partner === "Solo"}
+          presentPartners={presentPartners}
+          disabled={presentPartners.length === 0}
         />
       )}
 
@@ -944,9 +937,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
                 className={
                   partner === "Solo" ? "active" : ""
                 }
-                onClick={() =>
-                  handleSelectPartner("Solo")
-                }
+                onClick={() => handleSelectPartner("Solo")}
               >
                 <div className="music-v2-picker-avatar avatar-you">
                   Y
@@ -958,9 +949,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
                 className={
                   partner === "Levi" ? "active" : ""
                 }
-                onClick={() =>
-                  handleSelectPartner("Levi")
-                }
+                onClick={() => handleSelectPartner("Levi")}
               >
                 <div className="music-v2-picker-avatar avatar-levi">
                   L
@@ -972,9 +961,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
                 className={
                   partner === "Erwin" ? "active" : ""
                 }
-                onClick={() =>
-                  handleSelectPartner("Erwin")
-                }
+                onClick={() => handleSelectPartner("Erwin")}
               >
                 <div className="music-v2-picker-avatar avatar-erwin">
                   E
@@ -986,9 +973,7 @@ export default function MusicApp({ onBack }: MusicAppProps) {
                 className={
                   partner === "Both" ? "active" : ""
                 }
-                onClick={() =>
-                  handleSelectPartner("Both")
-                }
+                onClick={() => handleSelectPartner("Both")}
               >
                 <div className="music-v2-picker-avatar avatar-both">
                   L&E
@@ -1017,5 +1002,283 @@ export default function MusicApp({ onBack }: MusicAppProps) {
         </div>
       )}
     </main>
+  );
+}
+
+/* ============================================================
+   子组件
+   ============================================================ */
+
+function MiniPlayer({
+  coverUrl,
+  title,
+  artist,
+  isPlaying,
+  loading,
+  onExpand,
+  onTogglePlay,
+  onNext,
+}: {
+  coverUrl: string | null;
+  title: string;
+  artist: string;
+  isPlaying: boolean;
+  loading: boolean;
+  onExpand: () => void;
+  onTogglePlay: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="music-mini-player">
+      <button
+        className="music-mini-player-info"
+        onClick={onExpand}
+        aria-label="展开播放器"
+      >
+        <span className="music-mini-player-cover">
+          {coverUrl ? (
+            <img src={coverUrl} alt="" />
+          ) : (
+            <MusicIcon size={20} strokeWidth={1.8} />
+          )}
+        </span>
+        <span className="music-mini-player-text">
+          <strong>{title}</strong>
+          <small>{artist}</small>
+        </span>
+      </button>
+
+      <button
+        className="music-mini-player-btn"
+        onClick={onTogglePlay}
+        aria-label={isPlaying ? "暂停" : "播放"}
+      >
+        {loading ? (
+          <span className="music-mini-player-dots">
+            •••
+          </span>
+        ) : isPlaying ? (
+          <Pause
+            size={22}
+            strokeWidth={1.8}
+            fill="currentColor"
+          />
+        ) : (
+          <Play
+            size={22}
+            strokeWidth={1.8}
+            fill="currentColor"
+          />
+        )}
+      </button>
+
+      <button
+        className="music-mini-player-btn"
+        onClick={onNext}
+        aria-label="下一首"
+      >
+        <Play
+          size={18}
+          strokeWidth={1.8}
+          fill="currentColor"
+        />
+      </button>
+    </div>
+  );
+}
+
+function PlaylistsGrid({
+  playlists,
+  coverUrls,
+  onOpen,
+}: {
+  playlists: Playlist[];
+  coverUrls: Record<string, string>;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <div className="music-grid">
+      {playlists.map((pl) => {
+        const url = coverUrls[pl.id];
+        return (
+          <button
+            key={pl.id}
+            className="music-grid-cell"
+            onClick={() => onOpen(pl.id)}
+            type="button"
+          >
+            <div className="music-grid-cover">
+              {url ? (
+                <img src={url} alt="" />
+              ) : (
+                <Folder
+                  size={32}
+                  strokeWidth={1.6}
+                />
+              )}
+            </div>
+            <div className="music-grid-title">
+              {pl.name}
+            </div>
+            <div className="music-grid-sub">
+              {pl.musicIds.length} 首
+            </div>
+          </button>
+        );
+      })}
+      <div className="music-grid-hint">
+        去右上角 ↑ 管理音乐，或在「歌曲」里点 ⋯ 添加到歌单
+      </div>
+    </div>
+  );
+}
+
+function SongsList({
+  music,
+  currentTrackId,
+  onSelect,
+}: {
+  music: { id: string; title: string; artist: string }[];
+  currentTrackId: string | null;
+  onSelect: (index: number) => void;
+}) {
+  if (music.length === 0) {
+    return (
+      <div className="music-empty">
+        <div className="music-empty-icon">
+          <MusicIcon size={40} strokeWidth={1.4} />
+        </div>
+        <div className="music-empty-title">
+          还没有音乐
+        </div>
+        <div className="music-empty-desc">
+          点右上角 ↑ 添加
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="music-song-list">
+      {music.map((item, index) => {
+        const isCurrent = item.id === currentTrackId;
+        return (
+          <li key={item.id}>
+            <button
+              className={`music-song-item${
+                isCurrent ? " is-current" : ""
+              }`}
+              onClick={() => onSelect(index)}
+              type="button"
+            >
+              <span className="music-song-index">
+                {isCurrent ? "♪" : index + 1}
+              </span>
+              <span className="music-song-text">
+                <strong>{item.title}</strong>
+                <small>
+                  {item.artist || "RunWithme"}
+                </small>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function PlaylistDetailInline({
+  playlist,
+  music,
+  coverUrl,
+  currentTrackId,
+  onPlayFromPlaylist,
+}: {
+  playlist: Playlist;
+  music: {
+    id: string;
+    title: string;
+    artist: string;
+  }[];
+  coverUrl?: string;
+  currentTrackId: string | null;
+  onPlayFromPlaylist: (index: number) => void;
+}) {
+  const songs = playlist.musicIds
+    .map((id) => music.find((m) => m.id === id))
+    .filter(
+      (
+        m
+      ): m is {
+        id: string;
+        title: string;
+        artist: string;
+      } => !!m
+    );
+
+  return (
+    <>
+      <div className="music-playlist-hero">
+        <div className="music-playlist-hero-cover">
+          {coverUrl ? (
+            <img src={coverUrl} alt="" />
+          ) : (
+            <ImagePlus
+              size={36}
+              strokeWidth={1.4}
+            />
+          )}
+        </div>
+        <div className="music-playlist-hero-info">
+          <div className="music-playlist-hero-name">
+            {playlist.name}
+          </div>
+          <div className="music-playlist-hero-sub">
+            {songs.length} 首
+          </div>
+        </div>
+      </div>
+
+      {songs.length === 0 ? (
+        <div className="music-empty">
+          <div className="music-empty-title">
+            这个歌单还没有歌
+          </div>
+          <div className="music-empty-desc">
+            去「歌曲」里点 ⋯ 添加
+          </div>
+        </div>
+      ) : (
+        <ul className="music-song-list">
+          {songs.map((item, index) => {
+            const isCurrent = item.id === currentTrackId;
+            return (
+              <li key={item.id}>
+                <button
+                  className={`music-song-item${
+                    isCurrent ? " is-current" : ""
+                  }`}
+                  onClick={() =>
+                    onPlayFromPlaylist(index)
+                  }
+                  type="button"
+                >
+                  <span className="music-song-index">
+                    {isCurrent ? "♪" : index + 1}
+                  </span>
+                  <span className="music-song-text">
+                    <strong>{item.title}</strong>
+                    <small>
+                      {item.artist || "RunWithme"}
+                    </small>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
   );
 }

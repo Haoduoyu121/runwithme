@@ -3,9 +3,7 @@ import type { ChatMessage } from "@/data/chat";
 import { createMessageId } from "@/data/chat";
 
 export type ConvertResult = {
-  /** 立刻插入的消息（系统消息） */
   immediate: ChatMessage[];
-  /** 待下次自动回复时可能引用的事件 */
   quoteCandidate: WorldEvent | null;
 };
 
@@ -15,6 +13,35 @@ export function convertWorldEvent(
   const immediate: ChatMessage[] = [];
   let quoteCandidate: WorldEvent | null = null;
 
+  /* ---------- watch ---------- */
+  if (ev.app === "watch" && ev.type === "session-end") {
+    immediate.push({
+      id: createMessageId(),
+      sender: "You",
+      type: "system",
+      text: ev.title,
+      timestamp: ev.timestamp,
+    });
+    return { immediate, quoteCandidate: null };
+  }
+
+  /* ---------- music ---------- */
+  if (
+    ev.app === "music" &&
+    (ev.type === "invite-accepted" ||
+      ev.type === "track-change")
+  ) {
+    immediate.push({
+      id: createMessageId(),
+      sender: "You",
+      type: "system",
+      text: ev.title,
+      timestamp: ev.timestamp,
+    });
+    return { immediate, quoteCandidate: null };
+  }
+
+  /* ---------- icity ---------- */
   if (ev.app !== "icity") {
     return { immediate, quoteCandidate: null };
   }

@@ -1,4 +1,4 @@
-export type MusicSource = "url" | "file";
+export type MusicSource = "url" | "file" | "netease";
 
 export type MusicItem = {
   id: string;
@@ -8,8 +8,11 @@ export type MusicItem = {
   enabled: boolean;
   source: MusicSource;
   fileName?: string;
-  /* ★ 封面在 IndexedDB 中的 id */
+  /* ★ 本地封面：IndexedDB 中的 id */
   coverId?: string;
+  /* ★ 网易云专用字段 */
+  neteaseId?: number;
+  remoteCover?: string;
 };
 
 export const defaultMusic: MusicItem[] = [
