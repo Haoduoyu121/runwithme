@@ -20,7 +20,8 @@ export type AppId =
   | "memory"
   | "random"
   | "search"
-  | "read";
+  | "read"
+  | "fridge";
 
 export type AppIconState = "custom" | null;
 
@@ -118,6 +119,7 @@ const defaultSettings: SystemSettings = {
     random: null,
     search: null,
     read: null,
+    fridge: null,
   },
   dockIcons: {
     "slot-1": null,

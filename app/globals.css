@@ -55897,3 +55897,2113 @@ html[data-runwithme-theme="dark"] .pwa-update-btn {
   background: #8e656f;
   color: #fff2e9;
 }
+/* =========================================================
+   Fridge App
+   ========================================================= */
+
+.fridge-app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #f0ebe4;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"] .fridge-app {
+  background: #1a1618;
+  color: #fff2e9;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.fridge-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 6px;
+  padding-top: calc(env(safe-area-inset-top) + 12px);
+}
+
+.fridge-back,
+.fridge-settings {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #8e656f;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.fridge-back:hover,
+.fridge-settings:hover {
+  background: rgba(142, 101, 111, 0.1);
+  color: #4f3940;
+}
+
+.fridge-title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--rw-font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 冰箱主体 ---------- */
+
+.fridge-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px 24px;
+}
+
+.fridge-door {
+  position: relative;
+  width: min(92%, 380px);
+  height: 100%;
+  max-height: 620px;
+  border-radius: 22px;
+
+  background:
+    linear-gradient(
+      155deg,
+      #f7f2eb 0%,
+      #ede4d8 45%,
+      #f2eae0 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 18px 50px rgba(90, 60, 65, 0.18),
+    0 4px 12px rgba(90, 60, 65, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+  gap: 14px;
+  overflow: hidden;
+}
+
+html[data-runwithme-theme="dark"] .fridge-door {
+  background:
+    linear-gradient(
+      155deg,
+      #3a3338 0%,
+      #2e282c 45%,
+      #353035 100%
+    );
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* =========================================================
+   Fridge · WhiteBoard
+   ========================================================= */
+
+.fridge-board {
+  position: relative;
+  flex: 0 0 62%;         /* 白板占冰箱门 62% 高度 */
+  min-height: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at 30% 20%,
+      rgba(255, 255, 255, 0.9),
+      transparent 50%
+    ),
+    linear-gradient(
+      160deg,
+      #ffffff 0%,
+      #fafbfc 50%,
+      #f5f7f8 100%
+    );
+  border: 6px solid #ede4d8;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.03),
+    inset 0 1px 2px rgba(0, 0, 0, 0.04),
+    0 2px 8px rgba(90, 60, 65, 0.08);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html[data-runwithme-theme="dark"] .fridge-board {
+  border-color: #2e282c;
+  background:
+    radial-gradient(
+      ellipse at 30% 20%,
+      rgba(255, 255, 255, 0.08),
+      transparent 50%
+    ),
+    linear-gradient(
+      160deg,
+      #f6f1ea 0%,
+      #eee9e2 100%
+    );
+}
+
+.fridge-board.mode-draw {
+  cursor: crosshair;
+}
+
+.fridge-board.mode-erase {
+  cursor: not-allowed;
+}
+
+/* ---------- 单个涂鸦 ---------- */
+
+.fridge-doodle {
+  position: absolute;
+  max-width: 82%;
+  word-break: break-word;
+  color: #3a2e33;
+  line-height: 1.35;
+}
+
+/* 分模式控制 */
+.fridge-board.mode-draw .fridge-doodle {
+  pointer-events: none;
+}
+
+.fridge-board.mode-erase .fridge-doodle,
+.fridge-board.mode-idle .fridge-doodle {
+  pointer-events: auto;
+}
+
+.fridge-board.mode-idle .fridge-doodle-text,
+.fridge-board.mode-idle .fridge-doodle-emoji {
+  cursor: grab;
+  touch-action: none;
+}
+
+.fridge-board.mode-idle .fridge-doodle-text:active,
+.fridge-board.mode-idle .fridge-doodle-emoji:active {
+  cursor: grabbing;
+}
+
+.fridge-doodle.is-dragging {
+  z-index: 60;
+  cursor: grabbing !important;
+  filter: drop-shadow(0 8px 20px rgba(90, 60, 65, 0.28));
+  transition: none;
+}
+
+.mode-erase .fridge-doodle {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.mode-erase .fridge-doodle:hover {
+  background: rgba(224, 93, 93, 0.1);
+  border-radius: 4px;
+  outline: 1px dashed rgba(224, 93, 93, 0.4);
+}
+
+.fridge-doodle-text {
+  font-size: 17px;
+  padding: 2px 4px;
+}
+
+.fridge-doodle-emoji {
+  font-size: 26px;
+  line-height: 1;
+}
+
+/* 作者微调：Levi 深灰，Erwin 蓝灰 */
+.fridge-doodle-levi.fridge-doodle-text {
+  color: #2a2f33;
+}
+
+.fridge-doodle-erwin.fridge-doodle-text {
+  color: #3d4b57;
+}
+
+/* ---------- SVG 笔画层 ---------- */
+
+.fridge-doodle-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.fridge-doodle-live {
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ---------- 工具栏 ---------- */
+
+.fridge-board-tools {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(142, 101, 111, 0.12);
+  box-shadow:
+    0 2px 8px rgba(90, 60, 65, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html[data-runwithme-theme="dark"] .fridge-board-tools {
+  background: rgba(60, 52, 58, 0.9);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.fridge-board-tools button {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #8e656f;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.fridge-board-tools button:hover {
+  background: rgba(142, 101, 111, 0.1);
+  color: #4f3940;
+}
+
+.fridge-board-tools button.active {
+  background: #8e656f;
+  color: #fff2e9;
+}
+
+html[data-runwithme-theme="dark"] .fridge-board-tools button {
+  color: #d9bcc4;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-board-tools
+  button.active {
+  background: #fcbec3;
+  color: #4f3940;
+}
+
+/* ---------- 文字输入 ---------- */
+
+.fridge-board-textback {
+  position: absolute;
+  inset: auto 10px 10px 10px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  box-shadow:
+    0 8px 24px rgba(90, 60, 65, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.fridge-board-textinput {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(142, 101, 111, 0.18);
+  border-radius: 8px;
+  background: #fff;
+  color: #3a2e33;
+  font-size: 17px;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.fridge-board-textinput:focus {
+  border-color: rgba(142, 101, 111, 0.5);
+}
+
+.fridge-board-textactions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.fridge-board-textactions button {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fridge-board-textactions button:last-child {
+  background: #8e656f;
+  color: #fff2e9;
+}
+
+/* ---------- Emoji 托盘 ---------- */
+
+.fridge-board-emojitray {
+  position: absolute;
+  inset: auto 8px 8px 8px;
+  z-index: 20;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  box-shadow:
+    0 8px 24px rgba(90, 60, 65, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.fridge-board-emojigrid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+
+.fridge-board-emojigrid button {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s ease;
+}
+
+.fridge-board-emojigrid button:active {
+  background: rgba(142, 101, 111, 0.12);
+}
+
+.fridge-board-emojiclose {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  cursor: pointer;
+}
+/* ---------- 冰箱门下半部分 ---------- */
+
+.fridge-door-lower {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.3) 0px,
+      rgba(255, 255, 255, 0.3) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    rgba(255, 255, 255, 0.25);
+  border: 1px dashed rgba(142, 101, 111, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fridge-door-handle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 70px;
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    #b8a89c 0%,
+    #8e7d74 50%,
+    #b8a89c 100%
+  );
+  box-shadow:
+    0 1px 3px rgba(90, 60, 65, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.fridge-door-hint {
+  font-size: 11px;
+  color: rgba(142, 101, 111, 0.4);
+  font-style: italic;
+}
+
+/* ---------- 字体设置面板 ---------- */
+
+.fridge-font-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: rgba(30, 22, 28, 0.5);
+  backdrop-filter: blur(8px) saturate(1.4);
+  -webkit-backdrop-filter: blur(8px) saturate(1.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fridge-fade-in 0.2s ease;
+}
+
+@keyframes fridge-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.fridge-font-panel {
+  width: min(440px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: 22px;
+  background: rgba(255, 250, 245, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 25px 70px rgba(60, 40, 45, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+html[data-runwithme-theme="dark"] .fridge-font-panel {
+  background: rgba(30, 26, 30, 0.98);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.fridge-font-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fridge-font-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.fridge-font-header button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  cursor: pointer;
+}
+
+.fridge-font-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #b8949c;
+}
+
+.fridge-font-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8e656f;
+}
+
+.fridge-font-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.15);
+  border-radius: 10px;
+  background: #fff;
+  color: #4f3940;
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+html[data-runwithme-theme="dark"] .fridge-font-field input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff2e9;
+}
+
+.fridge-font-field input:focus {
+  border-color: rgba(142, 101, 111, 0.5);
+}
+
+.fridge-font-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.fridge-font-done {
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fridge-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #8e656f;
+}
+/* ---------- 马克笔颜色 ---------- */
+
+.fridge-board-colors {
+  display: flex;
+  gap: 2px;
+  padding: 0 4px;
+  align-items: center;
+}
+
+.fridge-board-colors button {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+
+.fridge-board-colors button.active {
+  border-color: rgba(142, 101, 111, 0.6);
+  transform: scale(1.15);
+}
+
+/* ---------- 笔刷粗细 ---------- */
+
+.fridge-board-brush {
+  display: flex;
+  gap: 1px;
+  align-items: center;
+}
+
+.fridge-board-brush button {
+  padding: 0 6px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #8e656f;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fridge-board-brush button.active {
+  background: rgba(142, 101, 111, 0.15);
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"] .fridge-board-brush button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff2e9;
+}
+.fridge-board-stickertray {
+  position: absolute;
+  inset: auto 8px 8px 8px;
+  z-index: 20;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  box-shadow: 0 8px 24px rgba(90, 60, 65, 0.15);
+}
+
+.fridge-board-stickergrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.fridge-board-stickergrid button {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fridge-board-stickergrid img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.fridge-doodle-emoji img {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+/* =========================================================
+   Fridge · 拖动涂鸦
+   ========================================================= */
+
+/* 空闲模式下，可拖的涂鸦有拖动光标 */
+.fridge-board.mode-idle .fridge-doodle-text,
+.fridge-board.mode-idle .fridge-doodle-emoji {
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow 0.15s ease;
+}
+
+.fridge-board.mode-idle .fridge-doodle-text:hover,
+.fridge-board.mode-idle .fridge-doodle-emoji:hover {
+  box-shadow:
+    0 0 0 1px rgba(142, 101, 111, 0.22),
+    0 4px 12px rgba(90, 60, 65, 0.1);
+}
+
+.fridge-board.mode-idle .fridge-doodle-text:active,
+.fridge-board.mode-idle .fridge-doodle-emoji:active {
+  cursor: grabbing;
+}
+
+/* 正在拖动的元素 */
+.fridge-doodle.is-dragging {
+  z-index: 50;
+  cursor: grabbing !important;
+  filter: drop-shadow(
+    0 8px 20px rgba(90, 60, 65, 0.25)
+  );
+  transition: none;
+}
+
+/* 拖动中禁止选中文字 */
+.fridge-board.is-dragging-doodle {
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* ---------- pending 预览 ---------- */
+
+.fridge-doodle.is-pending {
+  opacity: 0.9;
+  outline: 2px dashed rgba(142, 101, 111, 0.5);
+  outline-offset: 3px;
+  border-radius: 6px;
+  z-index: 40;
+  cursor: grab;
+}
+
+.fridge-doodle.is-pending:active {
+  cursor: grabbing;
+}
+
+/* ---------- pending 确认条 ---------- */
+
+.fridge-pending-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 30;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 14px;
+
+  border-radius: 999px;
+  background: rgba(255, 250, 245, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 12px 32px rgba(90, 60, 65, 0.22),
+    0 3px 8px rgba(90, 60, 65, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  animation: fridge-pending-in 0.25s
+    cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes fridge-pending-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.fridge-pending-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8e656f;
+  letter-spacing: 0.02em;
+}
+
+.fridge-pending-cancel,
+.fridge-pending-ok {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.fridge-pending-cancel {
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+}
+
+.fridge-pending-cancel:hover {
+  background: rgba(142, 101, 111, 0.2);
+}
+
+.fridge-pending-ok {
+  background: #8e656f;
+  color: #fff2e9;
+  box-shadow: 0 4px 12px rgba(142, 101, 111, 0.3);
+}
+
+.fridge-pending-ok:hover {
+  transform: scale(1.06);
+}
+
+.fridge-pending-cancel:active,
+.fridge-pending-ok:active {
+  transform: scale(0.92);
+}
+
+html[data-runwithme-theme="dark"] .fridge-pending-bar {
+  background: rgba(40, 34, 40, 0.98);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html[data-runwithme-theme="dark"] .fridge-pending-hint {
+  color: #d9bcc4;
+}
+/* =========================================================
+   Fridge · 冰箱门下半部分（冰箱贴 + 便利贴）
+   ========================================================= */
+
+.fridge-door-lower {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.28) 0px,
+      rgba(255, 255, 255, 0.28) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    rgba(255, 255, 255, 0.18);
+  border: 1px dashed rgba(142, 101, 111, 0.16);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html[data-runwithme-theme="dark"] .fridge-door-lower {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.04) 0px,
+      rgba(255, 255, 255, 0.04) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 门把手 */
+.fridge-door-handle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 70px;
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    #b8a89c 0%,
+    #8e7d74 50%,
+    #b8a89c 100%
+  );
+  box-shadow:
+    0 1px 3px rgba(90, 60, 65, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ---------- 冰箱贴 ---------- */
+
+.fridge-door-sticker {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  z-index: 3;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fridge-door-sticker:active,
+.fridge-door-sticker.is-dragging {
+  cursor: grabbing;
+  z-index: 100;
+  filter: drop-shadow(
+    0 8px 18px rgba(90, 60, 65, 0.3)
+  );
+}
+
+.fridge-door-sticker img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(
+    0 1px 2px rgba(90, 60, 65, 0.18)
+  );
+}
+
+/* ---------- 便利贴 ---------- */
+
+.fridge-door-note {
+  position: absolute;
+  width: 78px;
+  min-height: 70px;
+  padding: 8px 8px 14px;
+  border-radius: 2px;
+  border: 1px solid;
+  box-shadow:
+    0 4px 10px rgba(90, 60, 65, 0.16),
+    0 1px 3px rgba(90, 60, 65, 0.08);
+  cursor: grab;
+  touch-action: none;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fridge-door-note:active,
+.fridge-door-note.is-dragging {
+  cursor: grabbing;
+  z-index: 100;
+  box-shadow:
+    0 10px 24px rgba(90, 60, 65, 0.28),
+    0 2px 6px rgba(90, 60, 65, 0.16);
+}
+
+.fridge-door-note-text {
+  flex: 1;
+  font-size: 11px;
+  line-height: 1.4;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.fridge-door-note-name {
+  align-self: flex-end;
+  margin-top: 2px;
+  font-size: 9px;
+  opacity: 0.55;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* 便利贴的折角阴影 */
+.fridge-door-note::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    rgba(0, 0, 0, 0.08) 50%
+  );
+  pointer-events: none;
+}
+
+/* ---------- 删除按钮 ---------- */
+
+.fridge-door-x {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(60, 40, 45, 0.82);
+  color: #fff2e9;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 20;
+}
+
+.fridge-door-sticker:hover .fridge-door-x,
+.fridge-door-note:hover .fridge-door-x {
+  opacity: 1;
+}
+
+.fridge-door-x:active {
+  transform: scale(0.9);
+}
+
+/* 移动端一直显示 */
+@media (hover: none) {
+  .fridge-door-x {
+    opacity: 0.85;
+  }
+}
+
+/* ---------- 底部按钮组 ---------- */
+
+.fridge-door-actions {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+
+.fridge-door-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #8e656f;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 3px 8px rgba(90, 60, 65, 0.1);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.fridge-door-action-btn:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.fridge-door-action-btn:active {
+  transform: scale(0.95);
+}
+
+html[data-runwithme-theme="dark"] .fridge-door-action-btn {
+  background: rgba(60, 52, 58, 0.9);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f3dfe4;
+}
+
+/* ---------- 冰箱贴选择器 ---------- */
+
+.fridge-door-picker {
+  position: absolute;
+  inset: auto 8px 8px 8px;
+  z-index: 30;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  box-shadow:
+    0 12px 32px rgba(90, 60, 65, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.fridge-door-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.fridge-door-picker-grid button {
+  aspect-ratio: 1;
+  padding: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fridge-door-picker-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.fridge-door-picker-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  cursor: pointer;
+}
+
+/* ---------- 便利贴编辑器 ---------- */
+
+.fridge-door-noteeditor {
+  position: absolute;
+  inset: auto 10px 10px 10px;
+  z-index: 30;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  box-shadow:
+    0 12px 32px rgba(90, 60, 65, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.fridge-door-noteinput {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(142, 101, 111, 0.18);
+  border-radius: 8px;
+  background: #fef3b8;
+  color: #4f3940;
+  font-size: 14px;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.fridge-door-noteinput:focus {
+  border-color: rgba(142, 101, 111, 0.5);
+}
+
+.fridge-door-noteactions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.fridge-door-noteactions button {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fridge-door-noteactions button:last-child {
+  background: #8e656f;
+  color: #fff2e9;
+}
+
+/* =========================================================
+   Fridge · Card Studio
+   ========================================================= */
+
+.fridge-cs-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 25000;
+  background: rgba(30, 22, 28, 0.5);
+  backdrop-filter: blur(10px) saturate(1.4);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.fridge-cs-panel {
+  width: min(480px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  background: rgba(255, 250, 248, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 25px 70px rgba(60, 40, 45, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  overflow: hidden;
+}
+
+html[data-runwithme-theme="dark"] .fridge-cs-panel {
+  background: rgba(30, 26, 30, 0.98);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.fridge-cs-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid rgba(142, 101, 111, 0.08);
+}
+
+.fridge-cs-header h2 {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.fridge-cs-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(252, 190, 195, 0.4);
+  color: #8e656f;
+  cursor: pointer;
+}
+
+.fridge-cs-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 12px 20px 0;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(142, 101, 111, 0.08);
+}
+
+.fridge-cs-tabs button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fridge-cs-tabs button.active {
+  background: #fcbec3;
+  color: #8e656f;
+  font-weight: 700;
+}
+
+.fridge-cs-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(142, 101, 111, 0.15);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fridge-cs-kind {
+  display: flex;
+  gap: 4px;
+  margin: 12px 20px 0;
+}
+
+.fridge-cs-kind button {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid rgba(142, 101, 111, 0.15);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fridge-cs-kind button.active {
+  background: #fcbec3;
+  border-color: transparent;
+  color: #8e656f;
+  font-weight: 700;
+}
+
+.fridge-cs-add {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  margin: 10px 20px 12px;
+}
+
+.fridge-cs-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.fridge-cs-pickimg {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 4px;
+  font-size: 11px;
+}
+
+.fridge-cs-pickimg img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.fridge-cs-imgpicker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  margin-top: 4px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(142, 101, 111, 0.14);
+  box-shadow: 0 12px 32px rgba(90, 60, 65, 0.2);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.fridge-cs-imgpicker button {
+  aspect-ratio: 1;
+  padding: 3px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.fridge-cs-imgpicker img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.fridge-cs-addbtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fridge-cs-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fridge-cs-empty {
+  padding: 40px 12px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.fridge-cs-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(142, 101, 111, 0.06);
+}
+
+.fridge-cs-item.is-disabled {
+  opacity: 0.45;
+}
+
+.fridge-cs-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.fridge-cs-thumbtext {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.fridge-cs-toggle {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(142, 101, 111, 0.12);
+  color: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fridge-cs-delete {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(224, 93, 93, 0.12);
+  color: #c94d4d;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fridge-cs-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 20px calc(16px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(142, 101, 111, 0.08);
+}
+
+.fridge-cs-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(142, 101, 111, 0.7);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fridge-cs-done {
+  padding: 10px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #8e656f;
+  color: #fff2e9;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+/* =========================================================
+   Fridge · 便利贴编辑器 / 卡池 · 磨砂玻璃 + 色池
+   ========================================================= */
+
+/* ---------- 便利贴编辑器：磨砂玻璃 ---------- */
+
+.fridge-door-noteeditor {
+  background: rgba(255, 250, 245, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow:
+    0 14px 36px rgba(90, 60, 65, 0.22),
+    0 3px 8px rgba(90, 60, 65, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-door-noteeditor {
+  background: rgba(38, 32, 36, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ---------- 便利贴编辑器输入框（略透） ---------- */
+
+.fridge-door-noteinput {
+  border-width: 1px !important;
+  border-style: solid !important;
+  background: var(--note-bg, #fef3b8) !important;
+  opacity: 0.96;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.fridge-door-noteinput::placeholder {
+  color: currentColor;
+  opacity: 0.45;
+}
+
+/* ---------- 便利贴署名输入（融合样式） ---------- */
+
+.fridge-door-note-signature {
+  margin-top: 4px;
+}
+
+.fridge-door-note-signature input {
+  width: 100%;
+  padding: 8px 0 6px;
+  border: 0;
+  border-bottom: 1px dashed rgba(142, 101, 111, 0.28);
+  border-radius: 0;
+  background: transparent;
+  color: #4f3940;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.fridge-door-note-signature input::placeholder {
+  color: rgba(142, 101, 111, 0.42);
+  font-style: italic;
+}
+
+.fridge-door-note-signature input:focus {
+  border-bottom-color: rgba(142, 101, 111, 0.6);
+  border-bottom-style: solid;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-door-note-signature
+  input {
+  color: #fff2e9;
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-door-note-signature
+  input::placeholder {
+  color: rgba(217, 188, 196, 0.5);
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-door-note-signature
+  input:focus {
+  border-bottom-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- 颜色池 + 自定义 RGB 色圈 ---------- */
+
+.fridge-door-notecolors {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 0 2px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.fridge-door-notecolors button {
+  width: 26px;
+  height: 26px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 3px rgba(90, 60, 65, 0.14);
+}
+
+.fridge-door-notecolors button.active {
+  border-color: rgba(142, 101, 111, 0.7);
+  transform: scale(1.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 3px 8px rgba(90, 60, 65, 0.2);
+}
+
+/* 自定义 RGB 色圈 */
+
+.fridge-door-notecolor-custom {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-left: 2px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: conic-gradient(
+    from 0deg,
+    #ff0000 0deg,
+    #ffff00 60deg,
+    #00ff00 120deg,
+    #00ffff 180deg,
+    #0000ff 240deg,
+    #ff00ff 300deg,
+    #ff0000 360deg
+  );
+  padding: 2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 3px rgba(90, 60, 65, 0.18);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+
+.fridge-door-notecolor-custom:active {
+  transform: scale(0.94);
+}
+
+.fridge-door-notecolor-ring {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.fridge-door-notecolor-plus {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 0 2px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.fridge-door-notecolor-custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+/* =========================================================
+   Fridge Card Studio · 磨砂玻璃
+   ========================================================= */
+
+.fridge-cs-backdrop {
+  background: rgba(30, 22, 28, 0.42) !important;
+  backdrop-filter: blur(8px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.4) !important;
+}
+
+.fridge-cs-panel {
+  background: rgba(255, 250, 245, 0.76) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(36px) saturate(1.9);
+  -webkit-backdrop-filter: blur(36px) saturate(1.9);
+  box-shadow:
+    0 25px 70px rgba(60, 40, 45, 0.3),
+    0 6px 18px rgba(60, 40, 45, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-cs-panel {
+  background: rgba(34, 28, 34, 0.82) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 25px 70px rgba(0, 0, 0, 0.6),
+    0 6px 18px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Card Studio 内部：细边框、半透 */
+
+.fridge-cs-tabs,
+.fridge-cs-kind,
+.fridge-cs-subtabs {
+  background: rgba(255, 255, 255, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html[data-runwithme-theme="dark"] .fridge-cs-tabs,
+html[data-runwithme-theme="dark"] .fridge-cs-kind,
+html[data-runwithme-theme="dark"] .fridge-cs-subtabs {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.fridge-cs-tabs button.active,
+.fridge-cs-kind button.active,
+.fridge-cs-subtabs button.active {
+  background: rgba(252, 190, 195, 0.85) !important;
+  color: #8e656f !important;
+}
+
+.fridge-cs-add input,
+.fridge-cs-pickimg {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html[data-runwithme-theme="dark"] .fridge-cs-add input,
+html[data-runwithme-theme="dark"] .fridge-cs-pickimg {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff2e9;
+}
+
+.fridge-cs-item {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html[data-runwithme-theme="dark"] .fridge-cs-item {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.fridge-cs-thumbtext {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+}
+
+html[data-runwithme-theme="dark"] .fridge-cs-thumbtext {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #fff2e9;
+}
+
+.fridge-cs-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.5) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html[data-runwithme-theme="dark"] .fridge-cs-footer {
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+/* =========================================================
+   Fridge · Modal 浮层 + 卡池子 tab 融合
+   ========================================================= */
+
+/* ---------- 全屏浮层遮罩 ---------- */
+
+.fridge-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(30, 22, 28, 0.42);
+  backdrop-filter: blur(8px) saturate(1.4);
+  -webkit-backdrop-filter: blur(8px) saturate(1.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fridge-modal-fade 0.22s ease;
+}
+
+@keyframes fridge-modal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ---------- 冰箱贴选择器（modal） ---------- */
+
+.fridge-door-picker {
+  position: relative !important;
+  inset: auto !important;
+  width: min(460px, 100%);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 18px 16px;
+  border-radius: 22px;
+
+  background: rgba(255, 250, 245, 0.76) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(36px) saturate(1.9);
+  -webkit-backdrop-filter: blur(36px) saturate(1.9);
+  box-shadow:
+    0 25px 70px rgba(60, 40, 45, 0.3),
+    0 6px 18px rgba(60, 40, 45, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+
+  animation: fridge-modal-pop 0.26s
+    cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes fridge-modal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.fridge-door-picker-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.fridge-door-picker-header h3 {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-door-picker-header
+  h3 {
+  color: #fff2e9;
+}
+
+.fridge-door-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px;
+  max-height: calc(80vh - 100px);
+}
+
+.fridge-door-picker-grid button {
+  aspect-ratio: 1;
+  padding: 5px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.fridge-door-picker-grid button:hover {
+  background: rgba(255, 255, 255, 0.85);
+  transform: translateY(-1px);
+}
+
+.fridge-door-picker-grid button:active {
+  transform: scale(0.94);
+}
+
+.fridge-door-picker-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-door-picker-grid
+  button {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-door-picker-grid
+  button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.fridge-door-picker-close {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(142, 101, 111, 0.1);
+  color: #8e656f;
+  cursor: pointer;
+}
+
+/* ---------- 便利贴编辑器（modal） ---------- */
+
+.fridge-door-noteeditor {
+  position: relative !important;
+  inset: auto !important;
+  width: min(440px, 100%);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+
+  background: rgba(255, 250, 245, 0.76) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(36px) saturate(1.9);
+  -webkit-backdrop-filter: blur(36px) saturate(1.9);
+  box-shadow:
+    0 25px 70px rgba(60, 40, 45, 0.3),
+    0 6px 18px rgba(60, 40, 45, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+
+  animation: fridge-modal-pop 0.26s
+    cubic-bezier(0.34, 1.4, 0.64, 1);
+  border-radius: 22px;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-door-noteeditor,
+html[data-runwithme-theme="dark"]
+  .fridge-door-picker {
+  background: rgba(34, 28, 34, 0.82) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 25px 70px rgba(0, 0, 0, 0.6),
+    0 6px 18px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.fridge-door-noteeditor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fridge-door-noteeditor-header h3 {
+  margin: 0;
+  font-family: var(--rw-font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: #4f3940;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-door-noteeditor-header
+  h3 {
+  color: #fff2e9;
+}
+
+/* =========================================================
+   Fridge Card Studio · 子 tab 融合
+   ========================================================= */
+
+.fridge-cs-subtabs {
+  display: flex !important;
+  gap: 4px !important;
+  margin: 8px 20px 0 !important;
+  padding: 4px !important;
+  border-radius: 12px !important;
+  background: rgba(142, 101, 111, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.fridge-cs-subtabs button {
+  flex: 1 !important;
+  padding: 8px 10px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: rgba(142, 101, 111, 0.7) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.fridge-cs-subtabs button.active {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #8e656f !important;
+  font-weight: 700 !important;
+  box-shadow:
+    0 2px 6px rgba(90, 60, 65, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+}
+
+html[data-runwithme-theme="dark"] .fridge-cs-subtabs {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-cs-subtabs
+  button {
+  color: rgba(217, 188, 196, 0.7) !important;
+}
+
+html[data-runwithme-theme="dark"]
+  .fridge-cs-subtabs
+  button.active {
+  background: rgba(252, 190, 195, 0.4) !important;
+  color: #4f3940 !important;
+}

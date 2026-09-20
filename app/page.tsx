@@ -18,6 +18,7 @@ import MemoryApp from "@/components/apps/MemoryApp";
 import RandomApp from "@/components/apps/RandomApp";
 import SearchApp from "@/components/apps/SearchApp";
 import ReadApp from "@/components/apps/ReadApp";
+import FridgeApp from "@/components/apps/FridgeApp";
 import { runWorldCompensation } from "@/lib/worldClock";
 
 import {
@@ -145,6 +146,12 @@ const apps = [
     name: "Read",
     icon: "▤",
     color: "brown",
+  },
+  {
+    id: "fridge" as AppId,
+    name: "Fridge",
+    icon: "❄",
+    color: "cream",
   },
 ];
 
@@ -722,6 +729,7 @@ function AppWindow({
           onBack={onBack}
         />
       )}
+       {app === "fridge" && <FridgeApp onBack={onBack} />}
     </div>
   );
 }
