@@ -44,3 +44,8 @@ next-env.d.ts
 /public/sw.js
 /public/workbox-*.js
 /public/fallback-*.js
+
+# next-pwa 构建产物
+public/swe-worker-*.js
+public/sw.js
+public/workbox-*.js
