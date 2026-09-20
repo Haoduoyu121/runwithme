@@ -47,6 +47,7 @@ import { useNotifications } from "@/lib/NotificationContext";
 
 import HomeGrid from "@/components/home/HomeGrid";
 import AddWidgetModal from "@/components/home/AddWidgetModal";
+import WorldCard from "@/components/home/WorldCard";
 import CollectionApp from "@/components/apps/CollectionApp";
 import StudyApp from "@/components/apps/StudyApp";
 
@@ -447,7 +448,7 @@ function HomeScreen({
       onPointerUp={handlePointerUpCapture}
       onPointerCancel={handlePointerCancelCapture}
       onPointerLeave={handlePointerCancelCapture}
-    >
+    >      <WorldCard />
       <div className="home-v2-top">
         {editing ? (
           <button
