@@ -1,15 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* ★ 静态导出（Cloudflare Workers 需要） */
+  /* ★ 静态导出 */
   output: "export",
 
   /* ★ 静态导出时图片必须关闭优化 */
   images: { unoptimized: true },
 
-  /* ★ Turbopack 空配置（Next.js 16 不再报 webpack 冲突） */
+  /* ★ Turbopack 空配置 */
   turbopack: {},
 
-  /* 你原有的配置 */
   reactStrictMode: true,
 };
 
@@ -19,13 +18,17 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
 
-  /* ★ 开启 PWA */
   disable: false,
   register: true,
   skipWaiting: true,
 
   workboxOptions: {
     disableDevLogs: true,
+    /* ★ 新 SW 立即接管 */
+    skipWaiting: true,
+    clientsClaim: true,
+    /* ★ 不缓存 sw.js 本身 */
+    exclude: [/sw\.js$/],
   },
 });
 
