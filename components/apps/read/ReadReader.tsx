@@ -475,14 +475,14 @@ export default function ReadReader({
       setPageIndex(p);
     }
 
-    if (snappingRef.current) return;
-
+    /* ★ 每次滚动都重置 timer，
+       用户停手 90ms 后才吸附 —— 不再被 snappingRef 阻塞 */
     if (scrollEndTimerRef.current !== null) {
       window.clearTimeout(scrollEndTimerRef.current);
     }
     scrollEndTimerRef.current = window.setTimeout(() => {
       snapToNearestPage();
-    }, 180);
+    }, 90);
   }
 
   function snapToNearestPage() {
@@ -498,15 +498,11 @@ export default function ReadReader({
 
     if (diff < 2) return;
 
-    snappingRef.current = true;
+    /* ★ 瞬时跳页，不播放动画 → 不会和用户的滑动打架 */
     scroll.scrollTo({
       left: target,
-      behavior: "smooth",
+      behavior: "auto",
     });
-
-    window.setTimeout(() => {
-      snappingRef.current = false;
-    }, 420);
   }
 
   /* ---------- 翻页 ---------- */
