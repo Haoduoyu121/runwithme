@@ -92,6 +92,9 @@ export default function DiaryEditorView({
     y: number;
   } | null>(null);
 
+  const menuTimerRef = useRef<number | null>(null);
+  
+
   function cancelLongPress() {
     if (longPressTimerRef.current !== null) {
       window.clearTimeout(longPressTimerRef.current);
@@ -233,131 +236,111 @@ export default function DiaryEditorView({
 
     return [start, end];
   }
-
-    /* ★ 原生 addEventListener 绑定（绕过 React 委托） */
+  /* ★ 监听 iOS 原生选区变化 → 弹出高光菜单 */
   useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-
-    function onTouchStart(e: TouchEvent) {
+    function onSelectionChange() {
       if (editing) return;
 
-      const t = e.target as HTMLElement;
-      if (
-        t.closest("button") ||
-        t.closest("[data-hl-id]")
-      ) {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      if (sel.isCollapsed) return;
+
+      const root = rootRef.current;
+      if (!root) return;
+
+      const range = sel.getRangeAt(0);
+      if (!root.contains(range.commonAncestorContainer))
         return;
+
+        const rawText = sel.toString().trim();
+      if (rawText.length < 1) return;
+
+      /* 算 start offset */
+      const node = range.startContainer;
+      let offset: number | null = null;
+
+      if (node.nodeType === Node.TEXT_NODE) {
+        let cur: HTMLElement | null = (
+          node as Text
+        ).parentElement;
+        while (cur && cur !== root) {
+          const base = cur.getAttribute("data-offset");
+          if (base !== null) {
+            offset =
+              parseInt(base, 10) +
+              range.startOffset;
+            break;
+          }
+          cur = cur.parentElement;
+        }
       }
 
-      const touch = e.touches[0];
-      if (!touch) return;
+      if (offset === null) return;
 
-      cancelLongPress();
-      pointerStartRef.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-      };
+      /* ★ 强制扩展到整句（不管 iOS 选了啥） */
+      const [s, e2] = getSentenceRange(
+        note.body,
+        offset
+      );
+      const sentence = note.body.slice(s, e2).trim();
+      if (!sentence) return;
 
-      const cx = touch.clientX;
-      const cy = touch.clientY;
+      const actualStart = note.body.indexOf(
+        sentence,
+        s
+      );
+      if (actualStart === -1) return;
 
-      console.log("[Diary] touchstart", cx, cy);
+      const occ = inferOccurrence(
+        note.body,
+        sentence,
+        actualStart
+      );
 
-      longPressTimerRef.current = window.setTimeout(() => {
-        longPressTimerRef.current = null;
-        console.log("[Diary] timer fired");
+      const rect = range.getBoundingClientRect();
 
-        const offset = caretOffsetFromPoint(cx, cy);
-        if (offset === null) {
-          console.warn("[Diary] offset null");
-          return;
-        }
+      /* ★ 防抖：iOS 会触发多次 selectionchange */
+      if (menuTimerRef.current !== null) {
+        window.clearTimeout(menuTimerRef.current);
+      }
 
-        const [s, e2] = getSentenceRange(
-          note.body,
-          offset
-        );
-        const text = note.body.slice(s, e2).trim();
-        if (!text) return;
-
-        const actualStart = note.body.indexOf(text, s);
-        if (actualStart === -1) return;
-
-        const occ = inferOccurrence(
-          note.body,
-          text,
-          actualStart
-        );
-
-        try {
-          if (
-            typeof navigator !== "undefined" &&
-            "vibrate" in navigator
-          ) {
-            navigator.vibrate(10);
-          }
-        } catch {}
+      menuTimerRef.current = window.setTimeout(() => {
+        menuTimerRef.current = null;
 
         setMenu({
-          x: cx,
-          y: cy - 20,
-          text,
+          x: rect.left + rect.width / 2,
+          y: Math.max(8, rect.top - 8),
+          text: sentence,
           occurrence: occ,
         });
-      }, 450);
+
+        /* 清掉系统选区 → 系统菜单跟着消失 */
+        try {
+          const s2 = window.getSelection();
+          if (s2 && !s2.isCollapsed) {
+            s2.removeAllRanges();
+          }
+        } catch {}
+      }, 180);
     }
 
-    function onTouchMove(e: TouchEvent) {
-      const start = pointerStartRef.current;
-      if (!start) return;
-
-      const touch = e.touches[0];
-      if (!touch) return;
-
-      const dx = Math.abs(touch.clientX - start.x);
-      const dy = Math.abs(touch.clientY - start.y);
-
-      if (dx > 15 || dy > 15) {
-        cancelLongPress();
-        pointerStartRef.current = null;
-      }
-    }
-
-    function onTouchEnd() {
-      cancelLongPress();
-      pointerStartRef.current = null;
-    }
-
-    el.addEventListener("touchstart", onTouchStart, {
-      passive: true,
-    });
-    el.addEventListener("touchmove", onTouchMove, {
-      passive: true,
-    });
-    el.addEventListener("touchend", onTouchEnd, {
-      passive: true,
-    });
-    el.addEventListener("touchcancel", onTouchEnd, {
-      passive: true,
-    });
+    document.addEventListener(
+      "selectionchange",
+      onSelectionChange
+    );
 
     return () => {
-      el.removeEventListener(
-        "touchstart",
-        onTouchStart
+      document.removeEventListener(
+        "selectionchange",
+        onSelectionChange
       );
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", onTouchEnd);
-      el.removeEventListener(
-        "touchcancel",
-        onTouchEnd
-      );
-      cancelLongPress();
+      if (menuTimerRef.current !== null) {
+        window.clearTimeout(menuTimerRef.current);
+        menuTimerRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.body, editing]);
-
   /* 组件卸载时清理 */
   useEffect(() => {
     return () => cancelLongPress();
@@ -649,7 +632,12 @@ if (author === "user") {
           />
           <div
             className="diary-hl-menu"
-            style={{ left: menu.x, top: menu.y }}
+            style={{
+              left: menu.x,
+              top: menu.y,
+              transform: "translate(-50%, -100%)",
+              position: "fixed",
+            }}
           >
             <button
               className="diary-hl-menu-btn"
