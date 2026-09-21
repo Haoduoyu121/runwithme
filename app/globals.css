@@ -62879,3 +62879,49 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-picker-she
 .music-v2-scroll {
   padding-bottom: 96px;
 }
+/* =====================================================
+   Netease Panel 滚动修复
+   ===================================================== */
+
+/* 网易云面板本身成为滚动容器 */
+.music-v2-panel-netease {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+
+.music-nt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 2px 24px;
+  min-height: min-content;
+}
+
+/* 歌单网格：允许滚动、允许收缩 */
+.music-nt-playlist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 4px 2px 80px;
+}
+
+/* 搜索结果：去掉死限高，交给外层滚动 */
+.music-nt-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: none !important;
+  overflow-y: visible !important;
+  padding-right: 2px;
+}
+
+/* 导入按钮改为正常流式，不 sticky（避免挡住滚动） */
+.music-nt-import-btn {
+  position: static !important;
+  align-self: center;
+  margin: 12px auto 24px;
+}
