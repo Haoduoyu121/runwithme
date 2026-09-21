@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -84,6 +85,200 @@ export default function DiaryEditorView({
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
+  /* ★ 自建长按 */
+  const longPressTimerRef = useRef<number | null>(null);
+  const pointerStartRef = useRef<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  function cancelLongPress() {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  /** 从触点坐标算出「字符偏移」 */
+  function caretOffsetFromPoint(
+    x: number,
+    y: number
+  ): number | null {
+    const root = rootRef.current;
+    if (!root) return null;
+
+    let range: Range | null = null;
+
+    const doc = document as Document & {
+      caretRangeFromPoint?: (
+        x: number,
+        y: number
+      ) => Range | null;
+      caretPositionFromPoint?: (
+        x: number,
+        y: number
+      ) => { offsetNode: Node; offset: number } | null;
+    };
+
+    if (doc.caretRangeFromPoint) {
+      range = doc.caretRangeFromPoint(x, y);
+    } else if (doc.caretPositionFromPoint) {
+      const pos = doc.caretPositionFromPoint(x, y);
+      if (pos) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
+      }
+    }
+
+    if (!range) return null;
+
+    const node = range.startContainer;
+    if (node.nodeType !== Node.TEXT_NODE) return null;
+
+    let cur: HTMLElement | null = (
+      node as Text
+    ).parentElement;
+    while (cur && cur !== root) {
+      const base = cur.getAttribute("data-offset");
+      if (base !== null) {
+        return parseInt(base, 10) + range.startOffset;
+      }
+      cur = cur.parentElement;
+    }
+    return null;
+  }
+
+  /** 在 offset 处取整句范围（以 。！？…\n 分句） */
+  function getSentenceRange(
+    text: string,
+    offset: number
+  ): [number, number] {
+    const SENT_END = /[。！？!?…]/;
+    const clamp = Math.min(
+      Math.max(0, offset),
+      text.length
+    );
+
+    let start = clamp;
+    while (start > 0) {
+      const c = text[start - 1];
+      if (SENT_END.test(c) || c === "\n") break;
+      start--;
+    }
+
+    let end = clamp;
+    while (end < text.length) {
+      const c = text[end];
+      end++;
+      if (SENT_END.test(c)) {
+        /* 吞掉句末引号 */
+        while (
+          end < text.length &&
+          /["'”’」』]/.test(text[end])
+        ) {
+          end++;
+        }
+        break;
+      }
+      if (c === "\n") {
+        end--;
+        break;
+      }
+    }
+
+    /* 去掉首尾空白 */
+    while (start < end && /\s/.test(text[start])) start++;
+    while (end > start && /\s/.test(text[end - 1])) end--;
+
+    return [start, end];
+  }
+
+  function handlePointerDown(e: React.PointerEvent) {
+    if (editing) return;
+
+    const t = e.target as HTMLElement;
+    /* 已有的划线 / 按钮不参与 */
+    if (t.closest("button") || t.closest("[data-hl-id]"))
+      return;
+
+    cancelLongPress();
+    pointerStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+    };
+
+    const cx = e.clientX;
+    const cy = e.clientY;
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTimerRef.current = null;
+
+      const offset = caretOffsetFromPoint(cx, cy);
+      if (offset === null) return;
+
+      const [s, e2] = getSentenceRange(note.body, offset);
+      const text = note.body.slice(s, e2).trim();
+      if (!text) return;
+
+      const actualStart = note.body.indexOf(text, s);
+      if (actualStart === -1) return;
+
+      const occ = inferOccurrence(
+        note.body,
+        text,
+        actualStart
+      );
+
+      /* 震动反馈（支持则用） */
+      try {
+        if (
+          typeof navigator !== "undefined" &&
+          "vibrate" in navigator
+        ) {
+          navigator.vibrate(10);
+        }
+      } catch {}
+
+      setMenu({
+        x: cx,
+        y: cy - 20,
+        text,
+        occurrence: occ,
+      });
+    }, 500);
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    const start = pointerStartRef.current;
+    if (!start) return;
+
+    const dx = Math.abs(e.clientX - start.x);
+    const dy = Math.abs(e.clientY - start.y);
+
+    /* 移动太多 → 用户想滚动，取消长按 */
+    if (dx > 10 || dy > 10) {
+      cancelLongPress();
+      pointerStartRef.current = null;
+    }
+  }
+
+  function handlePointerUp() {
+    cancelLongPress();
+    pointerStartRef.current = null;
+  }
+
+  function handlePointerCancel() {
+    cancelLongPress();
+    pointerStartRef.current = null;
+  }
+
+  /* 组件卸载时清理 */
+  useEffect(() => {
+    return () => cancelLongPress();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /* ---------- 构造 segments ---------- */
 
   const segments = useMemo<Segment[]>(() => {
@@ -144,59 +339,6 @@ export default function DiaryEditorView({
     return segs;
   }, [note.body, highlights]);
 
-  /* ---------- 选区检测 ---------- */
-
-  function getSelectionOffset(): number | null {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return null;
-    const range = sel.getRangeAt(0);
-    const node = range.startContainer;
-
-    if (node.nodeType === Node.TEXT_NODE) {
-      let cur: HTMLElement | null =
-        node.parentElement;
-      while (cur && cur !== rootRef.current) {
-        const base = cur.getAttribute("data-offset");
-        if (base !== null) {
-          return (
-            parseInt(base, 10) + range.startOffset
-          );
-        }
-        cur = cur.parentElement;
-      }
-    }
-    return null;
-  }
-
-  function handleSelection() {
-    if (editing) return;
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed) {
-      return;
-    }
-    const text = sel.toString().trim();
-    if (text.length < 1 || text.length > 100) {
-      return;
-    }
-
-    const startOffset = getSelectionOffset();
-    if (startOffset === null) return;
-
-    const occ = inferOccurrence(
-      note.body,
-      text,
-      startOffset
-    );
-
-    const range = sel.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    setMenu({
-      x: rect.left + rect.width / 2,
-      y: rect.top,
-      text,
-      occurrence: occ,
-    });
-  }
 
   /* ---------- 打开已有划线 ---------- */
 
@@ -399,8 +541,10 @@ if (author === "user") {
             <div
               ref={rootRef}
               className="notes-diary-view"
-              onMouseUp={handleSelection}
-              onTouchEnd={handleSelection}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
             >
               {renderBody()}
             </div>

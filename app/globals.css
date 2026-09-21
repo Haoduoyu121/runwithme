@@ -8194,6 +8194,11 @@ html[data-runwithme-theme="dark"] .hs-icon-item {
   background: linear-gradient(145deg, #fffaf3, #fff2e9);
 }
 
+.hs-icon-preview.hs-icon-fridge {
+  background: linear-gradient(145deg, #e3f1f8, #c5e0ee);
+  color: #3b5e6e;
+}
+
 .hs-icon-preview.hs-icon-photos {
   background: linear-gradient(145deg, #e2edf1, #cfdee3);
   color: #536a72;
@@ -63181,3 +63186,118 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
   background: #111;
   border-color: rgba(255, 255, 255, 0.2);
 }
+/* =====================================================
+   Card Studio 搜索框（瘦身版）
+   ===================================================== */
+
+.studio-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 32px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  min-width: 140px;
+  max-width: 260px;
+  flex: 0 1 auto;
+}
+
+.studio-search-wrap > svg {
+  color: rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+
+.studio-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  line-height: 1;
+  color: inherit;
+  min-width: 0;
+  padding: 0;
+}
+
+.studio-search-input::placeholder {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.studio-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+/* dark */
+html[data-runwithme-theme="dark"] .studio-search-wrap {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-runwithme-theme="dark"] .studio-search-wrap > svg {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+html[data-runwithme-theme="dark"] .studio-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+html[data-runwithme-theme="dark"] .studio-search-clear {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* mono */
+html[data-runwithme-style="mono"] .studio-search-wrap {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wrap {
+  background: #111;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.notes-diary-view {
+  -webkit-user-select: text;
+  user-select: text;
+  /* 禁掉长按系统菜单，但保留可选中 */
+  -webkit-touch-callout: default;
+  touch-action: manipulation;
+}
+/* =====================================================
+   Diary 高光 - 自建长按（禁系统 selection）
+   ===================================================== */
+
+.notes-diary-view {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent;
+  /* 允许垂直滚动，禁双击缩放 */
+  touch-action: pan-y manipulation;
+}
+
+/* 已有划线仍可点击（打开评价） */
+.notes-diary-view [data-hl-id],
+.notes-diary-view mark {
+  cursor: pointer;
+}
+
+/* dark / mono 无需额外规则，继承父级色 */
