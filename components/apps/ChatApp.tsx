@@ -34,8 +34,15 @@ import {
 
 import type { StickerItem } from "@/data/stickers";
 
-import { loadStickers } from "@/lib/stickerStorage";
-import { getStickerFile } from "@/lib/stickerFiles";
+import {
+  loadStickers,
+  saveStickers,
+} from "@/lib/stickerStorage";
+import {
+  deleteStickerFile,
+  getStickerFile,
+  saveStickerFile,
+} from "@/lib/stickerFiles";
 import TextCard from "@/components/apps/photos/TextCard";
 import { useCall } from "@/lib/CallContext";
 import { useSystem } from "@/lib/SystemContext";
@@ -545,6 +552,10 @@ export default function ChatApp({ onBack }: ChatAppProps) {
 
   const [showStickerPanel, setShowStickerPanel] =
     useState(false);
+  const [stickerManageMode, setStickerManageMode] =
+    useState(false);
+  const [selectedStickerIds, setSelectedStickerIds] =
+    useState<Set<string>>(new Set());
   const [showCallPicker, setShowCallPicker] =
     useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -838,6 +849,108 @@ export default function ChatApp({ onBack }: ChatAppProps) {
       content: text,
       sender: "You",
       originalAt: Date.now(),
+    });
+  }
+
+    /* ★ 批量添加表情（面板里的「+ 添加」用） */
+  async function handleBatchAddStickers(
+    files: File[]
+  ) {
+    if (files.length === 0) return;
+
+    const current = loadStickers();
+    const added: StickerItem[] = [];
+    const newUrls: Record<string, string> = {};
+
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) continue;
+      const id = `sticker-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 7)}-${Math.random()
+        .toString(36)
+        .slice(2, 5)}`;
+      try {
+        await saveStickerFile(id, file);
+        added.push({
+          id,
+          fileName: file.name,
+          url: "",
+          enabled: true,
+        });
+        newUrls[id] = URL.createObjectURL(file);
+      } catch (e) {
+        console.error("保存表情失败:", file.name, e);
+      }
+    }
+
+    if (added.length === 0) return;
+
+    const next = [...current, ...added];
+    saveStickers(next);
+    setStickers(next);
+    setStickerUrls((prev) => ({
+      ...prev,
+      ...newUrls,
+    }));
+
+    try {
+      window.dispatchEvent(
+        new Event("runwithme:stickers-updated")
+      );
+    } catch {}
+  }
+
+    /* ★ 批量删除表情 */
+  async function handleBatchDeleteStickers() {
+    if (selectedStickerIds.size === 0) return;
+    if (
+      !window.confirm(
+        `确定删除选中的 ${selectedStickerIds.size} 个表情？此操作不可恢复。`
+      )
+    )
+      return;
+
+    /* 删 IDB 文件 */
+    for (const id of selectedStickerIds) {
+      try {
+        await deleteStickerFile(id);
+      } catch (e) {
+        console.error("删除表情文件失败:", id, e);
+      }
+      /* 顺便释放旧的 objectURL */
+      const u = stickerUrls[id];
+      if (u) {
+        try {
+          URL.revokeObjectURL(u);
+        } catch {}
+      }
+    }
+
+    /* 更新列表 */
+    const next = loadStickers().filter(
+      (s) => !selectedStickerIds.has(s.id)
+    );
+    saveStickers(next);
+    setStickers(next);
+
+    /* 清 selected */
+    setSelectedStickerIds(new Set());
+    setStickerManageMode(false);
+
+    try {
+      window.dispatchEvent(
+        new Event("runwithme:stickers-updated")
+      );
+    } catch {}
+  }
+
+  /* ★ 单个表情选择切换 */
+  function toggleStickerSelect(id: string) {
+    setSelectedStickerIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
     });
   }
 
@@ -1661,16 +1774,113 @@ export default function ChatApp({ onBack }: ChatAppProps) {
             </div>
           )}
 
-          {showStickerPanel && (
+                   {showStickerPanel && (
             <div className="chat-sticker-panel">
+              <div className="chat-sticker-panel-header">
+                {!stickerManageMode ? (
+                  <>
+                    <span className="chat-sticker-panel-title">
+                      我的表情
+                    </span>
+                    <span className="chat-sticker-panel-count">
+                      共 {stickers.length} 个
+                    </span>
+
+                    {stickers.length > 0 && (
+                      <button
+                        className="chat-sticker-manage-btn"
+                        onClick={() => {
+                          setStickerManageMode(true);
+                          setSelectedStickerIds(
+                            new Set()
+                          );
+                        }}
+                      >
+                        管理
+                      </button>
+                    )}
+
+                    <label className="chat-sticker-add-btn">
+                      <Plus size={14} strokeWidth={2.6} />
+                      添加
+                      <input
+                        type="file"
+                        className="ios-file-input"
+                        accept="image/*"
+                        multiple
+                        onChange={(event) => {
+                          const files = Array.from(
+                            event.target.files ?? []
+                          );
+                          if (files.length > 0) {
+                            void handleBatchAddStickers(
+                              files
+                            );
+                          }
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="chat-sticker-manage-btn"
+                      onClick={() => {
+                        setStickerManageMode(false);
+                        setSelectedStickerIds(new Set());
+                      }}
+                    >
+                      完成
+                    </button>
+                    <span className="chat-sticker-panel-count">
+                      已选 {selectedStickerIds.size}
+                    </span>
+                    <button
+                      className="chat-sticker-manage-btn"
+                      onClick={() => {
+                        const all = stickers
+                          .filter((s) => s.enabled)
+                          .map((s) => s.id);
+                        if (
+                          selectedStickerIds.size ===
+                          all.length
+                        ) {
+                          setSelectedStickerIds(new Set());
+                        } else {
+                          setSelectedStickerIds(
+                            new Set(all)
+                          );
+                        }
+                      }}
+                    >
+                      {selectedStickerIds.size ===
+                      stickers.filter((s) => s.enabled)
+                        .length
+                        ? "取消全选"
+                        : "全选"}
+                    </button>
+                    <button
+                      className="chat-sticker-delete-btn"
+                      disabled={
+                        selectedStickerIds.size === 0
+                      }
+                      onClick={() =>
+                        void handleBatchDeleteStickers()
+                      }
+                    >
+                      删除
+                    </button>
+                  </>
+                )}
+              </div>
+
               {stickers.filter((s) => s.enabled).length ===
               0 ? (
                 <div className="chat-sticker-empty">
-                  还没有可用的表情包
+                  还没有表情包
                   <br />
-                  <small>
-                    在 ••• → 我的表情包里添加
-                  </small>
+                  <small>点右上角「添加」加几张</small>
                 </div>
               ) : (
                 <div className="chat-sticker-grid">
@@ -1679,15 +1889,35 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                     .map((sticker) => {
                       const url = stickerUrls[sticker.id];
                       if (!url) return null;
+                      const checked =
+                        selectedStickerIds.has(sticker.id);
+
                       return (
                         <button
                           key={sticker.id}
-                          className="chat-sticker-item"
-                          onClick={() =>
-                            sendSticker(sticker)
+                          className={
+                            "chat-sticker-item" +
+                            (stickerManageMode
+                              ? " is-manage"
+                              : "") +
+                            (checked ? " is-checked" : "")
                           }
+                          onClick={() => {
+                            if (stickerManageMode) {
+                              toggleStickerSelect(
+                                sticker.id
+                              );
+                            } else {
+                              sendSticker(sticker);
+                            }
+                          }}
                         >
                           <img src={url} alt="表情包" />
+                          {stickerManageMode && (
+                            <span className="chat-sticker-check">
+                              {checked ? "✓" : ""}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -1695,7 +1925,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               )}
             </div>
           )}
-
           {quoteDraft && (
             <div className="chat-quote-preview">
               <div className="chat-quote-preview-content">

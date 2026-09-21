@@ -17,6 +17,7 @@ import {
   Plus,
   Settings,
   X,
+  Search,
 } from "lucide-react";
 
 import {
@@ -136,6 +137,9 @@ export default function CardStudioApp({
   const [addCategory, setAddCategory] = useState("");
   const [addText, setAddText] = useState("");
   const [addFile, setAddFile] = useState<File | null>(null);
+  const [addStickerFiles, setAddStickerFiles] =
+    useState<File[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [editingCard, setEditingCard] =
     useState<CharacterCard | null>(null);
@@ -355,6 +359,56 @@ export default function CardStudioApp({
     reader.readAsArrayBuffer(file);
   }
 
+    /* ★ 批量上传 sticker（iOS 安全：立即读进内存） */
+  async function handleAddStickerFiles(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) {
+      setAddStickerFiles([]);
+      return;
+    }
+
+    const freshFiles: File[] = [];
+
+    for (const file of files) {
+      try {
+        const buf = await new Promise<ArrayBuffer>(
+          (resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () =>
+              resolve(reader.result as ArrayBuffer);
+            reader.onerror = () =>
+              reject(reader.error);
+            reader.readAsArrayBuffer(file);
+          }
+        );
+
+        const nameLower = (file.name || "").toLowerCase();
+        let type = file.type;
+        if (!type) {
+          if (nameLower.endsWith(".png"))
+            type = "image/png";
+          else if (
+            nameLower.endsWith(".jpg") ||
+            nameLower.endsWith(".jpeg")
+          )
+            type = "image/jpeg";
+          else type = "application/octet-stream";
+        }
+
+        freshFiles.push(
+          new File([buf], file.name || "upload", { type })
+        );
+      } catch (e) {
+        console.error("读取文件失败:", file.name, e);
+      }
+    }
+
+    setAddStickerFiles(freshFiles);
+  }
+
   /* -------------------------------------------------------
      添加
      ------------------------------------------------------- */
@@ -368,7 +422,36 @@ export default function CardStudioApp({
         return;
       }
 
-      const newCards: CharacterCard[] = lines.map(
+      /* ★ 同类目去重 */
+      const existing = new Set(
+        cardPool
+          .filter(
+            (c) =>
+              c.type === "text" &&
+              c.category === addCategory
+          )
+          .map((c) => c.text.trim())
+      );
+
+      const kept: string[] = [];
+      let skipped = 0;
+      for (const line of lines) {
+        if (existing.has(line)) {
+          skipped++;
+        } else {
+          existing.add(line);
+          kept.push(line);
+        }
+      }
+
+      if (kept.length === 0) {
+        alert(
+          `这 ${lines.length} 行都已在「${addCategory}」类目里，全部跳过。`
+        );
+        return;
+      }
+
+      const newCards: CharacterCard[] = kept.map(
         (line) => ({
           id: createCardId(),
           character: addCharacter,
@@ -380,6 +463,12 @@ export default function CardStudioApp({
       );
 
       updateCards([...cardPool, ...newCards]);
+
+      if (skipped > 0) {
+        alert(
+          `已添加 ${kept.length} 张，跳过 ${skipped} 张重复内容。`
+        );
+      }
       resetAddForm();
       return;
     }
@@ -494,44 +583,60 @@ export default function CardStudioApp({
       return;
     }
 
-    /* Sticker */
+    /* Sticker（支持批量） */
     if (addType === "sticker") {
       const text = addText.trim();
 
-      if (!addFile) {
+      if (addStickerFiles.length === 0) {
         alert("请先选择图片。");
         return;
       }
 
-      if (
-        !["image/jpeg", "image/png"].includes(addFile.type)
-      ) {
+      const validFiles = addStickerFiles.filter((f) =>
+        ["image/jpeg", "image/png"].includes(f.type)
+      );
+
+      if (validFiles.length === 0) {
         alert("目前只接受 JPG / PNG 图片。");
         return;
       }
 
-      const mediaId = createMediaId("sticker");
+      const created: CharacterCard[] = [];
+      let failed = 0;
 
-      try {
-        await saveStickerFile(mediaId, addFile);
-
-        const newCard: CharacterCard = {
-          id: createCardId(),
-          character: addCharacter,
-          type: "sticker",
-          category: addCategory,
-          text,
-          mediaId,
-          fileName: addFile.name,
-          enabled: true,
-        };
-
-        updateCards([...cardPool, newCard]);
-        resetAddForm();
-      } catch (error) {
-        console.error("保存贴纸失败:", error);
-        alert("贴纸保存失败，请查看控制台。");
+      for (const file of validFiles) {
+        const mediaId = createMediaId("sticker");
+        try {
+          await saveStickerFile(mediaId, file);
+          created.push({
+            id: createCardId(),
+            character: addCharacter,
+            type: "sticker",
+            category: addCategory,
+            text,
+            mediaId,
+            fileName: file.name,
+            enabled: true,
+          });
+        } catch (error) {
+          console.error("保存贴纸失败:", file.name, error);
+          failed++;
+        }
       }
+
+      if (created.length === 0) {
+        alert("贴纸保存失败，请查看控制台。");
+        return;
+      }
+
+      updateCards([...cardPool, ...created]);
+
+      if (failed > 0) {
+        alert(
+          `已添加 ${created.length} 张，失败 ${failed} 张。`
+        );
+      }
+      resetAddForm();
     }
   }
 
@@ -541,6 +646,8 @@ export default function CardStudioApp({
     setAddCategory(categories[0] ?? "");
     setAddText("");
     setAddFile(null);
+    setAddStickerFiles([]);
+    setSearchQuery("");
     setShowAddPanel(false);
   }
 
@@ -732,6 +839,8 @@ export default function CardStudioApp({
      ------------------------------------------------------- */
 
   const filteredCards = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
     return cardPool.filter((card) => {
       const characterMatch =
         characterFilter === "All" ||
@@ -745,8 +854,15 @@ export default function CardStudioApp({
         categoryFilter === "全部" ||
         card.category === categoryFilter;
 
+      /* ★ 搜索：匹配正文（不区分大小写） */
+      const searchMatch =
+        !q || card.text.toLowerCase().includes(q);
+
       return (
-        characterMatch && typeMatch && categoryMatch
+        characterMatch &&
+        typeMatch &&
+        categoryMatch &&
+        searchMatch
       );
     });
   }, [
@@ -754,6 +870,7 @@ export default function CardStudioApp({
     characterFilter,
     typeFilter,
     categoryFilter,
+    searchQuery,
   ]);
 
   const allVisibleSelected =
@@ -973,6 +1090,27 @@ export default function CardStudioApp({
           <Settings size={13} strokeWidth={2.2} />
           分类
         </button>
+                <div className="studio-search-wrap">
+          <Search size={13} strokeWidth={2.2} />
+          <input
+            type="text"
+            className="studio-search-input"
+            placeholder="搜索卡片内容…"
+            value={searchQuery}
+            onChange={(event) =>
+              setSearchQuery(event.target.value)
+            }
+          />
+          {searchQuery && (
+            <button
+              className="studio-search-clear"
+              onClick={() => setSearchQuery("")}
+              aria-label="清空搜索"
+            >
+              <X size={12} strokeWidth={2.4} />
+            </button>
+          )}
+        </div>
       </section>
 
       {/* 操作 */}
@@ -1199,15 +1337,18 @@ export default function CardStudioApp({
           {addType === "sticker" && (
             <>
               <label>
-                贴纸图片
+                贴纸图片（可多选）
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleAddFile}
+                  multiple
+                  onChange={(e) =>
+                    void handleAddStickerFiles(e)
+                  }
                 />
               </label>
 
-              {addFile && (
+              {addStickerFiles.length > 0 && (
                 <div className="studio-file-name">
                   <ImageIcon
                     size={13}
@@ -1218,7 +1359,12 @@ export default function CardStudioApp({
                       marginRight: 4,
                     }}
                   />
-                  {addFile.name}
+                  已选 {addStickerFiles.length} 张 ·{" "}
+                  {addStickerFiles
+                    .slice(0, 2)
+                    .map((f) => f.name)
+                    .join("、")}
+                  {addStickerFiles.length > 2 && " …"}
                 </div>
               )}
 

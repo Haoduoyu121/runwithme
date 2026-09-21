@@ -62922,3 +62922,262 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-picker-she
   max-height: none !important;
   overflow-y: visible !important;
 }
+/* =====================================================
+   Chat 表情面板顶部操作条
+   ===================================================== */
+
+.chat-sticker-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+
+.chat-sticker-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.chat-sticker-panel-count {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-right: auto;
+}
+
+.chat-sticker-add-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.8);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.chat-sticker-add-btn:active {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* 保证表情面板自身是 flex 纵向 */
+.chat-sticker-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+}
+
+.chat-sticker-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* dark */
+html[data-runwithme-theme="dark"] .chat-sticker-panel-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-runwithme-theme="dark"] .chat-sticker-panel-title {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-runwithme-theme="dark"] .chat-sticker-panel-count {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+html[data-runwithme-theme="dark"] .chat-sticker-add-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+html[data-runwithme-theme="dark"] .chat-sticker-add-btn:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* mono */
+html[data-runwithme-style="mono"] .chat-sticker-add-btn {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .chat-sticker-add-btn {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+/* =====================================================
+   Chat 表情面板 - 管理 / 批量删除
+   ===================================================== */
+
+.chat-sticker-manage-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.8);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chat-sticker-manage-btn:active {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.chat-sticker-delete-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgb(220, 60, 50);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chat-sticker-delete-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.chat-sticker-delete-btn:not(:disabled):active {
+  background: rgb(190, 45, 35);
+}
+
+/* 表情格子上的勾选 */
+.chat-sticker-item {
+  position: relative;
+}
+
+.chat-sticker-item.is-manage {
+  cursor: pointer;
+}
+
+.chat-sticker-check {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.chat-sticker-item.is-checked .chat-sticker-check {
+  background: rgb(50, 120, 220);
+  border-color: #fff;
+}
+
+.chat-sticker-item.is-checked img {
+  opacity: 0.7;
+}
+
+/* dark */
+html[data-runwithme-theme="dark"] .chat-sticker-manage-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+html[data-runwithme-theme="dark"] .chat-sticker-manage-btn:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* mono */
+html[data-runwithme-style="mono"] .chat-sticker-manage-btn {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+html[data-runwithme-style="mono"] .chat-sticker-delete-btn {
+  border-radius: 4px;
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .chat-sticker-manage-btn {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+/* =====================================================
+   Card Studio 搜索框
+   ===================================================== */
+
+.studio-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.studio-search-wrap > svg {
+  color: rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.studio-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: inherit;
+  min-width: 0;
+}
+
+.studio-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* dark */
+html[data-runwithme-theme="dark"] .studio-search-wrap {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-runwithme-theme="dark"] .studio-search-wrap > svg {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+html[data-runwithme-theme="dark"] .studio-search-clear {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* mono */
+html[data-runwithme-style="mono"] .studio-search-wrap {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wrap {
+  background: #111;
+  border-color: rgba(255, 255, 255, 0.2);
+}
