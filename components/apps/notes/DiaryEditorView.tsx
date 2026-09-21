@@ -235,6 +235,8 @@ export default function DiaryEditorView({
   }
 
   function handleTouchStart(e: React.TouchEvent) {
+       /* ★ 临时诊断：改标题 */
+    document.title = "touch:" + Date.now();
     if (editing) return;
 
     const t = e.target as HTMLElement;
