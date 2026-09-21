@@ -585,6 +585,15 @@ export function MusicProvider({
         title: item.title,
         artist: item.artist || "RunWithme",
         album: "RunWithme",
+        artwork: item.remoteCover
+          ? [
+              {
+                src: item.remoteCover,
+                sizes: "512x512",
+                type: "image/jpeg",
+              },
+            ]
+          : [],
       });
 
       navigator.mediaSession.setActionHandler(

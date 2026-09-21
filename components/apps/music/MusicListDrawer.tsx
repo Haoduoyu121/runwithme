@@ -277,10 +277,15 @@ export default function MusicListDrawer({
   }
 
   function renderCover(
-    item: { id: string; coverId?: string },
+    item: {
+      id: string;
+      coverId?: string;
+      remoteCover?: string;
+    },
     isCurrent: boolean
   ) {
-    const url = coverUrls[item.id];
+    /* ★ 本地 IDB 封面优先，其次 remoteCover（网易云封面） */
+    const url = coverUrls[item.id] || item.remoteCover;
     if (url) {
       return (
         <img

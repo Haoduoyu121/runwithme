@@ -236,6 +236,13 @@ export default function MusicApp({ onBack }: MusicAppProps) {
       return;
     }
 
+    /* ★ 优先 remoteCover（网易云封面） */
+    if (currentTrack.remoteCover) {
+      setCoverUrl(currentTrack.remoteCover);
+      return;
+    }
+
+    /* 退回本地 IDB 封面 */
     let cancelled = false;
     let url: string | null = null;
 
@@ -257,7 +264,11 @@ export default function MusicApp({ onBack }: MusicAppProps) {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [currentTrack?.id, currentTrack?.coverId]);
+  }, [
+    currentTrack?.id,
+    currentTrack?.coverId,
+    currentTrack?.remoteCover,
+  ]);
 
   /* 初始化 */
   useEffect(() => {
