@@ -1,5 +1,4 @@
 // lib/neteaseApi.ts
-// 所有网易云 fetch 封装，统一走 api.yulewin.cn/api/netease/*
 
 const BASE =
   process.env.NEXT_PUBLIC_API_BASE
@@ -8,7 +7,6 @@ const BASE =
 
 async function getJson<T>(path: string): Promise<T> {
   const url = `${BASE}${path}`;
-
   let lastErr: unknown = null;
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -25,7 +23,6 @@ async function getJson<T>(path: string): Promise<T> {
       return (await res.json()) as T;
     } catch (e) {
       lastErr = e;
-      /* 网络层错误 → 等 300ms 重试；HTTP 错误 → 直接抛 */
       if (
         e instanceof Error &&
         e.message.startsWith("netease api ")
@@ -94,15 +91,45 @@ export async function checkQr(
   };
 }
 
+/* ---------- 登录状态 ---------- */
+
+export interface NeteaseLoginStatus {
+  userId: number;
+  nickname: string;
+  avatarUrl: string;
+}
+
+export async function fetchLoginStatus(
+  cookie: string
+): Promise<NeteaseLoginStatus | null> {
+  try {
+    const ts = Date.now();
+    const json = await getJson<any>(
+      `/login/status?cookie=${encodeURIComponent(
+        cookie
+      )}&timestamp=${ts}`
+    );
+    const profile = json?.data?.profile;
+    if (!profile?.userId) return null;
+    return {
+      userId: profile.userId,
+      nickname: profile.nickname ?? "网易云用户",
+      avatarUrl: profile.avatarUrl ?? "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 /* ---------- 搜索 ---------- */
 
 export interface NeteaseSong {
   id: number;
   name: string;
-  artists: string; // "周杰伦 / 方文山" 形式
+  artists: string;
   album: string;
   cover: string;
-  duration: number; // 毫秒
+  duration: number;
 }
 
 export async function searchSongs(
@@ -128,7 +155,6 @@ export async function searchSongs(
 
 /* ---------- 播放 ---------- */
 
-/** 返回可播放 URL；null 表示无版权 / 需 VIP / 登录过期 */
 export async function fetchSongUrl(
   id: number,
   cookie: string
@@ -140,7 +166,7 @@ export async function fetchSongUrl(
   return url || null;
 }
 
-/* ---------- 歌词（M4-d 会用，先放着） ---------- */
+/* ---------- 歌词 ---------- */
 
 export async function fetchLyric(id: number): Promise<string> {
   const json = await getJson<{ lrc?: { lyric?: string } }>(
@@ -149,13 +175,16 @@ export async function fetchLyric(id: number): Promise<string> {
   return json?.lrc?.lyric ?? "";
 }
 
-/* ---------- 歌单（M4-c 会用，先放着） ---------- */
+/* ---------- 歌单 ---------- */
 
 export interface NeteasePlaylist {
   id: number;
   name: string;
   cover: string;
   trackCount: number;
+  creator: string;
+  isMine: boolean;
+  isLiked: boolean;
 }
 
 export async function fetchUserPlaylists(
@@ -163,13 +192,58 @@ export async function fetchUserPlaylists(
   cookie: string
 ): Promise<NeteasePlaylist[]> {
   const json = await getJson<any>(
-    `/user/playlist?uid=${uid}&cookie=${encodeURIComponent(cookie)}`
+    `/user/playlist?uid=${uid}&cookie=${encodeURIComponent(
+      cookie
+    )}&limit=1000&offset=0`
   );
   const list: any[] = json?.playlist ?? [];
   return list.map((p) => ({
     id: p.id,
-    name: p.name,
+    name: p.name ?? "未命名歌单",
     cover: p.coverImgUrl ?? "",
     trackCount: p.trackCount ?? 0,
+    creator: p.creator?.nickname ?? "",
+    isMine: p.creator?.userId === uid,
+    isLiked: p.specialType === 5,
   }));
+}
+
+/** 拿歌单内全部歌曲（自动分页） */
+export async function fetchPlaylistTracks(
+  playlistId: number,
+  cookie: string
+): Promise<NeteaseSong[]> {
+  const all: NeteaseSong[] = [];
+  const pageSize = 500;
+  let offset = 0;
+  let guard = 0;
+
+  while (guard < 20) {
+    guard++;
+    const json = await getJson<any>(
+      `/playlist/track/all?id=${playlistId}&limit=${pageSize}&offset=${offset}&cookie=${encodeURIComponent(
+        cookie
+      )}`
+    );
+    const songs: any[] = json?.songs ?? [];
+    if (songs.length === 0) break;
+
+    for (const s of songs) {
+      all.push({
+        id: s.id,
+        name: s.name,
+        artists: (s.ar ?? [])
+          .map((a: any) => a.name)
+          .join(" / "),
+        album: s.al?.name ?? "",
+        cover: s.al?.picUrl ?? "",
+        duration: s.dt ?? 0,
+      });
+    }
+
+    if (songs.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return all;
 }
