@@ -196,6 +196,17 @@ export default function DiaryEditorView({
       text,
       occurrence: occ,
     });
+
+    /* ★ 清除系统 selection → iOS 系统菜单会跟着消失
+       延迟 50ms 让 iOS 先把系统菜单弹出来，再清掉它 */
+    window.setTimeout(() => {
+      try {
+        const s = window.getSelection();
+        if (s && !s.isCollapsed) {
+          s.removeAllRanges();
+        }
+      } catch {}
+    }, 50);
   }
 
   /* ---------- 打开已有划线 ---------- */
