@@ -30,6 +30,15 @@ import {
   type Playlist,
 } from "@/lib/playlistStorage";
 
+import {
+  batchAddToPlaylist,
+  batchDeleteMusic,
+  batchRemoveFromPlaylist,
+} from "@/lib/musicBatchOps";
+
+import MultiSelectBar from "./MultiSelectBar";
+import PlaylistPickerSheet from "./PlaylistPickerSheet";
+
 type MusicListDrawerProps = {
   onClose: () => void;
   onSelect: (index: number) => void;
@@ -37,6 +46,11 @@ type MusicListDrawerProps = {
 };
 
 type Tab = "all" | "playlists";
+
+/* 多选上下文 */
+type SelectCtx =
+  | { type: "all" }
+  | { type: "playlist"; playlistId: string };
 
 export default function MusicListDrawer({
   onClose,
@@ -46,9 +60,9 @@ export default function MusicListDrawer({
   const {
     music,
     currentTrack,
-    isPlaying,
     setQueue,
     playFromQueue,
+    reload,
   } = useMusic();
 
   const [tab, setTab] = useState<Tab>("all");
@@ -66,6 +80,15 @@ export default function MusicListDrawer({
   const [openedPlaylistId, setOpenedPlaylistId] = useState<
     string | null
   >(null);
+
+  /* 多选 */
+  const [selectCtx, setSelectCtx] =
+    useState<SelectCtx | null>(null);
+  const [selectedIds, setSelectedIds] = useState<
+    Set<string>
+  >(new Set());
+  const [showPlaylistPicker, setShowPlaylistPicker] =
+    useState(false);
 
   const coverInputRef = useRef<HTMLInputElement | null>(
     null
@@ -136,6 +159,12 @@ export default function MusicListDrawer({
   useEffect(() => {
     setPlaylists(loadPlaylists());
   }, []);
+
+  /* 切 tab / 关闭抽屉时退出多选 */
+  useEffect(() => {
+    setSelectCtx(null);
+    setSelectedIds(new Set());
+  }, [tab, openedPlaylistId]);
 
   function commitPlaylists(next: Playlist[]) {
     setPlaylists(next);
@@ -276,6 +305,87 @@ export default function MusicListDrawer({
     });
   }
 
+  /* ---------------- 多选逻辑 ---------------- */
+
+  function enterSelectAll() {
+    setSelectCtx({ type: "all" });
+    setSelectedIds(new Set());
+  }
+
+  function enterSelectPlaylist(playlistId: string) {
+    setSelectCtx({ type: "playlist", playlistId });
+    setSelectedIds(new Set());
+  }
+
+  function exitSelect() {
+    setSelectCtx(null);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  function selectAll(items: { id: string }[]) {
+    setSelectedIds(new Set(items.map((i) => i.id)));
+  }
+
+  async function handleBatchDelete() {
+    if (selectedIds.size === 0) return;
+    if (
+      !window.confirm(
+        `确定删除选中的 ${selectedIds.size} 首音乐？此操作不可恢复。`
+      )
+    )
+      return;
+    await batchDeleteMusic(Array.from(selectedIds));
+    exitSelect();
+    reload();
+    setPlaylists(loadPlaylists());
+  }
+
+  function handlePickPlaylistToAdd(playlistId: string) {
+    const added = batchAddToPlaylist(
+      playlistId,
+      Array.from(selectedIds)
+    );
+    setShowPlaylistPicker(false);
+    exitSelect();
+    setPlaylists(loadPlaylists());
+    if (added > 0) {
+      window.alert(`已加入 ${added} 首到歌单。`);
+    } else {
+      window.alert("这些歌曲都已在歌单里了。");
+    }
+  }
+
+  function handleRemoveFromPlaylist() {
+    if (!selectCtx || selectCtx.type !== "playlist") return;
+    if (selectedIds.size === 0) return;
+    if (
+      !window.confirm(
+        `从当前歌单移除选中的 ${selectedIds.size} 首？音乐本身不会被删除。`
+      )
+    )
+      return;
+    const removed = batchRemoveFromPlaylist(
+      selectCtx.playlistId,
+      Array.from(selectedIds)
+    );
+    exitSelect();
+    setPlaylists(loadPlaylists());
+    if (removed > 0) {
+      window.alert(`已从歌单移除 ${removed} 首。`);
+    }
+  }
+
+  /* ---------------- 渲染工具 ---------------- */
+
   function renderCover(
     item: {
       id: string;
@@ -284,7 +394,6 @@ export default function MusicListDrawer({
     },
     isCurrent: boolean
   ) {
-    /* ★ 本地 IDB 封面优先，其次 remoteCover（网易云封面） */
     const url = coverUrls[item.id] || item.remoteCover;
     if (url) {
       return (
@@ -306,6 +415,22 @@ export default function MusicListDrawer({
     );
   }
 
+  function renderSelectCheckbox(id: string) {
+    const checked = selectedIds.has(id);
+    return (
+      <span
+        className={
+          "music-select-checkbox" +
+          (checked ? " checked" : "")
+        }
+      >
+        {checked && "✓"}
+      </span>
+    );
+  }
+
+  /* ---------------- Tab: 全部 ---------------- */
+
   function renderAllTab() {
     if (music.length === 0) {
       return (
@@ -314,6 +439,9 @@ export default function MusicListDrawer({
         </div>
       );
     }
+
+    const isSelectMode =
+      selectCtx !== null && selectCtx.type === "all";
 
     return (
       <>
@@ -330,8 +458,15 @@ export default function MusicListDrawer({
             >
               <button
                 className="music-v2-drawer-item-main"
-                onClick={() => onSelect(index)}
+                onClick={() => {
+                  if (isSelectMode) {
+                    toggleSelect(item.id);
+                  } else {
+                    onSelect(index);
+                  }
+                }}
               >
+                {isSelectMode && renderSelectCheckbox(item.id)}
                 {renderCover(item, isCurrent)}
                 <div className="music-v2-drawer-item-info">
                   <strong>{item.title}</strong>
@@ -341,19 +476,23 @@ export default function MusicListDrawer({
                 </div>
               </button>
 
-              <button
-                className="music-v2-drawer-item-menu"
-                onClick={() => setAddToPlaylistFor(item.id)}
-                aria-label="添加到歌单"
-              >
-                <Ellipsis size={18} strokeWidth={2} />
-              </button>
+              {!isSelectMode && (
+                <button
+                  className="music-v2-drawer-item-menu"
+                  onClick={() => setAddToPlaylistFor(item.id)}
+                  aria-label="添加到歌单"
+                >
+                  <Ellipsis size={18} strokeWidth={2} />
+                </button>
+              )}
             </div>
           );
         })}
       </>
     );
   }
+
+  /* ---------------- Tab: 歌单 ---------------- */
 
   function renderPlaylistsTab() {
     if (openedPlaylistId) {
@@ -461,6 +600,15 @@ export default function MusicListDrawer({
   function renderPlaylistDetail(pl: Playlist) {
     const coverUrl = playlistCoverUrls[pl.id];
 
+    const isSelectMode =
+      selectCtx !== null &&
+      selectCtx.type === "playlist" &&
+      selectCtx.playlistId === pl.id;
+
+    const items = pl.musicIds
+      .map((id) => music.find((m) => m.id === id))
+      .filter((m): m is NonNullable<typeof m> => !!m);
+
     return (
       <>
         <button
@@ -471,14 +619,11 @@ export default function MusicListDrawer({
           返回歌单
         </button>
 
-        {/* 大封面 + 改名 */}
         <div className="music-playlist-detail-cover-wrap">
           <button
             type="button"
             className="music-playlist-detail-cover"
-            onClick={() =>
-              coverInputRef.current?.click()
-            }
+            onClick={() => coverInputRef.current?.click()}
             aria-label="更换封面"
           >
             {coverUrl ? (
@@ -535,7 +680,7 @@ export default function MusicListDrawer({
           </span>
         </div>
 
-        {pl.musicIds.length > 0 && (
+        {pl.musicIds.length > 0 && !isSelectMode && (
           <button
             className="music-playlist-play-all"
             onClick={() => handlePlayAll(pl)}
@@ -549,20 +694,47 @@ export default function MusicListDrawer({
           </button>
         )}
 
+        {pl.musicIds.length > 0 && (
+          <div className="music-select-row">
+            {!isSelectMode ? (
+              <button
+                className="music-select-toggle"
+                onClick={() => enterSelectPlaylist(pl.id)}
+              >
+                选择
+              </button>
+            ) : (
+              <>
+                <button
+                  className="music-select-toggle"
+                  onClick={exitSelect}
+                >
+                  取消
+                </button>
+                <span className="music-select-count">
+                  已选 {selectedIds.size}
+                </span>
+                <button
+                  className="music-select-toggle"
+                  onClick={() => selectAll(items)}
+                >
+                  全选
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {pl.musicIds.length === 0 ? (
           <div className="music-v2-drawer-empty">
             还没有歌，去「全部」里点击 ⋯ 添加
           </div>
         ) : (
-          pl.musicIds.map((id, indexInPl) => {
-            const item = music.find((m) => m.id === id);
-            if (!item) return null;
-
+          items.map((item, indexInPl) => {
             const isCurrent = item.id === currentTrackId;
-
             return (
               <div
-                key={id}
+                key={item.id}
                 className={
                   isCurrent
                     ? "music-v2-drawer-item active"
@@ -571,10 +743,16 @@ export default function MusicListDrawer({
               >
                 <button
                   className="music-v2-drawer-item-main"
-                  onClick={() =>
-                    handlePlayFromPlaylist(pl, indexInPl)
-                  }
+                  onClick={() => {
+                    if (isSelectMode) {
+                      toggleSelect(item.id);
+                    } else {
+                      handlePlayFromPlaylist(pl, indexInPl);
+                    }
+                  }}
                 >
+                  {isSelectMode &&
+                    renderSelectCheckbox(item.id)}
                   {renderCover(item, isCurrent)}
                   <div className="music-v2-drawer-item-info">
                     <strong>{item.title}</strong>
@@ -584,29 +762,35 @@ export default function MusicListDrawer({
                   </div>
                 </button>
 
-                <button
-                  className="music-v2-drawer-item-menu"
-                  onClick={() =>
-                    removeMusicFromPlaylist(pl.id, id)
-                  }
-                  aria-label="从歌单移除"
-                >
-                  <X size={16} strokeWidth={2.2} />
-                </button>
+                {!isSelectMode && (
+                  <button
+                    className="music-v2-drawer-item-menu"
+                    onClick={() =>
+                      removeMusicFromPlaylist(pl.id, item.id)
+                    }
+                    aria-label="从歌单移除"
+                  >
+                    <X size={16} strokeWidth={2.2} />
+                  </button>
+                )}
               </div>
             );
           })
         )}
 
-        <button
-          className="music-playlist-delete-btn"
-          onClick={() => deletePlaylist(pl.id)}
-        >
-          删除歌单
-        </button>
+        {!isSelectMode && (
+          <button
+            className="music-playlist-delete-btn"
+            onClick={() => deletePlaylist(pl.id)}
+          >
+            删除歌单
+          </button>
+        )}
       </>
     );
   }
+
+  /* ---------------- 单首加入歌单的浮层 ---------------- */
 
   function renderAddToPlaylistMenu() {
     if (!addToPlaylistFor) return null;
@@ -694,6 +878,47 @@ export default function MusicListDrawer({
     );
   }
 
+  /* ---------------- 顶部「选择」入口（全部 tab） ---------------- */
+
+  function renderHeaderActions() {
+    if (tab !== "all") return null;
+    if (music.length === 0) return null;
+
+    const isSelectMode =
+      selectCtx !== null && selectCtx.type === "all";
+
+    if (!isSelectMode) {
+      return (
+        <button
+          className="music-select-toggle"
+          onClick={enterSelectAll}
+        >
+          选择
+        </button>
+      );
+    }
+
+    return (
+      <>
+        <button
+          className="music-select-toggle"
+          onClick={exitSelect}
+        >
+          取消
+        </button>
+        <span className="music-select-count">
+          已选 {selectedIds.size}
+        </span>
+        <button
+          className="music-select-toggle"
+          onClick={() => selectAll(music)}
+        >
+          全选
+        </button>
+      </>
+    );
+  }
+
   return (
     <div
       className="music-v2-drawer-backdrop"
@@ -705,9 +930,12 @@ export default function MusicListDrawer({
       >
         <div className="music-v2-drawer-header">
           <h2>音乐库</h2>
-          <button onClick={onClose} aria-label="关闭">
-            <X size={16} strokeWidth={2.2} />
-          </button>
+          <div className="music-v2-drawer-header-actions">
+            {renderHeaderActions()}
+            <button onClick={onClose} aria-label="关闭">
+              <X size={16} strokeWidth={2.2} />
+            </button>
+          </div>
         </div>
 
         <div className="music-v2-drawer-tabs">
@@ -735,9 +963,31 @@ export default function MusicListDrawer({
             ? renderAllTab()
             : renderPlaylistsTab()}
         </div>
+
+        {selectCtx !== null && (
+          <MultiSelectBar
+            selectedCount={selectedIds.size}
+            showRemoveFromPlaylist={
+              selectCtx.type === "playlist"
+            }
+            onAddToPlaylist={() =>
+              setShowPlaylistPicker(true)
+            }
+            onRemoveFromPlaylist={handleRemoveFromPlaylist}
+            onDelete={() => void handleBatchDelete()}
+          />
+        )}
       </aside>
 
       {renderAddToPlaylistMenu()}
+
+      {showPlaylistPicker && (
+        <PlaylistPickerSheet
+          title="加入歌单"
+          onPick={handlePickPlaylistToAdd}
+          onClose={() => setShowPlaylistPicker(false)}
+        />
+      )}
     </div>
   );
 }
