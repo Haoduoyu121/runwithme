@@ -105,7 +105,10 @@ export default function DiaryEditorView({
     y: number
   ): number | null {
     const root = rootRef.current;
-    if (!root) return null;
+    if (!root) {
+      console.log("[Diary] no root");
+      return null;
+    }
 
     let range: Range | null = null;
 
@@ -131,21 +134,58 @@ export default function DiaryEditorView({
       }
     }
 
-    if (!range) return null;
+    if (!range) {
+      console.log("[Diary] caretRangeFromPoint → null", {
+        x,
+        y,
+      });
+      return null;
+    }
 
     const node = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE) return null;
+    const nodeType = node.nodeType;
+    console.log("[Diary] hit node", {
+      nodeType,
+      text:
+        node.nodeType === Node.TEXT_NODE
+          ? (node as Text).textContent?.slice(0, 20)
+          : (node as HTMLElement).outerHTML?.slice(0, 80),
+      startOffset: range.startOffset,
+    });
 
-    let cur: HTMLElement | null = (
-      node as Text
-    ).parentElement;
-    while (cur && cur !== root) {
-      const base = cur.getAttribute("data-offset");
-      if (base !== null) {
-        return parseInt(base, 10) + range.startOffset;
-      }
-      cur = cur.parentElement;
+    /* ★ 关键修复：两种节点都处理 */
+    let el: HTMLElement | null = null;
+    let offsetInNode = 0;
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      el = (node as Text).parentElement;
+      offsetInNode = range.startOffset;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      el = node as HTMLElement;
+      /* 元素节点：不要偏移，用 offsetInNode = 0 或 max */
+      offsetInNode = 0;
+    } else {
+      console.log("[Diary] 未知节点类型:", nodeType);
+      return null;
     }
+
+    let steps = 0;
+    while (el && el !== root) {
+      steps++;
+      if (steps > 50) {
+        console.log("[Diary] 向上查找超 50 层，放弃");
+        return null;
+      }
+      const base = el.getAttribute("data-offset");
+      if (base !== null) {
+        const result = parseInt(base, 10) + offsetInNode;
+        console.log("[Diary] 找到 offset:", result, "| base:", base, "| offsetInNode:", offsetInNode);
+        return result;
+      }
+      el = el.parentElement;
+    }
+
+    console.log("[Diary] 找不到 data-offset");
     return null;
   }
 
@@ -216,13 +256,13 @@ export default function DiaryEditorView({
     longPressTimerRef.current = window.setTimeout(() => {
       longPressTimerRef.current = null;
 
+      console.log("[Diary] 长按触发，坐标:", cx, cy);
       const offset = caretOffsetFromPoint(cx, cy);
       if (offset === null) {
-        console.warn(
-          "[Diary] caretOffsetFromPoint 返回 null"
-        );
+        console.warn("[Diary] offset 为 null");
         return;
       }
+      console.log("[Diary] offset =", offset);
 
       const [s, e2] = getSentenceRange(note.body, offset);
       const text = note.body.slice(s, e2).trim();
