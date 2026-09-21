@@ -9,26 +9,21 @@ export default function FontScaleApplier() {
   useEffect(() => {
     const scale = settings.fontScale ?? 1;
 
-    const isIOS =
-      typeof navigator !== "undefined" &&
-      (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === "MacIntel" &&
-          navigator.maxTouchPoints > 1));
-
-    if (isIOS) {
-      document.documentElement.style.removeProperty("zoom");
-      document.body.style.removeProperty("transform");
-      document.body.style.removeProperty("transformOrigin");
-      document.body.style.removeProperty("width");
-      document.body.style.removeProperty("height");
-      document.documentElement.style.setProperty("--font-scale", "1");
-      return;
-    }
-
+    /* 用 zoom 全站等比缩放 */
     document.documentElement.style.setProperty(
       "zoom",
       String(scale)
     );
+
+    /* 兼容 Firefox（不支持 zoom 时用 transform） */
+    if (!("zoom" in document.documentElement.style)) {
+      document.body.style.transform = `scale(${scale})`;
+      document.body.style.transformOrigin = "top left";
+      document.body.style.width = `${100 / scale}%`;
+      document.body.style.height = `${100 / scale}%`;
+    }
+
+    /* 同步 CSS 变量，供需要单独读取的地方使用 */
     document.documentElement.style.setProperty(
       "--font-scale",
       String(scale)
