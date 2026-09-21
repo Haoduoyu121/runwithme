@@ -62879,20 +62879,28 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-picker-she
 .music-v2-scroll {
   padding-bottom: 96px;
 }
+
 /* =====================================================
-   Netease Panel 滚动修复
+   Music 面板滚动修复（覆盖前面的错误规则）
    ===================================================== */
 
-/* 网易云面板本身成为滚动容器 */
+/* 面板 header 和 tabs 固定，不参与滚动 */
+.music-v2-panel-header,
+.music-v2-panel-tabs {
+  flex-shrink: 0 !important;
+}
+
+/* 三个 tab 内容区统一行为：自适应高度 + 可滚动 */
+.music-v2-panel-form,
+.music-v2-panel-manage,
 .music-v2-panel-netease {
-  flex: 1 1 0 !important;
+  flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
-  display: flex;
-  flex-direction: column;
 }
 
+/* 网易云面板不再自己撑滚，交给上面的父容器 */
 .music-nt-panel {
   display: flex;
   flex-direction: column;
@@ -62901,27 +62909,16 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-picker-she
   min-height: min-content;
 }
 
-/* 歌单网格：允许滚动、允许收缩 */
+/* 歌单网格 padding 收一点 */
 .music-nt-playlist-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  padding: 4px 2px 80px;
+  padding: 4px 2px 12px;
 }
 
-/* 搜索结果：去掉死限高，交给外层滚动 */
+/* 结果列表不再限高 */
 .music-nt-results {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   max-height: none !important;
   overflow-y: visible !important;
-  padding-right: 2px;
-}
-
-/* 导入按钮改为正常流式，不 sticky（避免挡住滚动） */
-.music-nt-import-btn {
-  position: static !important;
-  align-self: center;
-  margin: 12px auto 24px;
 }
