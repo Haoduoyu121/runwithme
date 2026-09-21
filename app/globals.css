@@ -63281,3 +63281,23 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
   -webkit-touch-callout: default;
   touch-action: manipulation;
 }
+/* =====================================================
+   Diary 高光 - 自建长按（禁系统 selection）
+   ===================================================== */
+
+.notes-diary-view {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent;
+  /* 允许垂直滚动，禁双击缩放 */
+  touch-action: pan-y manipulation;
+}
+
+/* 已有划线仍可点击（打开评价） */
+.notes-diary-view [data-hl-id],
+.notes-diary-view mark {
+  cursor: pointer;
+}
+
+/* dark / mono 无需额外规则，继承父级色 */
