@@ -46,6 +46,7 @@ const APP_LABEL: Record<MemorySourceApp, string> = {
   random: "Random",
   checkin: "Check-in",
   questionnaire: "Q&A",
+  wishlist: "Wishlist",
 };
 
 function getAppIcon(app: MemorySourceApp) {
