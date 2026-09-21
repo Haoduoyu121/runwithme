@@ -140,41 +140,36 @@ export default function NeteasePanel({
         );
         if (myFlow !== flowIdRef.current) return;
 
-        /* ★ 803 判断必须最先，且不能覆盖 cookie */
-        if (r.code === 803) {
-          if (r.cookie) cookieAccumRef.current = r.cookie;
-          const finalCookie = cookieAccumRef.current;
-          if (finalCookie) {
-            const s = saveNeteaseSession({
-              cookie: finalCookie,
-              userId: r.userId ?? 0,
-              nickname: r.nickname ?? "网易云用户",
-              avatarUrl: r.avatarUrl ?? "",
-            });
-            setSession(s);
-          } else {
-            console.warn(
-              "803 但没有 cookie，无法保存 session"
-            );
-          }
-          return;
-        }
+// 在 checkQr 返回后，将 803 判断提到最前
+if (r.code === 803) {
+  // ... 保存 session 逻辑
+  return;
+}
 
-        /* 累积 cookie（801/802 都会带） */
-        if (r.cookie) cookieAccumRef.current = r.cookie;
+// 累积 cookie
+if (r.cookie) cookieAccumRef.current = r.cookie;
 
-        if (r.code === 800) {
-          setQrStatus("expired");
-          return;
-        }
+// 收到 800 时，额外重试一次
+if (r.code === 800) {
+  try {
+    const retry = await checkQr(key, cookieAccumRef.current);
+    if (retry.code === 803) {
+      // ... 保存 session 逻辑
+      return;
+    }
+  } catch {}
+  setQrStatus("expired");
+  return;
+}
 
-        if (r.code === 801) {
-          setQrStatus("waiting");
-        } else if (r.code === 802) {
-          setQrStatus("scanned");
-          /* ★ 已扫码 → 加速到 400ms，抢 803 窗口 */
-          interval = 400;
-        }
+// 调整轮询间隔
+if (r.code === 801) {
+  setQrStatus("waiting");
+  interval = 700; // 恢复 700ms，避免过度请求
+} else if (r.code === 802) {
+  setQrStatus("scanned");
+  interval = 300; // 加速到 300ms，抢 803 窗口
+}
 
         pollRef.current = window.setTimeout(
           tick,
