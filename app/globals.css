@@ -63181,3 +63181,91 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
   background: #111;
   border-color: rgba(255, 255, 255, 0.2);
 }
+/* =====================================================
+   Card Studio 搜索框（瘦身版）
+   ===================================================== */
+
+.studio-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 32px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  min-width: 140px;
+  max-width: 260px;
+  flex: 0 1 auto;
+}
+
+.studio-search-wrap > svg {
+  color: rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+}
+
+.studio-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12px;
+  line-height: 1;
+  color: inherit;
+  min-width: 0;
+  padding: 0;
+}
+
+.studio-search-input::placeholder {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.studio-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+/* dark */
+html[data-runwithme-theme="dark"] .studio-search-wrap {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-runwithme-theme="dark"] .studio-search-wrap > svg {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+html[data-runwithme-theme="dark"] .studio-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+html[data-runwithme-theme="dark"] .studio-search-clear {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* mono */
+html[data-runwithme-style="mono"] .studio-search-wrap {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wrap {
+  background: #111;
+  border-color: rgba(255, 255, 255, 0.2);
+}
