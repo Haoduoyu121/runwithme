@@ -4728,7 +4728,7 @@ body {
   width: 100% !important;
   height: 100% !important;
   min-height: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 /* ---------- 顶栏 ---------- */
@@ -23095,7 +23095,7 @@ body {
   height: auto !important;
   padding: 0 !important;
   margin: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 .runwithme-app {
@@ -23108,7 +23108,7 @@ body {
   height: auto !important;
   padding: 0 !important;
   margin: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 .home-screen,
@@ -23124,7 +23124,7 @@ body {
   max-height: none !important;
   padding: 0 !important;
   margin: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
 }
@@ -33739,7 +33739,7 @@ html[data-runwithme-theme="dark"] .music-upload-file-value {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -35015,7 +35015,7 @@ html[data-runwithme-theme="dark"] .photos-app-header {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -35126,7 +35126,7 @@ html[data-runwithme-theme="dark"] .chat-page .telegram-header {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -43848,7 +43848,7 @@ html body .dock .dock-icon {
   align-items: center !important;
   justify-content: center !important;
 
-  overflow: visible !important;
+  overflow: hidden !important;
   cursor: pointer !important;
 
   box-shadow:
@@ -44830,7 +44830,7 @@ html[data-runwithme-style="mono"] .letter-widget-v2-dot {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -48117,7 +48117,7 @@ html body .photo-viewer {
   display: flex !important;
   flex-direction: column !important;
   background: #000 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 /* ---------- 2. 顶部按钮：悬浮覆盖 ---------- */
@@ -55512,7 +55512,7 @@ body {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -62193,4 +62193,22 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-nt-mode-ta
 html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-nt-mode-tabs button.active {
   background: #fff;
   color: #000;
+}
+/* Settings 页里 label 包裹的导入按钮 */
+.settings-action {
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-action > input[type="file"] {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
 }
