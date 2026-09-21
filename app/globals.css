@@ -8194,6 +8194,11 @@ html[data-runwithme-theme="dark"] .hs-icon-item {
   background: linear-gradient(145deg, #fffaf3, #fff2e9);
 }
 
+.hs-icon-preview.hs-icon-fridge {
+  background: linear-gradient(145deg, #e3f1f8, #c5e0ee);
+  color: #3b5e6e;
+}
+
 .hs-icon-preview.hs-icon-photos {
   background: linear-gradient(145deg, #e2edf1, #cfdee3);
   color: #536a72;
