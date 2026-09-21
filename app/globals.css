@@ -61862,3 +61862,89 @@ html[data-runwithme-theme="dark"] .chat-plus-menu-item > small {
   background: transparent !important;
   z-index: 2;
 }
+/* =========================================================
+   iOS PWA 文件上传修复 · 批量
+   ========================================================= */
+
+/* ---------- Photos 上传按钮 ---------- */
+
+.photos-app-upload {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photos-app-empty-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* label 里的 input 铺满，透明度 0，可点 */
+.photos-app-upload .ios-file-input,
+.photos-app-empty-btn .ios-file-input {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+
+/* ---------- Home Studio：上传 input 铺满 ---------- */
+
+.hs-small-button,
+.hs-wallpaper-option,
+.hs-upload-option {
+  position: relative;
+  overflow: hidden;
+}
+
+.hs-hidden-input {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+}
+
+/* ---------- Chat Settings：上传 input 铺满 ---------- */
+
+.chat-settings-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-settings-btn .ios-file-input {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+}
+
+/* 头像上传的 label 需要溢出隐藏 */
+.chat-settings-avatar-actions label {
+  position: relative;
+  overflow: hidden;
+}

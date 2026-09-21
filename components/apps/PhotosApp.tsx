@@ -134,10 +134,6 @@ export default function PhotosApp({
   const [toast, setToast] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(
-    null
-  );
-
   const longPressTimer = useRef<
     ReturnType<typeof setTimeout> | null
   >(null);
@@ -775,23 +771,34 @@ export default function PhotosApp({
               ☰
             </button>
 
-            <button
-              className="photos-app-upload"
-              onClick={() => {
-                if (isPhotoMode) {
-                  fileInputRef.current?.click();
-                } else {
-                  handleShoot();
-                }
-              }}
-              disabled={
-                (isPhotoMode && uploading) ||
-                (!isPhotoMode && !!pending)
-              }
-              aria-label={isPhotoMode ? "上传照片" : "拍一张"}
-            >
-              {isPhotoMode ? (uploading ? "…" : "＋") : "✦"}
-            </button>
+            {isPhotoMode ? (
+              <label className="photos-app-upload">
+                {uploading ? "…" : "＋"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="ios-file-input"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      void handleUpload(files);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            ) : (
+              <button
+                className="photos-app-upload"
+                onClick={handleShoot}
+                disabled={!!pending}
+                aria-label="拍一张"
+              >
+                ✦
+              </button>
+            )}
 
             <button
               className="photos-app-upload"
@@ -814,20 +821,6 @@ export default function PhotosApp({
         )}
       </header>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="ios-file-input-detached"
-        accept="image/*"
-        multiple
-        onChange={(e) => {
-          const files = e.target.files;
-          if (files && files.length > 0) {
-            void handleUpload(files);
-          }
-          e.target.value = "";
-        }}
-      />
 
       {/* ---------- 照片模式 ---------- */}
       {isPhotoMode && (
@@ -917,14 +910,22 @@ export default function PhotosApp({
                 <div className="photos-app-empty-desc">
                   点右上角 ＋ 上传
                 </div>
-                <button
-                  className="photos-app-empty-btn"
-                  onClick={() =>
-                    fileInputRef.current?.click()
-                  }
-                >
+                <label className="photos-app-empty-btn">
                   上传照片
-                </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="ios-file-input"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        void handleUpload(files);
+                      }
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
               </div>
             ) : (
               <div className="photos-app-grid">
