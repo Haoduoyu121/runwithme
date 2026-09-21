@@ -147,7 +147,6 @@ export default function ReadReader({
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const scrollEndTimerRef = useRef<number | null>(null);
-  const snappingRef = useRef(false);
   const pagesRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
@@ -420,7 +419,6 @@ export default function ReadReader({
       window.clearTimeout(scrollEndTimerRef.current);
       scrollEndTimerRef.current = null;
     }
-    snappingRef.current = false;
   }, [chapterIndex]);
 
    /* ---------- 保存进度（翻页触发） ---------- */
@@ -464,7 +462,7 @@ export default function ReadReader({
   }, []);
   /* ---------- 滚动 ---------- */
 
-  function handleScroll() {
+    function handleScroll() {
     const scroll = scrollRef.current;
     if (!scroll) return;
     const w = scroll.clientWidth;
@@ -475,8 +473,6 @@ export default function ReadReader({
       setPageIndex(p);
     }
 
-    /* ★ 每次滚动都重置 timer，
-       用户停手 90ms 后才吸附 —— 不再被 snappingRef 阻塞 */
     if (scrollEndTimerRef.current !== null) {
       window.clearTimeout(scrollEndTimerRef.current);
     }
@@ -498,7 +494,6 @@ export default function ReadReader({
 
     if (diff < 2) return;
 
-    /* ★ 瞬时跳页，不播放动画 → 不会和用户的滑动打架 */
     scroll.scrollTo({
       left: target,
       behavior: "auto",
@@ -553,7 +548,21 @@ export default function ReadReader({
     id: number;
   } | null>(null);
 
-  function handlePointerDown(e: React.PointerEvent) {
+    function handlePointerDown(e: React.PointerEvent) {
+    /* ★ 用户触摸瞬间，如果位置在两页之间，立即跳到最近页 */
+    const scroll = scrollRef.current;
+    if (scroll) {
+      const w = scroll.clientWidth;
+      if (w > 0) {
+        const page = Math.round(scroll.scrollLeft / w);
+        const target = page * w;
+        if (Math.abs(scroll.scrollLeft - target) > 2) {
+          scroll.scrollTo({ left: target, behavior: "auto" });
+        }
+      }
+    }
+
+    /* ...下面保留原有逻辑... */
     const t = e.target as HTMLElement;
     if (t.closest("mark[data-hl-id]")) return;
 
