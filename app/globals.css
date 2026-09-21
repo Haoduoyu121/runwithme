@@ -61948,3 +61948,148 @@ html[data-runwithme-theme="dark"] .chat-plus-menu-item > small {
   position: relative;
   overflow: hidden;
 }
+/* =====================================================
+   Netease Cookie 手动登录
+   ===================================================== */
+
+.music-nt-cookie-section {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.music-nt-cookie-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.music-nt-cookie-toggle:hover {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.music-nt-cookie-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.music-nt-cookie-tip {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.music-nt-cookie-tip code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 11px;
+}
+
+.music-nt-cookie-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-family: monospace;
+  color: inherit;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.music-nt-cookie-input:focus {
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+.music-nt-cookie-save {
+  align-self: flex-end;
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.music-nt-cookie-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Dark */
+html[data-runwithme-theme="dark"] .music-nt-cookie-section {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-runwithme-theme="dark"] .music-nt-cookie-toggle {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+html[data-runwithme-theme="dark"] .music-nt-cookie-toggle:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+html[data-runwithme-theme="dark"] .music-nt-cookie-tip {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+html[data-runwithme-theme="dark"] .music-nt-cookie-tip code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html[data-runwithme-theme="dark"] .music-nt-cookie-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-runwithme-theme="dark"] .music-nt-cookie-input:focus {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+html[data-runwithme-theme="dark"] .music-nt-cookie-save {
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+}
+
+/* Mono */
+html[data-runwithme-style="mono"] .music-nt-cookie-input {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.15);
+  font-family: monospace;
+}
+
+html[data-runwithme-style="mono"] .music-nt-cookie-save {
+  background: #111;
+  color: #fff;
+  border-radius: 6px;
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-nt-cookie-input {
+  background: #111;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-nt-cookie-save {
+  background: #fff;
+  color: #000;
+}

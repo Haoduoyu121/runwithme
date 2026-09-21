@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import {
+  ChevronDown,
   Loader2,
   LogOut,
   Plus,
@@ -54,8 +55,16 @@ export default function NeteasePanel({
   >(undefined);
 
   const [qrImg, setQrImg] = useState("");
+  const [debugInfo, setDebugInfo] = useState("");
   const [qrStatus, setQrStatus] =
     useState<QrStatus>("loading");
+
+  /* ★ Cookie 手动登录 */
+  const [showCookieInput, setShowCookieInput] =
+    useState(false);
+  const [cookieInput, setCookieInput] = useState("");
+  const [savingCookie, setSavingCookie] =
+    useState(false);
 
   const [keyword, setKeyword] = useState("");
   const [searching, setSearching] = useState(false);
@@ -68,7 +77,6 @@ export default function NeteasePanel({
 
   const pollRef = useRef<number | null>(null);
   const cookieAccumRef = useRef<string>("");
-  /* ★ 用一个 ref 表示"本次扫码流程是否已被取消" */
   const flowIdRef = useRef(0);
 
   /* -------- 初次读 session -------- */
@@ -92,7 +100,6 @@ export default function NeteasePanel({
     setAddedIds(ids);
   }, [session]);
 
-  /* -------- 清理轮询 -------- */
   const stopPoll = useCallback(() => {
     if (pollRef.current !== null) {
       window.clearTimeout(pollRef.current);
@@ -128,7 +135,7 @@ export default function NeteasePanel({
     }
 
     let interval = 700;
-    let firstDelay = 300;
+    const firstDelay = 300;
 
     const tick = async () => {
       if (myFlow !== flowIdRef.current) return;
@@ -139,37 +146,62 @@ export default function NeteasePanel({
           cookieAccumRef.current
         );
         if (myFlow !== flowIdRef.current) return;
+                setDebugInfo(
+          `最后一次: code=${r.code} (${new Date().toLocaleTimeString()})`
+        );
 
-// 在 checkQr 返回后，将 803 判断提到最前
-if (r.code === 803) {
-  // ... 保存 session 逻辑
-  return;
-}
+        if (r.code === 803) {
+          if (r.cookie) cookieAccumRef.current = r.cookie;
+          const finalCookie = cookieAccumRef.current;
+          if (finalCookie) {
+            const s = saveNeteaseSession({
+              cookie: finalCookie,
+              userId: r.userId ?? 0,
+              nickname: r.nickname ?? "网易云用户",
+              avatarUrl: r.avatarUrl ?? "",
+            });
+            setSession(s);
+          }
+          return;
+        }
 
-// 累积 cookie
-if (r.cookie) cookieAccumRef.current = r.cookie;
+        if (r.cookie) cookieAccumRef.current = r.cookie;
 
-// 收到 800 时，额外重试一次
-if (r.code === 800) {
-  try {
-    const retry = await checkQr(key, cookieAccumRef.current);
-    if (retry.code === 803) {
-      // ... 保存 session 逻辑
-      return;
-    }
-  } catch {}
-  setQrStatus("expired");
-  return;
-}
+        if (r.code === 800) {
+          try {
+            const retry = await checkQr(
+              key,
+              cookieAccumRef.current
+            );
+            if (myFlow !== flowIdRef.current) return;
+            if (retry.code === 803) {
+              if (retry.cookie)
+                cookieAccumRef.current = retry.cookie;
+              const finalCookie = cookieAccumRef.current;
+              if (finalCookie) {
+                const s = saveNeteaseSession({
+                  cookie: finalCookie,
+                  userId: retry.userId ?? 0,
+                  nickname:
+                    retry.nickname ?? "网易云用户",
+                  avatarUrl: retry.avatarUrl ?? "",
+                });
+                setSession(s);
+              }
+              return;
+            }
+          } catch {}
+          setQrStatus("expired");
+          return;
+        }
 
-// 调整轮询间隔
-if (r.code === 801) {
-  setQrStatus("waiting");
-  interval = 700; // 恢复 700ms，避免过度请求
-} else if (r.code === 802) {
-  setQrStatus("scanned");
-  interval = 300; // 加速到 300ms，抢 803 窗口
-}
+        if (r.code === 801) {
+          setQrStatus("waiting");
+          interval = 700;
+        } else if (r.code === 802) {
+          setQrStatus("scanned");
+          interval = 300;
+        }
 
         pollRef.current = window.setTimeout(
           tick,
@@ -178,7 +210,7 @@ if (r.code === 801) {
       } catch (e) {
         console.error(e);
         if (myFlow !== flowIdRef.current) return;
-        pollRef.current = window.setTimeout(tick, 1200);
+        pollRef.current = window.setTimeout(tick, 1000);
       }
     };
 
@@ -188,14 +220,52 @@ if (r.code === 801) {
     );
   }, [stopPoll]);
 
-  /* -------- 未登录时启动扫码 -------- */
   useEffect(() => {
     if (session === undefined) return;
     if (session) return;
     void startQrFlow();
-    /* ★ 注意：不在这里 return stopPoll，
-       否则 session 一变会误取消进行中的流程 */
   }, [session, startQrFlow]);
+
+  /* ★ Cookie 手动登录保存 */
+  async function handleSaveCookie() {
+    const raw = cookieInput.trim();
+    if (!raw) {
+      alert("请粘贴 Cookie");
+      return;
+    }
+    if (!raw.includes("MUSIC_U")) {
+      alert(
+        "Cookie 里没有 MUSIC_U，可能复制不完整。\n请从 music.163.com 的 document.cookie 复制全部内容。"
+      );
+      return;
+    }
+
+    setSavingCookie(true);
+    try {
+      /* 简单验证：用 cookie 搜一次，能通就说明有效 */
+      const test = await searchSongs("test", raw, 1);
+      /* 能走到这里 = 搜索接口没报错 */
+      void test;
+    } catch (e) {
+      console.error(e);
+      alert(
+        "Cookie 似乎无效，搜索测试失败。\n请确认已登录 music.163.com 再复制。"
+      );
+      setSavingCookie(false);
+      return;
+    }
+
+    const s = saveNeteaseSession({
+      cookie: raw,
+      userId: 0,
+      nickname: "网易云用户",
+      avatarUrl: "",
+    });
+    setSession(s);
+    setCookieInput("");
+    setShowCookieInput(false);
+    setSavingCookie(false);
+  }
 
   /* -------- 搜索 -------- */
   async function handleSearch() {
@@ -257,7 +327,6 @@ if (r.code === 801) {
   /* -------- 退出登录 -------- */
   function handleLogout() {
     if (!window.confirm("退出网易云登录？")) return;
-    /* ★ 取消进行中的扫码 */
     flowIdRef.current++;
     stopPoll();
     clearNeteaseSession();
@@ -313,6 +382,18 @@ if (r.code === 801) {
           {qrStatus === "expired" && "二维码已失效"}
         </p>
 
+                {debugInfo && (
+          <p style={{
+            margin: "4px 0 0",
+            fontSize: 11,
+            color: "#888",
+            textAlign: "center",
+            fontFamily: "monospace",
+          }}>
+            {debugInfo}
+          </p>
+        )}
+
         {qrStatus === "expired" && (
           <button
             className="music-nt-retry"
@@ -321,6 +402,68 @@ if (r.code === 801) {
             刷新二维码
           </button>
         )}
+
+        {/* ★ Cookie 手动登录备用入口 */}
+        <div className="music-nt-cookie-section">
+          <button
+            className="music-nt-cookie-toggle"
+            onClick={() =>
+              setShowCookieInput((v) => !v)
+            }
+          >
+            <ChevronDown
+              size={14}
+              strokeWidth={2.2}
+              style={{
+                transform: showCookieInput
+                  ? "rotate(180deg)"
+                  : "rotate(0deg)",
+                transition: "transform 0.2s",
+              }}
+            />
+            扫码一直失效？点这里手动登录
+          </button>
+
+          {showCookieInput && (
+            <div className="music-nt-cookie-form">
+              <p className="music-nt-cookie-tip">
+                1. 电脑浏览器登录{" "}
+                <b>music.163.com</b>
+                <br />
+                2. 按 F12 → Console → 输入{" "}
+                <code>document.cookie</code> 回车
+                <br />
+                3. 复制输出的全部内容，粘贴到下面
+              </p>
+              <textarea
+                className="music-nt-cookie-input"
+                value={cookieInput}
+                onChange={(e) =>
+                  setCookieInput(e.target.value)
+                }
+                placeholder="MUSIC_U=...; __csrf=...; ..."
+                rows={4}
+              />
+              <button
+                className="music-nt-cookie-save"
+                onClick={() => void handleSaveCookie()}
+                disabled={savingCookie}
+              >
+                {savingCookie ? (
+                  <>
+                    <Loader2
+                      size={14}
+                      className="music-nt-spin"
+                    />
+                    验证中…
+                  </>
+                ) : (
+                  "保存"
+                )}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
