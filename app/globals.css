@@ -63274,3 +63274,10 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
   background: #111;
   border-color: rgba(255, 255, 255, 0.2);
 }
+.notes-diary-view {
+  -webkit-user-select: text;
+  user-select: text;
+  /* 禁掉长按系统菜单，但保留可选中 */
+  -webkit-touch-callout: default;
+  touch-action: manipulation;
+}
