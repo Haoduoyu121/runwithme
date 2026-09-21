@@ -62523,3 +62523,359 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-nt-import-
   background: #fff;
   color: #000;
 }
+.music-v2-scroll {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 歌单网格容器也允许滚动 */
+.music-grid {
+  padding-bottom: 120px; /* 给迷你播放器留位置 */
+}
+
+/* 歌单本身在 scroll 容器里，正常流式排布就行 */
+/* =====================================================
+   Music 批量选择 - M4 后续
+   ===================================================== */
+
+.music-multiselect-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 60;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.music-multiselect-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.85);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.music-multiselect-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.music-multiselect-btn.danger {
+  color: rgb(200, 40, 30);
+}
+
+/* 多选模式下，列表项勾选态 */
+.music-select-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #fff;
+  flex-shrink: 0;
+  background: transparent;
+  margin-right: 4px;
+}
+
+.music-select-checkbox.checked {
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(0, 0, 0, 0.85);
+}
+
+/* 顶部「选择」/「取消」按钮 */
+.music-select-toggle {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.75);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.music-select-count {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+  margin-right: auto;
+  margin-left: 12px;
+}
+
+/* =====================================================
+   歌单选择弹窗
+   ===================================================== */
+
+.music-picker-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.music-picker-sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 70vh;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.music-picker-sheet-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.9);
+  text-align: center;
+  padding-bottom: 6px;
+}
+
+.music-picker-sheet-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.music-picker-sheet-empty {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.music-picker-sheet-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  text-align: left;
+}
+
+.music-picker-sheet-name {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-picker-sheet-item small {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+}
+
+.music-picker-sheet-create {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.music-picker-sheet-cancel {
+  padding: 10px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* =====================================================
+   Dark
+   ===================================================== */
+
+html[data-runwithme-theme="dark"] .music-multiselect-bar {
+  background: rgba(30, 30, 32, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-runwithme-theme="dark"] .music-multiselect-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+html[data-runwithme-theme="dark"] .music-multiselect-btn.danger {
+  color: rgb(255, 130, 120);
+}
+
+html[data-runwithme-theme="dark"] .music-select-checkbox {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+html[data-runwithme-theme="dark"] .music-select-checkbox.checked {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.9);
+  color: #000;
+}
+
+html[data-runwithme-theme="dark"] .music-select-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+html[data-runwithme-theme="dark"] .music-select-count {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+html[data-runwithme-theme="dark"] .music-picker-sheet {
+  background: #1c1c1e;
+}
+
+html[data-runwithme-theme="dark"] .music-picker-sheet-title {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-runwithme-theme="dark"] .music-picker-sheet-empty {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+html[data-runwithme-theme="dark"] .music-picker-sheet-item {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-runwithme-theme="dark"] .music-picker-sheet-name {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-runwithme-theme="dark"] .music-picker-sheet-item small {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+html[data-runwithme-theme="dark"] .music-picker-sheet-create {
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+}
+
+html[data-runwithme-theme="dark"] .music-picker-sheet-cancel {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* =====================================================
+   Mono
+   ===================================================== */
+
+html[data-runwithme-style="mono"] .music-multiselect-bar {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+html[data-runwithme-style="mono"] .music-multiselect-btn {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+html[data-runwithme-style="mono"] .music-picker-sheet {
+  background: #fff;
+  border-radius: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+html[data-runwithme-style="mono"] .music-picker-sheet-item {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+html[data-runwithme-style="mono"] .music-picker-sheet-create {
+  background: #111;
+  color: #fff;
+  border-radius: 4px;
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-multiselect-bar {
+  background: #111;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-multiselect-btn {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-picker-sheet {
+  background: #111;
+  border-top-color: rgba(255, 255, 255, 0.15);
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-picker-sheet-item {
+  background: #111;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-picker-sheet-create {
+  background: #fff;
+  color: #000;
+}
+/* =====================================================
+   Music 多选补充
+   ===================================================== */
+
+.music-v2-drawer-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.music-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+}
+
+/* 抽屉列表底部给批量工具栏留位置 */
+.music-v2-drawer-list {
+  padding-bottom: 80px;
+}
+
+/* 歌单 tab 的内嵌详情，也给工具栏留位置 */
+.music-v2-scroll {
+  padding-bottom: 96px;
+}

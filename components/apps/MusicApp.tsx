@@ -54,12 +54,20 @@ import {
 
 import { pushMemory } from "@/lib/memoryStorage";
 
+import {
+  batchAddToPlaylist,
+  batchDeleteMusic,
+  batchRemoveFromPlaylist,
+} from "@/lib/musicBatchOps";
+
 import MusicListDrawer from "@/components/apps/music/MusicListDrawer";
 import MusicUploadPanel from "@/components/apps/music/MusicUploadPanel";
 import MusicChatPanel from "@/components/apps/music/MusicChatPanel";
 import MusicChatSettings from "@/components/apps/music/MusicChatSettings";
 import TogetherAvatars from "@/components/apps/music/TogetherAvatars";
 import FullPlayer from "@/components/apps/music/FullPlayer";
+import MultiSelectBar from "@/components/apps/music/MultiSelectBar";
+import PlaylistPickerSheet from "@/components/apps/music/PlaylistPickerSheet";
 
 type MusicAppProps = { onBack: () => void };
 type AvatarKey = "you" | "levi" | "erwin";
@@ -87,9 +95,7 @@ const REJECT_LINES = [
   "先不听了。",
 ];
 
-/** 切歌系统消息 5 分钟限流 */
 const TRACK_CHANGE_COOLDOWN_MS = 5 * 60 * 1000;
-
 const MIN_SESSION_MS = 3 * 1000;
 
 function pickLine(list: string[]) {
@@ -108,22 +114,21 @@ function formatSessionLength(ms: number): string {
 
 type LibraryTab = "playlists" | "songs";
 
+type SelectCtx =
+  | { type: "all" }
+  | { type: "playlist"; playlistId: string };
+
 export default function MusicApp({ onBack }: MusicAppProps) {
   const {
     music,
-    currentTime,
-    duration,
+    currentTrack,
     loading,
     error,
     isPlaying,
-    currentTrack,
-    playMode,
     reload,
     playTrack,
     togglePlay,
     nextTrack,
-    seek,
-    cyclePlayMode,
   } = useMusic();
 
   const { settings } = useSystem();
@@ -169,10 +174,16 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     null
   );
 
-  const [togetherStartAt, setTogetherStartAt] = useState<
-    number | null
-  >(null);
   const [togetherElapsed, setTogetherElapsed] = useState(0);
+
+  /* 多选 */
+  const [selectCtx, setSelectCtx] =
+    useState<SelectCtx | null>(null);
+  const [selectedIds, setSelectedIds] = useState<
+    Set<string>
+  >(new Set());
+  const [showPlaylistPicker, setShowPlaylistPicker] =
+    useState(false);
 
   const trackChangeCooldownRef = useRef(0);
 
@@ -190,11 +201,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
   useEffect(() => {
     currentTrackRef.current = currentTrack;
   }, [currentTrack]);
-
-  const partnerRef = useRef(partner);
-  useEffect(() => {
-    partnerRef.current = partner;
-  }, [partner]);
 
   /* 加载头像 */
   useEffect(() => {
@@ -236,13 +242,11 @@ export default function MusicApp({ onBack }: MusicAppProps) {
       return;
     }
 
-    /* ★ 优先 remoteCover（网易云封面） */
     if (currentTrack.remoteCover) {
       setCoverUrl(currentTrack.remoteCover);
       return;
     }
 
-    /* 退回本地 IDB 封面 */
     let cancelled = false;
     let url: string | null = null;
 
@@ -342,10 +346,15 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     };
   }, [playlists]);
 
+  /* 切 tab / 打开歌单时退出多选 */
+  useEffect(() => {
+    setSelectCtx(null);
+    setSelectedIds(new Set());
+  }, [libraryTab, openedPlaylistId, showFullPlayer]);
+
   /* 一起听计时 */
   useEffect(() => {
     if (partner === "Solo") {
-      setTogetherStartAt(null);
       setTogetherElapsed(0);
       saveTogetherStart(null);
       return;
@@ -355,7 +364,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     const start = stored ?? Date.now();
     if (!stored) saveTogetherStart(start);
 
-    setTogetherStartAt(start);
     setTogetherElapsed(Date.now() - start);
 
     const timer = window.setInterval(() => {
@@ -425,7 +433,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
         : endedPartner;
 
     const durationLabel = formatSessionLength(durationMs);
-
     const title = `与 ${partnerName} 一起听 · ${durationLabel}`;
 
     const parts: string[] = [];
@@ -452,15 +459,10 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     });
   }
 
-  /* ---------- 系统消息统一入口 ---------- */
-
   function emitMusicSystem(
     text: string,
-    worldType:
-      | "invite-accepted"
-      | "track-change"
+    worldType: "invite-accepted" | "track-change"
   ) {
-    /* 1. 加到 Music 聊天面板 */
     setChatMessages((prev) => [
       ...prev,
       {
@@ -472,7 +474,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
       },
     ]);
 
-    /* 2. 广播到 Chat App（走 worldEvents） */
     emitWorldEvent({
       app: "music",
       type: worldType,
@@ -481,7 +482,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     });
   }
 
-  /* 切歌系统消息（5 分钟限流） */
   useEffect(() => {
     if (partner === "Solo") return;
 
@@ -665,7 +665,6 @@ export default function MusicApp({ onBack }: MusicAppProps) {
       rejectedBy: rejected,
     });
 
-    /* ★ 邀请被接受的系统消息 */
     if (accepted.length > 0) {
       const who =
         accepted.length === 2
@@ -701,9 +700,94 @@ export default function MusicApp({ onBack }: MusicAppProps) {
     saveMusicChatMessages([]);
   }
 
+  /* ---------- 多选逻辑 ---------- */
+
+  function enterSelectAll() {
+    setSelectCtx({ type: "all" });
+    setSelectedIds(new Set());
+  }
+
+  function enterSelectPlaylist(playlistId: string) {
+    setSelectCtx({ type: "playlist", playlistId });
+    setSelectedIds(new Set());
+  }
+
+  function exitSelect() {
+    setSelectCtx(null);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  function selectAll(list: { id: string }[]) {
+    setSelectedIds(new Set(list.map((i) => i.id)));
+  }
+
+  async function handleBatchDelete() {
+    if (selectedIds.size === 0) return;
+    if (
+      !window.confirm(
+        `确定删除选中的 ${selectedIds.size} 首音乐？此操作不可恢复。`
+      )
+    )
+      return;
+    await batchDeleteMusic(Array.from(selectedIds));
+    exitSelect();
+    reload();
+    setPlaylists(loadPlaylists());
+  }
+
+  function handlePickPlaylistToAdd(playlistId: string) {
+    const added = batchAddToPlaylist(
+      playlistId,
+      Array.from(selectedIds)
+    );
+    setShowPlaylistPicker(false);
+    exitSelect();
+    setPlaylists(loadPlaylists());
+    if (added > 0) {
+      window.alert(`已加入 ${added} 首到歌单。`);
+    } else {
+      window.alert("这些歌曲都已在歌单里了。");
+    }
+  }
+
+  function handleRemoveFromPlaylist() {
+    if (!selectCtx || selectCtx.type !== "playlist") return;
+    if (selectedIds.size === 0) return;
+    if (
+      !window.confirm(
+        `从当前歌单移除选中的 ${selectedIds.size} 首？音乐本身不会被删除。`
+      )
+    )
+      return;
+    const removed = batchRemoveFromPlaylist(
+      selectCtx.playlistId,
+      Array.from(selectedIds)
+    );
+    exitSelect();
+    setPlaylists(loadPlaylists());
+    if (removed > 0) {
+      window.alert(`已从歌单移除 ${removed} 首。`);
+    }
+  }
+
   /* -------------------------------------------------------
      Render
      ------------------------------------------------------- */
+
+  const isSelectMode = selectCtx !== null;
+  const canSelect =
+    !showFullPlayer &&
+    !openedPlaylist &&
+    libraryTab === "songs";
 
   return (
     <main className="phone-screen app-screen music-app-v2">
@@ -733,6 +817,10 @@ export default function MusicApp({ onBack }: MusicAppProps) {
             <button
               className="music-v2-back"
               onClick={() => {
+                if (isSelectMode) {
+                  exitSelect();
+                  return;
+                }
                 if (openedPlaylistId) {
                   setOpenedPlaylistId(null);
                 } else {
@@ -756,6 +844,29 @@ export default function MusicApp({ onBack }: MusicAppProps) {
                   : "library"}
               </div>
             </div>
+
+            {canSelect && !isSelectMode && (
+              <button
+                className="music-select-toggle"
+                onClick={enterSelectAll}
+              >
+                选择
+              </button>
+            )}
+
+            {canSelect && isSelectMode && (
+              <>
+                <span className="music-select-count">
+                  已选 {selectedIds.size}
+                </span>
+                <button
+                  className="music-select-toggle"
+                  onClick={() => selectAll(music)}
+                >
+                  全选
+                </button>
+              </>
+            )}
 
             <button
               className="music-v2-upload-btn"
@@ -840,6 +951,19 @@ export default function MusicApp({ onBack }: MusicAppProps) {
                   playlistCoverUrls[openedPlaylist.id]
                 }
                 currentTrackId={currentTrack?.id ?? null}
+                isSelectMode={
+                  selectCtx !== null &&
+                  selectCtx.type === "playlist" &&
+                  selectCtx.playlistId ===
+                    openedPlaylist.id
+                }
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onEnterSelect={() =>
+                  enterSelectPlaylist(openedPlaylist.id)
+                }
+                onExitSelect={exitSelect}
+                onSelectAll={(items) => selectAll(items)}
                 onPlayFromPlaylist={(index) => {
                   void playTrack(index);
                   setOpenedPlaylistId(null);
@@ -855,12 +979,18 @@ export default function MusicApp({ onBack }: MusicAppProps) {
               <SongsList
                 music={music}
                 currentTrackId={currentTrack?.id ?? null}
+                isSelectMode={
+                  selectCtx !== null &&
+                  selectCtx.type === "all"
+                }
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
                 onSelect={(index) => void playTrack(index)}
               />
             )}
           </div>
 
-          {currentTrack && (
+          {currentTrack && !isSelectMode && (
             <MiniPlayer
               coverUrl={coverUrl}
               title={currentTrack.title}
@@ -870,6 +1000,20 @@ export default function MusicApp({ onBack }: MusicAppProps) {
               onExpand={() => setShowFullPlayer(true)}
               onTogglePlay={() => void togglePlay()}
               onNext={() => void nextTrack()}
+            />
+          )}
+
+          {isSelectMode && (
+            <MultiSelectBar
+              selectedCount={selectedIds.size}
+              showRemoveFromPlaylist={
+                selectCtx.type === "playlist"
+              }
+              onAddToPlaylist={() =>
+                setShowPlaylistPicker(true)
+              }
+              onRemoveFromPlaylist={handleRemoveFromPlaylist}
+              onDelete={() => void handleBatchDelete()}
             />
           )}
         </>
@@ -929,6 +1073,14 @@ export default function MusicApp({ onBack }: MusicAppProps) {
       {showChatSettings && (
         <MusicChatSettings
           onClose={() => setShowChatSettings(false)}
+        />
+      )}
+
+      {showPlaylistPicker && (
+        <PlaylistPickerSheet
+          title="加入歌单"
+          onPick={handlePickPlaylistToAdd}
+          onClose={() => setShowPlaylistPicker(false)}
         />
       )}
 
@@ -1147,10 +1299,20 @@ function PlaylistsGrid({
 function SongsList({
   music,
   currentTrackId,
+  isSelectMode,
+  selectedIds,
+  onToggleSelect,
   onSelect,
 }: {
-  music: { id: string; title: string; artist: string }[];
+  music: {
+    id: string;
+    title: string;
+    artist: string;
+  }[];
   currentTrackId: string | null;
+  isSelectMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
   onSelect: (index: number) => void;
 }) {
   if (music.length === 0) {
@@ -1173,18 +1335,36 @@ function SongsList({
     <ul className="music-song-list">
       {music.map((item, index) => {
         const isCurrent = item.id === currentTrackId;
+        const checked = selectedIds.has(item.id);
         return (
           <li key={item.id}>
             <button
               className={`music-song-item${
                 isCurrent ? " is-current" : ""
               }`}
-              onClick={() => onSelect(index)}
+              onClick={() => {
+                if (isSelectMode) {
+                  onToggleSelect(item.id);
+                } else {
+                  onSelect(index);
+                }
+              }}
               type="button"
             >
-              <span className="music-song-index">
-                {isCurrent ? "♪" : index + 1}
-              </span>
+              {isSelectMode ? (
+                <span
+                  className={
+                    "music-select-checkbox" +
+                    (checked ? " checked" : "")
+                  }
+                >
+                  {checked && "✓"}
+                </span>
+              ) : (
+                <span className="music-song-index">
+                  {isCurrent ? "♪" : index + 1}
+                </span>
+              )}
               <span className="music-song-text">
                 <strong>{item.title}</strong>
                 <small>
@@ -1204,6 +1384,12 @@ function PlaylistDetailInline({
   music,
   coverUrl,
   currentTrackId,
+  isSelectMode,
+  selectedIds,
+  onToggleSelect,
+  onEnterSelect,
+  onExitSelect,
+  onSelectAll,
   onPlayFromPlaylist,
 }: {
   playlist: Playlist;
@@ -1214,6 +1400,12 @@ function PlaylistDetailInline({
   }[];
   coverUrl?: string;
   currentTrackId: string | null;
+  isSelectMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onEnterSelect: () => void;
+  onExitSelect: () => void;
+  onSelectAll: (items: { id: string }[]) => void;
   onPlayFromPlaylist: (index: number) => void;
 }) {
   const songs = playlist.musicIds
@@ -1251,6 +1443,37 @@ function PlaylistDetailInline({
         </div>
       </div>
 
+      {songs.length > 0 && (
+        <div className="music-select-row">
+          {!isSelectMode ? (
+            <button
+              className="music-select-toggle"
+              onClick={onEnterSelect}
+            >
+              选择
+            </button>
+          ) : (
+            <>
+              <button
+                className="music-select-toggle"
+                onClick={onExitSelect}
+              >
+                取消
+              </button>
+              <span className="music-select-count">
+                已选 {selectedIds.size}
+              </span>
+              <button
+                className="music-select-toggle"
+                onClick={() => onSelectAll(songs)}
+              >
+                全选
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {songs.length === 0 ? (
         <div className="music-empty">
           <div className="music-empty-title">
@@ -1264,20 +1487,36 @@ function PlaylistDetailInline({
         <ul className="music-song-list">
           {songs.map((item, index) => {
             const isCurrent = item.id === currentTrackId;
+            const checked = selectedIds.has(item.id);
             return (
               <li key={item.id}>
                 <button
                   className={`music-song-item${
                     isCurrent ? " is-current" : ""
                   }`}
-                  onClick={() =>
-                    onPlayFromPlaylist(index)
-                  }
+                  onClick={() => {
+                    if (isSelectMode) {
+                      onToggleSelect(item.id);
+                    } else {
+                      onPlayFromPlaylist(index);
+                    }
+                  }}
                   type="button"
                 >
-                  <span className="music-song-index">
-                    {isCurrent ? "♪" : index + 1}
-                  </span>
+                  {isSelectMode ? (
+                    <span
+                      className={
+                        "music-select-checkbox" +
+                        (checked ? " checked" : "")
+                      }
+                    >
+                      {checked && "✓"}
+                    </span>
+                  ) : (
+                    <span className="music-song-index">
+                      {isCurrent ? "♪" : index + 1}
+                    </span>
+                  )}
                   <span className="music-song-text">
                     <strong>{item.title}</strong>
                     <small>
