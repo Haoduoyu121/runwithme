@@ -194,28 +194,35 @@ export default function DiaryEditorView({
     return [start, end];
   }
 
-  function handlePointerDown(e: React.PointerEvent) {
+  function handleTouchStart(e: React.TouchEvent) {
     if (editing) return;
 
     const t = e.target as HTMLElement;
-    /* 已有的划线 / 按钮不参与 */
     if (t.closest("button") || t.closest("[data-hl-id]"))
       return;
 
+    const touch = e.touches[0];
+    if (!touch) return;
+
     cancelLongPress();
     pointerStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
+      x: touch.clientX,
+      y: touch.clientY,
     };
 
-    const cx = e.clientX;
-    const cy = e.clientY;
+    const cx = touch.clientX;
+    const cy = touch.clientY;
 
     longPressTimerRef.current = window.setTimeout(() => {
       longPressTimerRef.current = null;
 
       const offset = caretOffsetFromPoint(cx, cy);
-      if (offset === null) return;
+      if (offset === null) {
+        console.warn(
+          "[Diary] caretOffsetFromPoint 返回 null"
+        );
+        return;
+      }
 
       const [s, e2] = getSentenceRange(note.body, offset);
       const text = note.body.slice(s, e2).trim();
@@ -230,7 +237,6 @@ export default function DiaryEditorView({
         actualStart
       );
 
-      /* 震动反馈（支持则用） */
       try {
         if (
           typeof navigator !== "undefined" &&
@@ -246,31 +252,35 @@ export default function DiaryEditorView({
         text,
         occurrence: occ,
       });
-    }, 500);
+    }, 450);
   }
 
-  function handlePointerMove(e: React.PointerEvent) {
+  function handleTouchMove(e: React.TouchEvent) {
     const start = pointerStartRef.current;
     if (!start) return;
 
-    const dx = Math.abs(e.clientX - start.x);
-    const dy = Math.abs(e.clientY - start.y);
+    const touch = e.touches[0];
+    if (!touch) return;
 
-    /* 移动太多 → 用户想滚动，取消长按 */
-    if (dx > 10 || dy > 10) {
+    const dx = Math.abs(touch.clientX - start.x);
+    const dy = Math.abs(touch.clientY - start.y);
+
+    /* 移动超过 15px → 认为滚动 */
+    if (dx > 15 || dy > 15) {
       cancelLongPress();
       pointerStartRef.current = null;
     }
   }
 
-  function handlePointerUp() {
+  function handleTouchEnd() {
     cancelLongPress();
     pointerStartRef.current = null;
   }
 
-  function handlePointerCancel() {
-    cancelLongPress();
-    pointerStartRef.current = null;
+  function handleTouchCancel() {
+    /* ★ 关键改动：iOS 可能因滚动预备发 cancel，
+       但不一定真的滚动 → 不在这里取消，
+       交给 touchMove 的距离判断 */
   }
 
   /* 组件卸载时清理 */
@@ -541,10 +551,10 @@ if (author === "user") {
             <div
               ref={rootRef}
               className="notes-diary-view"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerCancel}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}
             >
               {renderBody()}
             </div>

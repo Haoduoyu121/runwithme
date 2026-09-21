@@ -63301,3 +63301,11 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
 }
 
 /* dark / mono 无需额外规则，继承父级色 */
+.notes-diary-view {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent;
+  /* ★ 合法值：只允许垂直滚动（不写 manipulation，写两个会被忽略） */
+  touch-action: pan-y;
+}
