@@ -8,10 +8,11 @@ import {
 } from "react";
 
 import {
-  ChevronDown,
+  KeyRound,
   Loader2,
   LogOut,
   Plus,
+  QrCode,
   Search,
 } from "lucide-react";
 
@@ -47,6 +48,8 @@ type QrStatus =
   | "scanned"
   | "expired";
 
+type Mode = "qr" | "cookie";
+
 export default function NeteasePanel({
   onAdded,
 }: NeteasePanelProps) {
@@ -54,18 +57,20 @@ export default function NeteasePanel({
     NeteaseSession | null | undefined
   >(undefined);
 
+  const [mode, setMode] = useState<Mode>("qr");
+
+  /* --- 扫码 --- */
   const [qrImg, setQrImg] = useState("");
-  const [debugInfo, setDebugInfo] = useState("");
   const [qrStatus, setQrStatus] =
     useState<QrStatus>("loading");
 
-  /* ★ Cookie 手动登录 */
-  const [showCookieInput, setShowCookieInput] =
-    useState(false);
+  /* --- Cookie --- */
   const [cookieInput, setCookieInput] = useState("");
   const [savingCookie, setSavingCookie] =
     useState(false);
+  const [cookieError, setCookieError] = useState("");
 
+  /* --- 搜索 --- */
   const [keyword, setKeyword] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<NeteaseSong[]>(
@@ -146,10 +151,8 @@ export default function NeteasePanel({
           cookieAccumRef.current
         );
         if (myFlow !== flowIdRef.current) return;
-                setDebugInfo(
-          `最后一次: code=${r.code} (${new Date().toLocaleTimeString()})`
-        );
 
+        /* 803 必须最先判断 */
         if (r.code === 803) {
           if (r.cookie) cookieAccumRef.current = r.cookie;
           const finalCookie = cookieAccumRef.current;
@@ -220,36 +223,43 @@ export default function NeteasePanel({
     );
   }, [stopPoll]);
 
+  /* -------- mode 切换时启停轮询 -------- */
   useEffect(() => {
     if (session === undefined) return;
     if (session) return;
-    void startQrFlow();
-  }, [session, startQrFlow]);
 
-  /* ★ Cookie 手动登录保存 */
+    if (mode !== "qr") {
+      stopPoll();
+      flowIdRef.current++; // 取消旧流程
+      return;
+    }
+    void startQrFlow();
+  }, [session, mode, startQrFlow, stopPoll]);
+
+  /* -------- Cookie 登录 -------- */
   async function handleSaveCookie() {
     const raw = cookieInput.trim();
     if (!raw) {
-      alert("请粘贴 Cookie");
+      setCookieError("请粘贴 Cookie");
       return;
     }
     if (!raw.includes("MUSIC_U")) {
-      alert(
-        "Cookie 里没有 MUSIC_U，可能复制不完整。\n请从 music.163.com 的 document.cookie 复制全部内容。"
+      setCookieError(
+        "Cookie 里没有 MUSIC_U。MUSIC_U 是 HttpOnly，document.cookie 拿不到，必须从 F12 → Application → Cookies 里复制。"
       );
       return;
     }
 
+    setCookieError("");
     setSavingCookie(true);
+
+    /* 验证：搜一次，能通就说明 cookie 有效 */
     try {
-      /* 简单验证：用 cookie 搜一次，能通就说明有效 */
-      const test = await searchSongs("test", raw, 1);
-      /* 能走到这里 = 搜索接口没报错 */
-      void test;
+      await searchSongs("周杰伦", raw, 1);
     } catch (e) {
       console.error(e);
-      alert(
-        "Cookie 似乎无效，搜索测试失败。\n请确认已登录 music.163.com 再复制。"
+      setCookieError(
+        "Cookie 验证失败。请确认：（1）已登录 music.163.com（2）复制的是完整的 MUSIC_U 值"
       );
       setSavingCookie(false);
       return;
@@ -263,7 +273,6 @@ export default function NeteasePanel({
     });
     setSession(s);
     setCookieInput("");
-    setShowCookieInput(false);
     setSavingCookie(false);
   }
 
@@ -324,7 +333,7 @@ export default function NeteasePanel({
     onAdded?.();
   }
 
-  /* -------- 退出登录 -------- */
+  /* -------- 退出 -------- */
   function handleLogout() {
     if (!window.confirm("退出网易云登录？")) return;
     flowIdRef.current++;
@@ -350,124 +359,130 @@ export default function NeteasePanel({
     );
   }
 
+  /* ---------- 未登录 ---------- */
   if (!session) {
     return (
       <div className="music-nt-panel">
-        <div className="music-nt-qr-wrap">
-          {qrImg ? (
-            <img
-              src={qrImg}
-              alt="登录二维码"
-              className="music-nt-qr"
-            />
-          ) : (
-            <div className="music-nt-qr-placeholder">
-              <Loader2
-                size={22}
-                className="music-nt-spin"
-              />
-            </div>
-          )}
+        {/* 子 tab */}
+        <div className="music-nt-mode-tabs">
+          <button
+            className={mode === "qr" ? "active" : ""}
+            onClick={() => setMode("qr")}
+          >
+            <QrCode size={14} strokeWidth={2.2} />
+            扫码登录
+          </button>
+          <button
+            className={mode === "cookie" ? "active" : ""}
+            onClick={() => setMode("cookie")}
+          >
+            <KeyRound size={14} strokeWidth={2.2} />
+            Cookie 登录
+          </button>
         </div>
 
-        <p className="music-nt-hint">
-          用网易云 App 扫码登录
-        </p>
+        {mode === "qr" ? (
+          <>
+            <div className="music-nt-qr-wrap">
+              {qrImg ? (
+                <img
+                  src={qrImg}
+                  alt="登录二维码"
+                  className="music-nt-qr"
+                />
+              ) : (
+                <div className="music-nt-qr-placeholder">
+                  <Loader2
+                    size={22}
+                    className="music-nt-spin"
+                  />
+                </div>
+              )}
+            </div>
 
-        <p className="music-nt-status">
-          {qrStatus === "loading" && "正在获取二维码…"}
-          {qrStatus === "waiting" && "等待扫码…"}
-          {qrStatus === "scanned" &&
-            "已扫码，请在手机上确认"}
-          {qrStatus === "expired" && "二维码已失效"}
-        </p>
+            <p className="music-nt-hint">
+              用网易云 App 扫码登录
+            </p>
 
-                {debugInfo && (
-          <p style={{
-            margin: "4px 0 0",
-            fontSize: 11,
-            color: "#888",
-            textAlign: "center",
-            fontFamily: "monospace",
-          }}>
-            {debugInfo}
-          </p>
-        )}
+            <p className="music-nt-status">
+              {qrStatus === "loading" && "正在获取二维码…"}
+              {qrStatus === "waiting" && "等待扫码…"}
+              {qrStatus === "scanned" &&
+                "已扫码，请在手机上确认"}
+              {qrStatus === "expired" && "二维码已失效"}
+            </p>
 
-        {qrStatus === "expired" && (
-          <button
-            className="music-nt-retry"
-            onClick={() => void startQrFlow()}
-          >
-            刷新二维码
-          </button>
-        )}
-
-        {/* ★ Cookie 手动登录备用入口 */}
-        <div className="music-nt-cookie-section">
-          <button
-            className="music-nt-cookie-toggle"
-            onClick={() =>
-              setShowCookieInput((v) => !v)
-            }
-          >
-            <ChevronDown
-              size={14}
-              strokeWidth={2.2}
-              style={{
-                transform: showCookieInput
-                  ? "rotate(180deg)"
-                  : "rotate(0deg)",
-                transition: "transform 0.2s",
-              }}
-            />
-            扫码一直失效？点这里手动登录
-          </button>
-
-          {showCookieInput && (
-            <div className="music-nt-cookie-form">
-              <p className="music-nt-cookie-tip">
-                1. 电脑浏览器登录{" "}
-                <b>music.163.com</b>
-                <br />
-                2. 按 F12 → Console → 输入{" "}
-                <code>document.cookie</code> 回车
-                <br />
-                3. 复制输出的全部内容，粘贴到下面
-              </p>
-              <textarea
-                className="music-nt-cookie-input"
-                value={cookieInput}
-                onChange={(e) =>
-                  setCookieInput(e.target.value)
-                }
-                placeholder="MUSIC_U=...; __csrf=...; ..."
-                rows={4}
-              />
+            {qrStatus === "expired" && (
               <button
-                className="music-nt-cookie-save"
-                onClick={() => void handleSaveCookie()}
-                disabled={savingCookie}
+                className="music-nt-retry"
+                onClick={() => void startQrFlow()}
               >
-                {savingCookie ? (
-                  <>
-                    <Loader2
-                      size={14}
-                      className="music-nt-spin"
-                    />
-                    验证中…
-                  </>
-                ) : (
-                  "保存"
-                )}
+                刷新二维码
               </button>
-            </div>
-          )}
-        </div>
+            )}
+          </>
+        ) : (
+          <div className="music-nt-cookie-form">
+            <p className="music-nt-cookie-tip">
+              <b>步骤：</b>
+              <br />
+              1. 电脑 Chrome 打开{" "}
+              <b>music.163.com</b> 并登录
+              <br />
+              2. F12 → <b>Application</b> → Storage →
+              Cookies → <code>https://music.163.com</code>
+              <br />
+              3. 找到 <code>MUSIC_U</code>，双击 Value 全选复制
+              <br />
+              4. 再找 <code>__csrf</code>，复制它的 Value
+              <br />
+              5. 拼成下面的格式粘贴：
+              <br />
+              <code>MUSIC_U=xxx; __csrf=yyy</code>
+            </p>
+
+            <textarea
+              className="music-nt-cookie-input"
+              value={cookieInput}
+              onChange={(e) =>
+                setCookieInput(e.target.value)
+              }
+              placeholder="MUSIC_U=...; __csrf=..."
+              rows={5}
+              spellCheck={false}
+              autoComplete="off"
+            />
+
+            {cookieError && (
+              <p className="music-nt-cookie-error">
+                {cookieError}
+              </p>
+            )}
+
+            <button
+              className="music-nt-cookie-save"
+              onClick={() => void handleSaveCookie()}
+              disabled={savingCookie}
+            >
+              {savingCookie ? (
+                <>
+                  <Loader2
+                    size={14}
+                    className="music-nt-spin"
+                  />
+                  验证中…
+                </>
+              ) : (
+                "保存并登录"
+              )}
+            </button>
+          </div>
+        )}
       </div>
     );
   }
 
+  /* ---------- 已登录 ---------- */
   return (
     <div className="music-nt-panel">
       <div className="music-nt-user">

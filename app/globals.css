@@ -62093,3 +62093,99 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-nt-cookie-
   background: #fff;
   color: #000;
 }
+/* =====================================================
+   Netease 子 tab + Cookie 登录
+   ===================================================== */
+
+.music-nt-mode-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.music-nt-mode-tabs button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.music-nt-mode-tabs button.active {
+  background: #fff;
+  color: rgba(0, 0, 0, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.music-nt-cookie-error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 59, 48, 0.08);
+  color: rgb(200, 40, 30);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* dark */
+html[data-runwithme-theme="dark"] .music-nt-mode-tabs {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-runwithme-theme="dark"] .music-nt-mode-tabs button {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+html[data-runwithme-theme="dark"] .music-nt-mode-tabs button.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow: none;
+}
+
+html[data-runwithme-theme="dark"] .music-nt-cookie-error {
+  background: rgba(255, 59, 48, 0.15);
+  color: rgb(255, 130, 120);
+}
+
+/* mono */
+html[data-runwithme-style="mono"] .music-nt-mode-tabs {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  padding: 3px;
+}
+
+html[data-runwithme-style="mono"] .music-nt-mode-tabs button {
+  border-radius: 4px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+html[data-runwithme-style="mono"] .music-nt-mode-tabs button.active {
+  background: #111;
+  color: #fff;
+  box-shadow: none;
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-nt-mode-tabs {
+  background: #111;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-nt-mode-tabs button {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .music-nt-mode-tabs button.active {
+  background: #fff;
+  color: #000;
+}
