@@ -1033,22 +1033,9 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     );
   }
 
-  function handlePlusAction(
-    action: "sticker" | "image"
-  ) {
-    if (action === "sticker") {
-      setShowPlusMenu(false);
-      setShowStickerPanel(true);
-      return;
-    }
-    if (action === "image") {
-      const el = document.getElementById(
-        "chat-image-input"
-      ) as HTMLInputElement | null;
-      el?.click();
-      setShowPlusMenu(false);
-      return;
-    }
+  function handlePlusAction() {
+    setShowPlusMenu(false);
+    setShowStickerPanel(true);
   }
 
   function handleStartCall(
@@ -1591,17 +1578,14 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 </span>
                 <small>通话</small>
               </button>
-              <button
-                onClick={() => handlePlusAction("sticker")}
-              >
+              <button onClick={() => handlePlusAction()}>
                 <span>
                   <Smile size={20} strokeWidth={1.9} />
                 </span>
                 <small>表情包</small>
               </button>
-              <button
-                onClick={() => handlePlusAction("image")}
-              >
+
+              <label className="chat-plus-menu-item">
                 <span>
                   <ImagePlus
                     size={20}
@@ -1609,7 +1593,19 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                   />
                 </span>
                 <small>图片</small>
-              </button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="ios-file-input"
+                  onChange={(event) => {
+                    const file =
+                      event.target.files?.[0];
+                    if (file) void sendImage(file);
+                    event.target.value = "";
+                    setShowPlusMenu(false);
+                  }}
+                />
+              </label>
               <button
                 onClick={() =>
                   patCharacter(
@@ -1754,18 +1750,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
               }
             />
 
-            <input
-              id="chat-image-input"
-              type="file"
-              className="chat-image-input-hidden"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                void sendImage(file);
-                event.target.value = "";
-              }}
-            />
 
             <button
               className={
