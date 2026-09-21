@@ -92,6 +92,9 @@ export default function DiaryEditorView({
     y: number;
   } | null>(null);
 
+  const menuTimerRef = useRef<number | null>(null);
+  
+
   function cancelLongPress() {
     if (longPressTimerRef.current !== null) {
       window.clearTimeout(longPressTimerRef.current);
@@ -233,98 +236,111 @@ export default function DiaryEditorView({
 
     return [start, end];
   }
+  /* ★ 监听 iOS 原生选区变化 → 弹出高光菜单 */
+  useEffect(() => {
+    function onSelectionChange() {
+      if (editing) return;
 
-  function handleTouchStart(e: React.TouchEvent) {
-       /* ★ 临时诊断：改标题 */
-    document.title = "touch:" + Date.now();
-    if (editing) return;
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      if (sel.isCollapsed) return;
 
-    const t = e.target as HTMLElement;
-    if (t.closest("button") || t.closest("[data-hl-id]"))
-      return;
+      const root = rootRef.current;
+      if (!root) return;
 
-    const touch = e.touches[0];
-    if (!touch) return;
-
-    cancelLongPress();
-    pointerStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-    };
-
-    const cx = touch.clientX;
-    const cy = touch.clientY;
-
-    longPressTimerRef.current = window.setTimeout(() => {
-      longPressTimerRef.current = null;
-
-      console.log("[Diary] 长按触发，坐标:", cx, cy);
-      const offset = caretOffsetFromPoint(cx, cy);
-      if (offset === null) {
-        console.warn("[Diary] offset 为 null");
+      const range = sel.getRangeAt(0);
+      if (!root.contains(range.commonAncestorContainer))
         return;
+
+        const rawText = sel.toString().trim();
+      if (rawText.length < 1) return;
+
+      /* 算 start offset */
+      const node = range.startContainer;
+      let offset: number | null = null;
+
+      if (node.nodeType === Node.TEXT_NODE) {
+        let cur: HTMLElement | null = (
+          node as Text
+        ).parentElement;
+        while (cur && cur !== root) {
+          const base = cur.getAttribute("data-offset");
+          if (base !== null) {
+            offset =
+              parseInt(base, 10) +
+              range.startOffset;
+            break;
+          }
+          cur = cur.parentElement;
+        }
       }
-      console.log("[Diary] offset =", offset);
 
-      const [s, e2] = getSentenceRange(note.body, offset);
-      const text = note.body.slice(s, e2).trim();
-      if (!text) return;
+      if (offset === null) return;
 
-      const actualStart = note.body.indexOf(text, s);
+      /* ★ 强制扩展到整句（不管 iOS 选了啥） */
+      const [s, e2] = getSentenceRange(
+        note.body,
+        offset
+      );
+      const sentence = note.body.slice(s, e2).trim();
+      if (!sentence) return;
+
+      const actualStart = note.body.indexOf(
+        sentence,
+        s
+      );
       if (actualStart === -1) return;
 
       const occ = inferOccurrence(
         note.body,
-        text,
+        sentence,
         actualStart
       );
 
-      try {
-        if (
-          typeof navigator !== "undefined" &&
-          "vibrate" in navigator
-        ) {
-          navigator.vibrate(10);
-        }
-      } catch {}
+      const rect = range.getBoundingClientRect();
 
-      setMenu({
-        x: cx,
-        y: cy - 20,
-        text,
-        occurrence: occ,
-      });
-    }, 450);
-  }
+      /* ★ 防抖：iOS 会触发多次 selectionchange */
+      if (menuTimerRef.current !== null) {
+        window.clearTimeout(menuTimerRef.current);
+      }
 
-  function handleTouchMove(e: React.TouchEvent) {
-    const start = pointerStartRef.current;
-    if (!start) return;
+      menuTimerRef.current = window.setTimeout(() => {
+        menuTimerRef.current = null;
 
-    const touch = e.touches[0];
-    if (!touch) return;
+        setMenu({
+          x: rect.left + rect.width / 2,
+          y: Math.max(8, rect.top - 8),
+          text: sentence,
+          occurrence: occ,
+        });
 
-    const dx = Math.abs(touch.clientX - start.x);
-    const dy = Math.abs(touch.clientY - start.y);
-
-    /* 移动超过 15px → 认为滚动 */
-    if (dx > 15 || dy > 15) {
-      cancelLongPress();
-      pointerStartRef.current = null;
+        /* 清掉系统选区 → 系统菜单跟着消失 */
+        try {
+          const s2 = window.getSelection();
+          if (s2 && !s2.isCollapsed) {
+            s2.removeAllRanges();
+          }
+        } catch {}
+      }, 180);
     }
-  }
 
-  function handleTouchEnd() {
-    cancelLongPress();
-    pointerStartRef.current = null;
-  }
+    document.addEventListener(
+      "selectionchange",
+      onSelectionChange
+    );
 
-  function handleTouchCancel() {
-    /* ★ 关键改动：iOS 可能因滚动预备发 cancel，
-       但不一定真的滚动 → 不在这里取消，
-       交给 touchMove 的距离判断 */
-  }
-
+    return () => {
+      document.removeEventListener(
+        "selectionchange",
+        onSelectionChange
+      );
+      if (menuTimerRef.current !== null) {
+        window.clearTimeout(menuTimerRef.current);
+        menuTimerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note.body, editing]);
   /* 组件卸载时清理 */
   useEffect(() => {
     return () => cancelLongPress();
@@ -593,10 +609,6 @@ if (author === "user") {
             <div
               ref={rootRef}
               className="notes-diary-view"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              onTouchCancel={handleTouchCancel}
             >
               {renderBody()}
             </div>
@@ -620,7 +632,12 @@ if (author === "user") {
           />
           <div
             className="diary-hl-menu"
-            style={{ left: menu.x, top: menu.y }}
+            style={{
+              left: menu.x,
+              top: menu.y,
+              transform: "translate(-50%, -100%)",
+              position: "fixed",
+            }}
           >
             <button
               className="diary-hl-menu-btn"
