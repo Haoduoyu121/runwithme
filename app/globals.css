@@ -3567,7 +3567,7 @@ body {
   padding: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 /* Chat 顶栏 */
 .chat-page .telegram-header {
@@ -4728,7 +4728,7 @@ body {
   width: 100% !important;
   height: 100% !important;
   min-height: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 /* ---------- 顶栏 ---------- */
@@ -23095,7 +23095,7 @@ body {
   height: auto !important;
   padding: 0 !important;
   margin: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 .runwithme-app {
@@ -23108,7 +23108,7 @@ body {
   height: auto !important;
   padding: 0 !important;
   margin: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 .home-screen,
@@ -23124,7 +23124,7 @@ body {
   max-height: none !important;
   padding: 0 !important;
   margin: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   display: flex !important;
   flex-direction: column !important;
 }
@@ -33739,7 +33739,7 @@ html[data-runwithme-theme="dark"] .music-upload-file-value {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -35015,7 +35015,7 @@ html[data-runwithme-theme="dark"] .photos-app-header {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -35126,7 +35126,7 @@ html[data-runwithme-theme="dark"] .chat-page .telegram-header {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -43848,7 +43848,7 @@ html body .dock .dock-icon {
   align-items: center !important;
   justify-content: center !important;
 
-  overflow: hidden !important;
+  overflow: visible !important;
   cursor: pointer !important;
 
   box-shadow:
@@ -44789,18 +44789,23 @@ html[data-runwithme-style="mono"] .letter-widget-v2-dot {
 
 .ios-file-input {
   position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
+  /* ★ 关键：向外扩展命中区，兜底 zoom 引起的错位 */
+  inset: -40px !important;
+  width: auto !important;
+  height: auto !important;
   opacity: 0 !important;
   cursor: pointer !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
   background: transparent !important;
-  overflow: hidden !important;
-  /* 不写 pointer-events: none ！ */
+  transform: none !important;
+  font-size: 16px !important; /* 阻止 iOS 自动缩放 input */
+  line-height: 1 !important;
+  -webkit-appearance: none;
+  appearance: none;
   pointer-events: auto !important;
+  z-index: 2 !important;
 }
 
 /* label 容器需要 relative + overflow hidden */
@@ -44811,7 +44816,7 @@ html[data-runwithme-style="mono"] .letter-widget-v2-dot {
 .hs-upload-thumb,
 .photos-upload-btn {
   position: relative !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 /* ---------- ref 模式（兼容保留） ---------- */
@@ -44825,7 +44830,7 @@ html[data-runwithme-style="mono"] .letter-widget-v2-dot {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -48112,7 +48117,7 @@ html body .photo-viewer {
   display: flex !important;
   flex-direction: column !important;
   background: #000 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 /* ---------- 2. 顶部按钮：悬浮覆盖 ---------- */
@@ -55507,7 +55512,7 @@ body {
   width: 1px !important;
   height: 1px !important;
   opacity: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
