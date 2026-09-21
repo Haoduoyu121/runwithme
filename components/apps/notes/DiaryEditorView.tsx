@@ -190,6 +190,12 @@ export default function DiaryEditorView({
 
     const range = sel.getRangeAt(0);
     const rect = range.getBoundingClientRect();
+
+    /* ★ 关键：立刻清掉选区 → iOS 系统菜单跟着淡出 */
+    try {
+      sel.removeAllRanges();
+    } catch {}
+
     setMenu({
       x: rect.left + rect.width / 2,
       y: rect.top,
