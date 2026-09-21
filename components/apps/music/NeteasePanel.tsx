@@ -1,13 +1,7 @@
 "use client";
 
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
-import {
+  ChevronLeft,
   KeyRound,
   Loader2,
   LogOut,
@@ -15,27 +9,39 @@ import {
   QrCode,
   Search,
 } from "lucide-react";
-
 import {
-  type NeteaseSession,
-  getNeteaseSession,
-  saveNeteaseSession,
-  clearNeteaseSession,
-} from "@/lib/neteaseSession";
-
-import {
-  fetchQrKey,
-  fetchQrImage,
-  checkQr,
-  searchSongs,
-  type NeteaseSong,
-} from "@/lib/neteaseApi";
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   defaultMusic,
   type MusicItem,
 } from "@/data/music";
 
+import {
+  type NeteaseLoginStatus,
+  type NeteasePlaylist,
+  type NeteaseSong,
+  checkQr,
+  fetchLoginStatus,
+  fetchPlaylistTracks,
+  fetchQrImage,
+  fetchQrKey,
+  fetchUserPlaylists,
+  searchSongs,
+} from "@/lib/neteaseApi";
+
+import {
+  type NeteaseSession,
+  clearNeteaseSession,
+  getNeteaseSession,
+  saveNeteaseSession,
+} from "@/lib/neteaseSession";
+
+import { importNeteasePlaylist } from "@/lib/neteaseImport";
 import { loadMusic, saveMusic } from "@/lib/musicStorage";
 
 type NeteasePanelProps = {
@@ -49,6 +55,7 @@ type QrStatus =
   | "expired";
 
 type Mode = "qr" | "cookie";
+type View = "search" | "playlists";
 
 export default function NeteasePanel({
   onAdded,
@@ -58,19 +65,20 @@ export default function NeteasePanel({
   >(undefined);
 
   const [mode, setMode] = useState<Mode>("qr");
+  const [view, setView] = useState<View>("search");
 
-  /* --- 扫码 --- */
+  /* 扫码 */
   const [qrImg, setQrImg] = useState("");
   const [qrStatus, setQrStatus] =
     useState<QrStatus>("loading");
 
-  /* --- Cookie --- */
+  /* Cookie */
   const [cookieInput, setCookieInput] = useState("");
   const [savingCookie, setSavingCookie] =
     useState(false);
   const [cookieError, setCookieError] = useState("");
 
-  /* --- 搜索 --- */
+  /* 搜索 */
   const [keyword, setKeyword] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<NeteaseSong[]>(
@@ -80,16 +88,34 @@ export default function NeteasePanel({
     new Set()
   );
 
+  /* 歌单 */
+  const [playlists, setPlaylists] = useState<
+    NeteasePlaylist[]
+  >([]);
+  const [loadingPlaylists, setLoadingPlaylists] =
+    useState(false);
+  const [openedPlaylist, setOpenedPlaylist] =
+    useState<NeteasePlaylist | null>(null);
+  const [playlistTracks, setPlaylistTracks] = useState<
+    NeteaseSong[]
+  >([]);
+  const [loadingTracks, setLoadingTracks] =
+    useState(false);
+  const [selectedIds, setSelectedIds] = useState<
+    Set<number>
+  >(new Set());
+  const [importing, setImporting] = useState(false);
+
   const pollRef = useRef<number | null>(null);
   const cookieAccumRef = useRef<string>("");
   const flowIdRef = useRef(0);
 
-  /* -------- 初次读 session -------- */
+  /* 首次读 session */
   useEffect(() => {
     setSession(getNeteaseSession());
   }, []);
 
-  /* -------- 已登录时标记已添加 -------- */
+  /* 已登录时标记已添加歌曲 */
   useEffect(() => {
     if (!session) return;
     const list = loadMusic(defaultMusic);
@@ -105,6 +131,31 @@ export default function NeteasePanel({
     setAddedIds(ids);
   }, [session]);
 
+  /* cookie 登录后补齐 userId / 昵称 */
+  useEffect(() => {
+    if (!session) return;
+    if (session.userId && session.userId !== 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const s: NeteaseLoginStatus | null =
+        await fetchLoginStatus(session.cookie);
+      if (cancelled || !s) return;
+      const next = saveNeteaseSession({
+        cookie: session.cookie,
+        userId: s.userId,
+        nickname: s.nickname,
+        avatarUrl: s.avatarUrl,
+      });
+      setSession(next);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  /* 轮询清理 */
   const stopPoll = useCallback(() => {
     if (pollRef.current !== null) {
       window.clearTimeout(pollRef.current);
@@ -116,7 +167,7 @@ export default function NeteasePanel({
     return () => stopPoll();
   }, [stopPoll]);
 
-  /* -------- 扫码流程 -------- */
+  /* 扫码流程 */
   const startQrFlow = useCallback(async () => {
     stopPoll();
     const myFlow = ++flowIdRef.current;
@@ -152,7 +203,6 @@ export default function NeteasePanel({
         );
         if (myFlow !== flowIdRef.current) return;
 
-        /* 803 必须最先判断 */
         if (r.code === 803) {
           if (r.cookie) cookieAccumRef.current = r.cookie;
           const finalCookie = cookieAccumRef.current;
@@ -223,20 +273,19 @@ export default function NeteasePanel({
     );
   }, [stopPoll]);
 
-  /* -------- mode 切换时启停轮询 -------- */
   useEffect(() => {
     if (session === undefined) return;
     if (session) return;
 
     if (mode !== "qr") {
       stopPoll();
-      flowIdRef.current++; // 取消旧流程
+      flowIdRef.current++;
       return;
     }
     void startQrFlow();
   }, [session, mode, startQrFlow, stopPoll]);
 
-  /* -------- Cookie 登录 -------- */
+  /* Cookie 登录 */
   async function handleSaveCookie() {
     const raw = cookieInput.trim();
     if (!raw) {
@@ -245,7 +294,7 @@ export default function NeteasePanel({
     }
     if (!raw.includes("MUSIC_U")) {
       setCookieError(
-        "Cookie 里没有 MUSIC_U。MUSIC_U 是 HttpOnly，document.cookie 拿不到，必须从 F12 → Application → Cookies 里复制。"
+        "Cookie 里没有 MUSIC_U。必须从 F12 → Application → Cookies 里复制。"
       );
       return;
     }
@@ -253,13 +302,12 @@ export default function NeteasePanel({
     setCookieError("");
     setSavingCookie(true);
 
-    /* 验证：搜一次，能通就说明 cookie 有效 */
     try {
       await searchSongs("周杰伦", raw, 1);
     } catch (e) {
       console.error(e);
       setCookieError(
-        "Cookie 验证失败。请确认：（1）已登录 music.163.com（2）复制的是完整的 MUSIC_U 值"
+        "Cookie 验证失败。请确认已登录 music.163.com，且 MUSIC_U 复制完整。"
       );
       setSavingCookie(false);
       return;
@@ -276,7 +324,7 @@ export default function NeteasePanel({
     setSavingCookie(false);
   }
 
-  /* -------- 搜索 -------- */
+  /* 搜索 */
   async function handleSearch() {
     if (!session) return;
     const kw = keyword.trim();
@@ -298,8 +346,8 @@ export default function NeteasePanel({
     }
   }
 
-  /* -------- 添加 -------- */
-  function handleAdd(song: NeteaseSong) {
+  /* 单首添加 */
+  function handleAddSong(song: NeteaseSong) {
     const list = loadMusic(defaultMusic);
     if (
       list.some(
@@ -333,7 +381,123 @@ export default function NeteasePanel({
     onAdded?.();
   }
 
-  /* -------- 退出 -------- */
+  /* 加载歌单列表 */
+  async function loadPlaylists() {
+    if (!session || !session.userId) {
+      alert(
+        "还没拿到你的用户 ID。请等几秒或重新登录。"
+      );
+      return;
+    }
+    setLoadingPlaylists(true);
+    try {
+      const list = await fetchUserPlaylists(
+        session.userId,
+        session.cookie
+      );
+      setPlaylists(list);
+    } catch (e) {
+      console.error(e);
+      alert("加载歌单失败，请稍后再试。");
+    } finally {
+      setLoadingPlaylists(false);
+    }
+  }
+
+  /* 打开歌单 */
+  async function openPlaylist(pl: NeteasePlaylist) {
+    if (!session) return;
+    setOpenedPlaylist(pl);
+    setPlaylistTracks([]);
+    setSelectedIds(new Set());
+    setLoadingTracks(true);
+
+    try {
+      const tracks = await fetchPlaylistTracks(
+        pl.id,
+        session.cookie
+      );
+      setPlaylistTracks(tracks);
+      /* 默认全选（已在库里的除外） */
+      const sel = new Set<number>();
+      tracks.forEach((t) => {
+        if (!addedIds.has(t.id)) sel.add(t.id);
+      });
+      setSelectedIds(sel);
+    } catch (e) {
+      console.error(e);
+      alert("加载歌单歌曲失败。");
+    } finally {
+      setLoadingTracks(false);
+    }
+  }
+
+  /* 全选 / 反选 */
+  function toggleAll() {
+    const selectable = playlistTracks
+      .map((t) => t.id)
+      .filter((id) => !addedIds.has(id));
+    if (selectedIds.size === selectable.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectable));
+    }
+  }
+
+  function toggleOne(id: number) {
+    if (addedIds.has(id)) return;
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  /* 批量导入 */
+  async function handleImport() {
+    if (!openedPlaylist) return;
+    const toImport = playlistTracks.filter((t) =>
+      selectedIds.has(t.id)
+    );
+    if (toImport.length === 0) {
+      alert("请先勾选要导入的歌曲。");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const result = importNeteasePlaylist(
+        openedPlaylist.name,
+        toImport
+      );
+
+      /* 更新 addedIds */
+      const next = new Set(addedIds);
+      toImport.forEach((t) => next.add(t.id));
+      setAddedIds(next);
+
+      /* 清空已选项 */
+      setSelectedIds(new Set());
+
+      onAdded?.();
+
+      alert(
+        `导入完成！\n新增 ${result.added} 首，跳过 ${result.skipped} 首（已在库里）。\n已新建本地歌单「${result.playlistName}」。`
+      );
+
+      /* 返回歌单列表 */
+      setOpenedPlaylist(null);
+      setPlaylistTracks([]);
+    } catch (e) {
+      console.error(e);
+      alert("导入失败，请查看控制台。");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  /* 退出 */
   function handleLogout() {
     if (!window.confirm("退出网易云登录？")) return;
     flowIdRef.current++;
@@ -343,6 +507,9 @@ export default function NeteasePanel({
     setResults([]);
     setKeyword("");
     setAddedIds(new Set());
+    setPlaylists([]);
+    setOpenedPlaylist(null);
+    setPlaylistTracks([]);
   }
 
   /* ===================================================
@@ -359,11 +526,10 @@ export default function NeteasePanel({
     );
   }
 
-  /* ---------- 未登录 ---------- */
+  /* 未登录 */
   if (!session) {
     return (
       <div className="music-nt-panel">
-        {/* 子 tab */}
         <div className="music-nt-mode-tabs">
           <button
             className={mode === "qr" ? "active" : ""}
@@ -403,7 +569,6 @@ export default function NeteasePanel({
             <p className="music-nt-hint">
               用网易云 App 扫码登录
             </p>
-
             <p className="music-nt-status">
               {qrStatus === "loading" && "正在获取二维码…"}
               {qrStatus === "waiting" && "等待扫码…"}
@@ -411,7 +576,6 @@ export default function NeteasePanel({
                 "已扫码，请在手机上确认"}
               {qrStatus === "expired" && "二维码已失效"}
             </p>
-
             {qrStatus === "expired" && (
               <button
                 className="music-nt-retry"
@@ -436,9 +600,7 @@ export default function NeteasePanel({
               <br />
               4. 再找 <code>__csrf</code>，复制它的 Value
               <br />
-              5. 拼成下面的格式粘贴：
-              <br />
-              <code>MUSIC_U=xxx; __csrf=yyy</code>
+              5. 拼成 <code>MUSIC_U=xxx; __csrf=yyy</code> 粘贴
             </p>
 
             <textarea
@@ -482,9 +644,10 @@ export default function NeteasePanel({
     );
   }
 
-  /* ---------- 已登录 ---------- */
+  /* 已登录 */
   return (
     <div className="music-nt-panel">
+      {/* 用户条 */}
       <div className="music-nt-user">
         {session.avatarUrl ? (
           <img
@@ -495,12 +658,10 @@ export default function NeteasePanel({
         ) : (
           <div className="music-nt-avatar music-nt-avatar-empty" />
         )}
-
         <div className="music-nt-user-info">
           <strong>{session.nickname}</strong>
           <small>已登录网易云</small>
         </div>
-
         <button
           className="music-nt-logout"
           onClick={handleLogout}
@@ -510,79 +671,284 @@ export default function NeteasePanel({
         </button>
       </div>
 
-      <div className="music-nt-search">
-        <input
-          type="text"
-          value={keyword}
-          placeholder="搜索歌名 / 歌手"
-          onChange={(e) => setKeyword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void handleSearch();
-          }}
-        />
+      {/* 子 tab: 搜索 / 我的歌单 */}
+      <div className="music-nt-mode-tabs">
         <button
-          onClick={() => void handleSearch()}
-          disabled={searching}
+          className={view === "search" ? "active" : ""}
+          onClick={() => {
+            setView("search");
+            setOpenedPlaylist(null);
+          }}
         >
-          {searching ? (
-            <Loader2
-              size={14}
-              className="music-nt-spin"
-            />
-          ) : (
-            <Search size={14} strokeWidth={2.4} />
-          )}
+          <Search size={14} strokeWidth={2.2} />
+          搜索歌曲
+        </button>
+        <button
+          className={
+            view === "playlists" ? "active" : ""
+          }
+          onClick={() => {
+            setView("playlists");
+            setOpenedPlaylist(null);
+          }}
+        >
+          我的歌单
         </button>
       </div>
 
-      <div className="music-nt-results">
-        {results.length === 0 ? (
-          <div className="music-nt-empty">
-            {searching ? "搜索中…" : "搜索一首歌试试"}
+      {view === "search" && (
+        <>
+          <div className="music-nt-search">
+            <input
+              type="text"
+              value={keyword}
+              placeholder="搜索歌名 / 歌手"
+              onChange={(e) =>
+                setKeyword(e.target.value)
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter")
+                  void handleSearch();
+              }}
+            />
+            <button
+              onClick={() => void handleSearch()}
+              disabled={searching}
+            >
+              {searching ? (
+                <Loader2
+                  size={14}
+                  className="music-nt-spin"
+                />
+              ) : (
+                <Search size={14} strokeWidth={2.4} />
+              )}
+            </button>
           </div>
-        ) : (
-          results.map((s) => {
-            const added = addedIds.has(s.id);
-            return (
-              <div key={s.id} className="music-nt-row">
-                {s.cover ? (
-                  <img
-                    src={s.cover}
-                    alt=""
-                    className="music-nt-row-cover"
-                  />
-                ) : (
-                  <div className="music-nt-row-cover music-nt-row-cover-empty" />
-                )}
 
-                <div className="music-nt-row-info">
-                  <strong>{s.name}</strong>
-                  <small>
-                    {s.artists}
-                    {s.album ? ` · ${s.album}` : ""}
-                  </small>
-                </div>
-
-                <button
-                  className="music-nt-row-add"
-                  onClick={() => handleAdd(s)}
-                  disabled={added}
-                  title={added ? "已添加" : "添加"}
-                >
-                  {added ? (
-                    "已加"
-                  ) : (
-                    <Plus
-                      size={14}
-                      strokeWidth={2.6}
-                    />
-                  )}
-                </button>
+          <div className="music-nt-results">
+            {results.length === 0 ? (
+              <div className="music-nt-empty">
+                {searching ? "搜索中…" : "搜索一首歌试试"}
               </div>
-            );
-          })
-        )}
-      </div>
+            ) : (
+              results.map((s) => {
+                const added = addedIds.has(s.id);
+                return (
+                  <div
+                    key={s.id}
+                    className="music-nt-row"
+                  >
+                    {s.cover ? (
+                      <img
+                        src={s.cover}
+                        alt=""
+                        className="music-nt-row-cover"
+                      />
+                    ) : (
+                      <div className="music-nt-row-cover music-nt-row-cover-empty" />
+                    )}
+                    <div className="music-nt-row-info">
+                      <strong>{s.name}</strong>
+                      <small>
+                        {s.artists}
+                        {s.album ? ` · ${s.album}` : ""}
+                      </small>
+                    </div>
+                    <button
+                      className="music-nt-row-add"
+                      onClick={() => handleAddSong(s)}
+                      disabled={added}
+                      title={added ? "已添加" : "添加"}
+                    >
+                      {added ? (
+                        "已加"
+                      ) : (
+                        <Plus
+                          size={14}
+                          strokeWidth={2.6}
+                        />
+                      )}
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </>
+      )}
+
+      {view === "playlists" && !openedPlaylist && (
+        <>
+          {playlists.length === 0 && !loadingPlaylists && (
+            <button
+              className="music-nt-load-playlists"
+              onClick={() => void loadPlaylists()}
+            >
+              点击加载我的歌单
+            </button>
+          )}
+
+          {loadingPlaylists && (
+            <div className="music-nt-empty">
+              <Loader2
+                size={16}
+                className="music-nt-spin"
+              />
+              <span style={{ marginLeft: 8 }}>
+                加载中…
+              </span>
+            </div>
+          )}
+
+          {playlists.length > 0 && (
+            <div className="music-nt-playlist-grid">
+              {playlists.map((pl) => (
+                <button
+                  key={pl.id}
+                  className="music-nt-playlist-card"
+                  onClick={() => void openPlaylist(pl)}
+                >
+                  {pl.cover ? (
+                    <img
+                      src={pl.cover}
+                      alt=""
+                      className="music-nt-playlist-cover"
+                    />
+                  ) : (
+                    <div className="music-nt-playlist-cover music-nt-playlist-cover-empty" />
+                  )}
+                  <div className="music-nt-playlist-name">
+                    {pl.name}
+                  </div>
+                  <div className="music-nt-playlist-count">
+                    {pl.trackCount} 首
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {view === "playlists" && openedPlaylist && (
+        <>
+          <button
+            className="music-nt-back"
+            onClick={() => {
+              setOpenedPlaylist(null);
+              setPlaylistTracks([]);
+            }}
+          >
+            <ChevronLeft size={14} strokeWidth={2.6} />
+            返回歌单列表
+          </button>
+
+          <div className="music-nt-pl-header">
+            {openedPlaylist.cover ? (
+              <img
+                src={openedPlaylist.cover}
+                alt=""
+                className="music-nt-pl-header-cover"
+              />
+            ) : (
+              <div className="music-nt-pl-header-cover music-nt-pl-header-cover-empty" />
+            )}
+            <div className="music-nt-pl-header-info">
+              <strong>{openedPlaylist.name}</strong>
+              <small>
+                {openedPlaylist.trackCount} 首 ·{" "}
+                {openedPlaylist.creator}
+              </small>
+            </div>
+          </div>
+
+          {loadingTracks ? (
+            <div className="music-nt-empty">
+              <Loader2
+                size={16}
+                className="music-nt-spin"
+              />
+              <span style={{ marginLeft: 8 }}>
+                加载歌曲中…
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="music-nt-pl-actions">
+                <button onClick={toggleAll}>
+                  {selectedIds.size ===
+                  playlistTracks.filter(
+                    (t) => !addedIds.has(t.id)
+                  ).length
+                    ? "取消全选"
+                    : "全选"}
+                </button>
+                <span className="music-nt-pl-selcount">
+                  已选 {selectedIds.size} /{" "}
+                  {playlistTracks.length}
+                </span>
+              </div>
+
+              <div className="music-nt-results">
+                {playlistTracks.map((t) => {
+                  const added = addedIds.has(t.id);
+                  const checked = selectedIds.has(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      className={
+                        "music-nt-track-row" +
+                        (added ? " is-added" : "")
+                      }
+                      onClick={() => toggleOne(t.id)}
+                      disabled={added}
+                    >
+                      <span
+                        className={
+                          "music-nt-track-check" +
+                          (checked ? " checked" : "") +
+                          (added ? " disabled" : "")
+                        }
+                      >
+                        {checked && "✓"}
+                        {added && "·"}
+                      </span>
+                      <span className="music-nt-track-text">
+                        <strong>{t.name}</strong>
+                        <small>
+                          {t.artists}
+                          {added ? " · 已在库" : ""}
+                        </small>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                className="music-nt-import-btn"
+                onClick={() => void handleImport()}
+                disabled={
+                  importing || selectedIds.size === 0
+                }
+              >
+                {importing ? (
+                  <>
+                    <Loader2
+                      size={14}
+                      className="music-nt-spin"
+                    />
+                    导入中…
+                  </>
+                ) : (
+                  `导入选中 ${selectedIds.size} 首`
+                )}
+              </button>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
