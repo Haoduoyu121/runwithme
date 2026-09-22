@@ -1,17 +1,40 @@
 const KEY = "runwithme_ai_presets_v1";
 const ACTIVE_KEY = "runwithme_ai_active_preset_v1";
 
+/* ---------- 类型 ---------- */
+
+export type PresetPrompt = {
+  id: string;
+  name: string;
+  content: string;
+  role: "system" | "user" | "assistant";
+  enabled: boolean;
+  isMarker: boolean;
+  marker?: string;
+  orderIndex: number;
+};
+
+export type AiPresetParams = {
+  temperature?: number;
+  top_p?: number;
+  top_k?: number;
+  min_p?: number;
+  top_a?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  repetition_penalty?: number;
+  max_tokens?: number;
+};
+
 export type AiPreset = {
   id: string;
   name: string;
-  temperature?: number;
-  top_p?: number;
-  frequency_penalty?: number;
-  presence_penalty?: number;
-  max_tokens?: number;
-  main_prompt: string;
-  post_history: string;
-  source?: "custom" | "sillytavern";
+  params: AiPresetParams;
+  prompts: PresetPrompt[];
+  source: "custom" | "sillytavern";
+  /* 兼容旧数据 */
+  main_prompt?: string;
+  post_history?: string;
 };
 
 function genId(): string {
@@ -29,27 +52,85 @@ function genId(): string {
   );
 }
 
+/* ---------- 已知的 ST marker ---------- */
+
+const KNOWN_MARKERS = new Set([
+  "main",
+  "chatHistory",
+  "worldInfoBefore",
+  "worldInfoAfter",
+  "charDescription",
+  "charPersonality",
+  "scenario",
+  "dialogueExamples",
+  "personaDescription",
+  "nsfw",
+  "jailbreak",
+  "enhanceDefinitions",
+  "agentSystemPrompt",
+  "agentTask",
+  "agentResults",
+]);
+
+/* ---------- 新建空白预设 ---------- */
+
 export function newPreset(): AiPreset {
   return {
     id: genId(),
     name: "新预设",
-    temperature: 1,
-    top_p: 0.9,
-    frequency_penalty: 0,
-    presence_penalty: 0,
-    max_tokens: 512,
-    main_prompt:
-      "Write {{char}}'s next reply in a fictional chat between {{char}} and {{user}}. Stay in character, reply in Chinese.",
-    post_history: "",
+    params: {
+      temperature: 1,
+      top_p: 0.9,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+      max_tokens: 512,
+    },
+    prompts: [
+      {
+        id: genId(),
+        name: "主提示词",
+        content:
+          "Write {{char}}'s next reply in a fictional chat between {{char}} and {{user}}. Stay in character, reply in Chinese.",
+        role: "system",
+        enabled: true,
+        isMarker: false,
+        orderIndex: 0,
+      },
+    ],
     source: "custom",
   };
 }
+
+/* ---------- 读写 ---------- */
 
 export function loadPresets(): AiPreset[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || "[]");
-    return Array.isArray(raw) ? raw : [];
+    if (!Array.isArray(raw)) return [];
+    /* 兼容旧数据：老版本只有 main_prompt */
+    return raw.map((p: AiPreset) => {
+      if (!Array.isArray(p.prompts)) {
+        return {
+          ...p,
+          params: p.params || {},
+          prompts: p.main_prompt
+            ? [
+                {
+                  id: genId(),
+                  name: "主提示词",
+                  content: p.main_prompt,
+                  role: "system",
+                  enabled: true,
+                  isMarker: false,
+                  orderIndex: 0,
+                },
+              ]
+            : [],
+        };
+      }
+      return p;
+    });
   } catch {
     return [];
   }
@@ -70,7 +151,7 @@ export function setActivePresetId(id: string): void {
   localStorage.setItem(ACTIVE_KEY, id);
 }
 
-/* ---------- SillyTavern 预设解析 ---------- */
+/* ---------- 工具 ---------- */
 
 function num(v: unknown): number | undefined {
   return typeof v === "number" && Number.isFinite(v)
@@ -82,28 +163,124 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
+/* ---------- SillyTavern 预设解析 ---------- */
+
+type STPromptEntry = {
+  identifier?: string;
+  name?: string;
+  content?: string;
+  role?: string;
+  marker?: boolean;
+  system_prompt?: boolean;
+  enabled?: boolean;
+  injection_position?: number;
+  injection_depth?: number;
+};
+
+type STOrderEntry = {
+  character_id?: number;
+  order?: { enabled: boolean; identifier: string }[];
+};
+
+type STPreset = {
+  name?: string;
+  prompts?: STPromptEntry[];
+  prompt_order?: STOrderEntry[];
+  temperature?: number;
+  top_p?: number;
+  top_k?: number;
+  min_p?: number;
+  top_a?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  repetition_penalty?: number;
+  openai_max_tokens?: number;
+  openai_max_context?: number;
+};
+
 export function parseSillyTavernPreset(
   json: unknown
 ): AiPreset {
-  const j = (json || {}) as Record<string, unknown>;
-  const main =
-    str(j.main_prompt) ||
-    str(j.system_prompt) ||
-    str(j.new_chat_prompt) ||
-    "";
-  return {
-    id: genId(),
-    name: str(j.name) || str(j.preset_name) || "导入的预设",
-    temperature: num(j.temperature ?? j.temp),
+  const j = (json || {}) as STPreset;
+  const prompts = Array.isArray(j.prompts) ? j.prompts : [];
+  const orders = Array.isArray(j.prompt_order)
+    ? j.prompt_order
+    : [];
+
+  /* 优先使用 character_id: 100001 的顺序（有角色时） */
+  const activeOrder =
+    orders.find((o) => o.character_id === 100001) ||
+    orders[0] ||
+    null;
+
+  const orderMap = new Map<
+    string,
+    { enabled: boolean; idx: number }
+  >();
+  if (activeOrder?.order) {
+    activeOrder.order.forEach((o, i) => {
+      orderMap.set(o.identifier, {
+        enabled: !!o.enabled,
+        idx: i,
+      });
+    });
+  }
+
+  /* 逐条解析 */
+  const out: PresetPrompt[] = [];
+  for (const p of prompts) {
+    const id = str(p.identifier);
+    if (!id) continue;
+
+    const isMarker =
+      !!p.marker || KNOWN_MARKERS.has(id);
+
+    const om = orderMap.get(id);
+    /* 不在 prompt_order 里的条目跳过 */
+    if (!om) continue;
+
+    out.push({
+      id,
+      name: str(p.name) || id,
+      content: str(p.content),
+      role:
+        p.role === "user" || p.role === "assistant"
+          ? p.role
+          : "system",
+      enabled: om.enabled,
+      isMarker,
+      marker: isMarker ? id : undefined,
+      orderIndex: om.idx,
+    });
+  }
+
+  /* 按顺序排 */
+  out.sort((a, b) => a.orderIndex - b.orderIndex);
+
+  /* 参数 */
+  const params: AiPresetParams = {
+    temperature: num(j.temperature),
     top_p: num(j.top_p),
+    top_k: num(j.top_k),
+    min_p: num(j.min_p),
+    top_a: num(j.top_a),
     frequency_penalty: num(j.frequency_penalty),
     presence_penalty: num(j.presence_penalty),
-    max_tokens: num(
-      j.max_tokens ?? j.openai_max_tokens ?? j.openai_max
-    ),
-    main_prompt: main,
-    post_history: str(j.post_history_instructions),
+    repetition_penalty: num(j.repetition_penalty),
+    max_tokens: num(j.openai_max_tokens),
+  };
+
+  /* 兼容字段：main_prompt = main prompt 的内容 */
+  const mainEntry = out.find((x) => x.id === "main");
+  const mainPrompt = mainEntry?.content || "";
+
+  return {
+    id: genId(),
+    name: str(j.name) || "导入的预设",
+    params,
+    prompts: out,
     source: "sillytavern",
+    main_prompt: mainPrompt,
   };
 }
 
@@ -114,6 +291,62 @@ export function applyTemplate(
   vars: { char: string; user: string }
 ): string {
   return text
+    .replace(/\{\{setvar::[^}]*\}\}/gi, "")
+    .replace(/\{\{getvar::[^}]*\}\}/gi, "")
     .replace(/\{\{char\}\}/gi, vars.char)
-    .replace(/\{\{user\}\}/gi, vars.user);
+    .replace(/\{\{user\}\}/gi, vars.user)
+    .replace(/\{\{persona\}\}/gi, vars.user)
+    .trim();
+}
+
+/* ---------- 拼装 system prompt ---------- */
+
+export function buildPresetSystemPrompt(
+  preset: AiPreset,
+  vars: { char: string; user: string }
+): string {
+  if (!preset) return "";
+  const parts: string[] = [];
+
+  const enabled = preset.prompts
+    .filter((p) => p.enabled && !p.isMarker && p.content.trim())
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  if (enabled.length > 0) {
+    for (const p of enabled) {
+      const c = applyTemplate(p.content, vars);
+      if (c) parts.push(c);
+    }
+  } else if (preset.main_prompt) {
+    parts.push(applyTemplate(preset.main_prompt, vars));
+  }
+
+  if (preset.post_history) {
+    const c = applyTemplate(preset.post_history, vars);
+    if (c) parts.push(c);
+  }
+
+  return parts.join("\n\n");
+}
+
+/* ---------- 参数提取（给 API 用） ---------- */
+
+export function pickApiParams(preset: AiPreset | null) {
+  if (!preset || !preset.params) return {};
+  const p = preset.params;
+  const out: Record<string, number> = {};
+  if (p.temperature !== undefined) out.temperature = p.temperature;
+  if (p.top_p !== undefined) out.top_p = p.top_p;
+  if (p.top_k !== undefined) out.top_k = p.top_k;
+  if (p.min_p !== undefined) out.min_p = p.min_p;
+  if (p.top_a !== undefined) out.top_a = p.top_a;
+  if (p.frequency_penalty !== undefined)
+    out.frequency_penalty = p.frequency_penalty;
+  if (p.presence_penalty !== undefined)
+    out.presence_penalty = p.presence_penalty;
+  if (p.repetition_penalty !== undefined)
+    out.repetition_penalty = p.repetition_penalty;
+  if (p.max_tokens !== undefined)
+    out.max_tokens = Math.min(p.max_tokens, 32000);
+  return out;
 }

@@ -27,7 +27,14 @@ export type WorldbookEntry = {
   depth: number;
 };
 
-function genId(): string {
+export type Worldbook = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  entries: WorldbookEntry[];
+};
+
+function genId(prefix: string): string {
   if (
     typeof crypto !== "undefined" &&
     typeof crypto.randomUUID === "function"
@@ -35,7 +42,8 @@ function genId(): string {
     return crypto.randomUUID();
   }
   return (
-    "wb-" +
+    prefix +
+    "-" +
     Date.now() +
     "-" +
     Math.random().toString(36).slice(2, 8)
@@ -44,7 +52,7 @@ function genId(): string {
 
 export function newEntry(): WorldbookEntry {
   return {
-    id: genId(),
+    id: genId("wb-e"),
     keywords: [],
     content: "",
     enabled: true,
@@ -55,7 +63,18 @@ export function newEntry(): WorldbookEntry {
   };
 }
 
-function normalize(raw: unknown): WorldbookEntry | null {
+export function newWorldbook(name = "新世界书"): Worldbook {
+  return {
+    id: genId("wb-b"),
+    name,
+    enabled: true,
+    entries: [],
+  };
+}
+
+/* ---------- 归一化 ---------- */
+
+function normalizeEntry(raw: unknown): WorldbookEntry | null {
   if (!raw || typeof raw !== "object") return null;
   const e = raw as Partial<WorldbookEntry>;
   const pos = e.position;
@@ -67,7 +86,10 @@ function normalize(raw: unknown): WorldbookEntry | null {
       ? (pos as WorldbookPosition)
       : 1;
   return {
-    id: typeof e.id === "string" && e.id ? e.id : genId(),
+    id:
+      typeof e.id === "string" && e.id
+        ? e.id
+        : genId("wb-e"),
     keywords: Array.isArray(e.keywords)
       ? e.keywords.filter(
           (x): x is string => typeof x === "string"
@@ -85,9 +107,35 @@ function normalize(raw: unknown): WorldbookEntry | null {
   };
 }
 
-export async function loadWorldbook(
+function normalizeBook(raw: unknown): Worldbook | null {
+  if (!raw || typeof raw !== "object") return null;
+  const b = raw as Partial<Worldbook>;
+  const entries = Array.isArray(b.entries)
+    ? (b.entries
+        .map(normalizeEntry)
+        .filter(
+          (x): x is WorldbookEntry => !!x
+        ) as WorldbookEntry[])
+    : [];
+  return {
+    id:
+      typeof b.id === "string" && b.id
+        ? b.id
+        : genId("wb-b"),
+    name:
+      typeof b.name === "string" && b.name.trim()
+        ? b.name.trim()
+        : "未命名世界书",
+    enabled: b.enabled !== false,
+    entries,
+  };
+}
+
+/* ---------- API ---------- */
+
+export async function loadWorldbooks(
   cardId: string
-): Promise<WorldbookEntry[]> {
+): Promise<Worldbook[]> {
   try {
     const r = await fetch(
       `${API_BASE}/api/ai/worldbook/${encodeURIComponent(
@@ -96,18 +144,46 @@ export async function loadWorldbook(
     );
     if (!r.ok) return [];
     const data = await r.json();
-    if (!Array.isArray(data.entries)) return [];
-    return data.entries
-      .map(normalize)
-      .filter((x: WorldbookEntry | null): x is WorldbookEntry => !!x);
+    const payload = data?.entries;
+
+    /* 新格式：{ books: Worldbook[] } */
+    if (
+      payload &&
+      !Array.isArray(payload) &&
+      Array.isArray(payload.books)
+    ) {
+      return (payload.books as unknown[])
+        .map(normalizeBook)
+        .filter((x): x is Worldbook => !!x);
+    }
+
+    /* 旧格式：WorldbookEntry[] -> 包成"默认"书 */
+    if (Array.isArray(payload)) {
+      const entries = (payload as unknown[])
+        .map(normalizeEntry)
+        .filter(
+          (x): x is WorldbookEntry => !!x
+        ) as WorldbookEntry[];
+      if (entries.length === 0) return [];
+      return [
+        {
+          id: "default",
+          name: "默认世界书",
+          enabled: true,
+          entries,
+        },
+      ];
+    }
+
+    return [];
   } catch {
     return [];
   }
 }
 
-export async function saveWorldbook(
+export async function saveWorldbooks(
   cardId: string,
-  entries: WorldbookEntry[]
+  books: Worldbook[]
 ): Promise<void> {
   await fetch(
     `${API_BASE}/api/ai/worldbook/${encodeURIComponent(
@@ -116,12 +192,24 @@ export async function saveWorldbook(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entries }),
+      body: JSON.stringify({ entries: { books } }),
     }
   );
 }
 
-/* ---------- SillyTavern JSON 世界书导入 ---------- */
+/* 展平：用于对话页触发检测 */
+export function flattenBooks(
+  books: Worldbook[]
+): WorldbookEntry[] {
+  const out: WorldbookEntry[] = [];
+  for (const b of books) {
+    if (!b.enabled) continue;
+    for (const e of b.entries) out.push(e);
+  }
+  return out;
+}
+
+/* ---------- SillyTavern JSON 导入 ---------- */
 
 type STEntry = {
   uid?: number;
@@ -133,10 +221,10 @@ type STEntry = {
   caseSensitive?: boolean;
   position?: number | string;
   depth?: number;
-  order?: number;
 };
 
 type STWorldbook = {
+  name?: string;
   entries?: Record<string, STEntry>;
 };
 
@@ -149,7 +237,6 @@ function parseSTPosition(v: unknown): WorldbookPosition {
     if (Number.isFinite(n) && n >= 0 && n <= 6) {
       return n as WorldbookPosition;
     }
-    /* ST 有些版本用字符串常量 */
     const m: Record<string, WorldbookPosition> = {
       before_char: 0,
       after_char: 1,
@@ -164,22 +251,25 @@ function parseSTPosition(v: unknown): WorldbookPosition {
   return 1;
 }
 
+/** 把 ST 世界书解析成一本 Worldbook（可能包含多个条目） */
 export function parseSillyTavernWorldbook(
-  json: unknown
-): WorldbookEntry[] {
-  const wb = json as STWorldbook;
-  const raw = wb?.entries;
+  json: unknown,
+  fallbackName = "导入的世界书"
+): Worldbook {
+  const wb = (json || {}) as STWorldbook;
+  const raw = wb.entries;
   if (!raw || typeof raw !== "object") {
     throw new Error("不是有效的世界书格式（缺少 entries）");
   }
 
-  const out: WorldbookEntry[] = [];
+  const entries: WorldbookEntry[] = [];
   for (const [k, e] of Object.entries(raw)) {
     if (!e || typeof e !== "object") continue;
     const keys = Array.isArray(e.key) ? e.key : [];
-    const content = typeof e.content === "string" ? e.content : "";
+    const content =
+      typeof e.content === "string" ? e.content : "";
     if (!content) continue;
-    out.push({
+    entries.push({
       id: `st-${k}-${Math.random().toString(36).slice(2, 6)}`,
       keywords: keys.filter(
         (x) => typeof x === "string" && x.trim()
@@ -195,7 +285,16 @@ export function parseSillyTavernWorldbook(
           : 0,
     });
   }
-  return out;
+
+  return {
+    id: genId("wb-b"),
+    name:
+      typeof wb.name === "string" && wb.name.trim()
+        ? wb.name.trim()
+        : fallbackName,
+    enabled: true,
+    entries,
+  };
 }
 
 /* ---------- 触发 ---------- */
@@ -296,23 +395,4 @@ export function formatEntries(
 ): string {
   if (entries.length === 0) return "";
   return entries.map((e) => `- ${e.content}`).join("\n");
-}
-
-/** 兼容旧调用（拼成单块） */
-export function buildWorldbookBlock(
-  triggered: WorldbookEntry[] | TriggeredByPos
-): string {
-  if (Array.isArray(triggered)) {
-    return formatEntries(triggered);
-  }
-  const all: WorldbookEntry[] = [
-    ...triggered.beforeChar,
-    ...triggered.afterChar,
-    ...triggered.beforeAn,
-    ...triggered.afterAn,
-    ...triggered.beforeEm,
-    ...triggered.afterEm,
-    ...triggered.atDepth,
-  ];
-  return formatEntries(all);
 }

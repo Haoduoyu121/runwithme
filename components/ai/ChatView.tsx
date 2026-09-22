@@ -33,9 +33,11 @@ import { useCollection } from "@/lib/CollectionContext";
 import WorldbookPanel from "./WorldbookPanel";
 import PresetPanel from "./PresetPanel";
 import {
-  loadWorldbook,
+  loadWorldbooks,
+  flattenBooks,
   collectTriggered,
   formatEntries,
+  type Worldbook,
   type WorldbookEntry,
   type TriggeredByPos,
 } from "@/lib/ai/worldbook";
@@ -43,6 +45,8 @@ import {
   loadPresets,
   getActivePresetId,
   applyTemplate,
+  buildPresetSystemPrompt,
+  pickApiParams,
   type AiPreset,
 } from "@/lib/ai/presets";
 
@@ -87,13 +91,13 @@ function buildSystemPrompt(
   const vars = { char: card.name, user: "你" };
   const parts: string[] = [];
 
-  if (preset?.main_prompt) {
-    parts.push(applyTemplate(preset.main_prompt, vars));
-  } else if (card.system_prompt) {
-    parts.push(card.system_prompt);
-  } else {
-    parts.push(DEFAULT_SYS);
-  }
+  /* 预设主提示（按所有启用 prompt 顺序拼接） */
+  const presetBlock = preset
+    ? buildPresetSystemPrompt(preset, vars)
+    : "";
+  if (presetBlock) parts.push(presetBlock);
+  else if (card.system_prompt) parts.push(card.system_prompt);
+  else parts.push(DEFAULT_SYS);
 
   /* 位置 0：角色描述前 */
   const wbBeforeChar = formatEntries(wb.beforeChar);
@@ -193,10 +197,10 @@ export default function ChatView({ cardId }: { cardId: string }) {
 
   const [toast, setToast] = useState<string | null>(null);
 
-  /* 世界书：全局 + 卡片 */
+  /* 世界书：全局 + 卡片（多本） */
   const [showWorldbook, setShowWorldbook] = useState(false);
-  const [globalWb, setGlobalWb] = useState<WorldbookEntry[]>([]);
-  const [cardWb, setCardWb] = useState<WorldbookEntry[]>([]);
+  const [globalBooks, setGlobalBooks] = useState<Worldbook[]>([]);
+  const [cardBooks, setCardBooks] = useState<Worldbook[]>([]);
 
   /* 预设 */
   const [showPreset, setShowPreset] = useState(false);
@@ -209,8 +213,11 @@ export default function ChatView({ cardId }: { cardId: string }) {
   const { add: addToCollection } = useCollection();
 
   const worldbook = useMemo(
-    () => [...globalWb, ...cardWb],
-    [globalWb, cardWb]
+    () => [
+      ...flattenBooks(globalBooks),
+      ...flattenBooks(cardBooks),
+    ],
+    [globalBooks, cardBooks]
   );
 
   function refreshPreset() {
@@ -222,13 +229,13 @@ export default function ChatView({ cardId }: { cardId: string }) {
   async function refreshWorldbook() {
     try {
       const [g, c] = await Promise.all([
-        loadWorldbook(GLOBAL_WB_ID),
+        loadWorldbooks(GLOBAL_WB_ID),
         cardId !== GLOBAL_WB_ID
-          ? loadWorldbook(cardId)
-          : Promise.resolve([] as WorldbookEntry[]),
+          ? loadWorldbooks(cardId)
+          : Promise.resolve([] as Worldbook[]),
       ]);
-      setGlobalWb(g);
-      setCardWb(c);
+      setGlobalBooks(g);
+      setCardBooks(c);
     } catch {
       /* ignore */
     }
@@ -601,19 +608,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
 
     const payload: ChatMessage[] = [sys, ...historyMsgs];
 
-    const params: Record<string, unknown> = {};
-    if (preset) {
-      if (preset.temperature !== undefined)
-        params.temperature = preset.temperature;
-      if (preset.top_p !== undefined)
-        params.top_p = preset.top_p;
-      if (preset.frequency_penalty !== undefined)
-        params.frequency_penalty = preset.frequency_penalty;
-      if (preset.presence_penalty !== undefined)
-        params.presence_penalty = preset.presence_penalty;
-      if (preset.max_tokens !== undefined)
-        params.max_tokens = preset.max_tokens;
-    }
+    const params = pickApiParams(preset);
 
     const placeholder = createMessage("assistant", "");
     setMessages([...history, placeholder]);
@@ -825,15 +820,8 @@ export default function ChatView({ cardId }: { cardId: string }) {
               onClick={() => setShowWorldbook(true)}
             >
               📖 世界书（
-              {globalWb.length > 0 ? `G${globalWb.length}` : ""}
-              {globalWb.length > 0 && cardWb.length > 0
-                ? "+"
-                : ""}
-              {cardWb.length > 0 ? cardWb.length : ""}
-              {globalWb.length + cardWb.length === 0
-                ? "0"
-                : ""}
-              ）
+              {globalBooks.length + cardBooks.length} 本 /{" "}
+              {worldbook.length} 条）
             </button>
             <button
               className="ai-chat-clear"

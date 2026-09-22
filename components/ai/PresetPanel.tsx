@@ -6,8 +6,9 @@ import {
   Plus,
   Trash2,
   Upload,
-  Save,
   Check,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   loadPresets,
@@ -17,6 +18,7 @@ import {
   getActivePresetId,
   setActivePresetId,
   type AiPreset,
+  type PresetPrompt,
 } from "@/lib/ai/presets";
 
 export default function PresetPanel({
@@ -27,9 +29,14 @@ export default function PresetPanel({
   onChanged: () => void;
 }) {
   const [list, setList] = useState<AiPreset[]>([]);
-  const [activeId, setActiveId] = useState<string>("");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(
+    null
+  );
   const [draft, setDraft] = useState<AiPreset | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(
+    new Set()
+  );
   const [msg, setMsg] = useState("");
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -53,7 +60,7 @@ export default function PresetPanel({
 
   function startEdit(p: AiPreset) {
     setEditingId(p.id);
-    setDraft({ ...p });
+    setDraft(JSON.parse(JSON.stringify(p)));
   }
 
   function commitEdit() {
@@ -62,6 +69,11 @@ export default function PresetPanel({
       p.id === editingId ? draft : p
     );
     persist(next);
+    setEditingId(null);
+    setDraft(null);
+  }
+
+  function cancelEdit() {
     setEditingId(null);
     setDraft(null);
   }
@@ -88,14 +100,56 @@ export default function PresetPanel({
       const json = JSON.parse(text);
       const p = parseSillyTavernPreset(json);
       persist([...list, p]);
-      setMsg(`已导入：${p.name}`);
-      window.setTimeout(() => setMsg(""), 3000);
+      setMsg(
+        `已导入《${p.name}》，共 ${p.prompts.length} 条提示`
+      );
+      window.setTimeout(() => setMsg(""), 4000);
     } catch (e) {
       setMsg(
         "导入失败：" +
           (e instanceof Error ? e.message : String(e))
       );
     }
+  }
+
+  /* ---------- draft 修改工具 ---------- */
+
+  function patchDraft(p: Partial<AiPreset>) {
+    if (!draft) return;
+    setDraft({ ...draft, ...p });
+  }
+
+  function patchParam(
+    key: keyof AiPreset["params"],
+    v: string
+  ) {
+    if (!draft) return;
+    const n = v === "" ? undefined : Number(v);
+    setDraft({
+      ...draft,
+      params: {
+        ...draft.params,
+        [key]: Number.isFinite(n as number)
+          ? (n as number)
+          : undefined,
+      },
+    });
+  }
+
+  function patchPrompt(idx: number, p: Partial<PresetPrompt>) {
+    if (!draft) return;
+    const next = [...draft.prompts];
+    next[idx] = { ...next[idx], ...p };
+    setDraft({ ...draft, prompts: next });
+  }
+
+  function toggleExpanded(id: string) {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   }
 
   return (
@@ -140,23 +194,23 @@ export default function PresetPanel({
         <div className="ai-wb-body">
           {list.length === 0 && (
             <div className="ai-empty">
-              还没有预设。点下方「+ 新建」或右上角导入
-              SillyTavern 预设。
+              还没有预设。点下方「新建」或右上角导入。
             </div>
           )}
 
           {list.map((p) => {
             const isEditing = editingId === p.id;
             const d = isEditing && draft ? draft : p;
+            const useCount = p.prompts.filter(
+              (x) => x.enabled && !x.isMarker && x.content.trim()
+            ).length;
             return (
               <div key={p.id} className="ai-wb-entry">
                 <div className="ai-wb-entry-head">
                   <button
                     className={
                       "ai-preset-pick" +
-                      (activeId === p.id
-                        ? " active"
-                        : "")
+                      (activeId === p.id ? " active" : "")
                     }
                     onClick={() => pickActive(p.id)}
                   >
@@ -177,10 +231,7 @@ export default function PresetPanel({
                       }}
                       value={d.name}
                       onChange={(e) =>
-                        setDraft({
-                          ...d,
-                          name: e.target.value,
-                        })
+                        patchDraft({ name: e.target.value })
                       }
                     />
                   ) : (
@@ -192,27 +243,40 @@ export default function PresetPanel({
                       }}
                     >
                       {p.name}
-                      {p.source === "sillytavern" && (
-                        <span
-                          style={{
-                            marginLeft: 6,
-                            fontSize: 10,
-                            opacity: 0.5,
-                          }}
-                        >
-                          ST
-                        </span>
-                      )}
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 10,
+                          opacity: 0.55,
+                          fontWeight: 400,
+                        }}
+                      >
+                        {p.source === "sillytavern"
+                          ? "ST"
+                          : "自定义"}{" "}
+                        · {useCount}/{p.prompts.length} 启用
+                      </span>
                     </span>
                   )}
                   {isEditing ? (
-                    <button
-                      className="ai-wb-icon-btn"
-                      onClick={commitEdit}
-                      aria-label="保存"
-                    >
-                      <Save size={14} strokeWidth={2.2} />
-                    </button>
+                    <>
+                      <button
+                        className="ai-wb-icon-btn"
+                        onClick={commitEdit}
+                        title="保存"
+                        aria-label="保存"
+                      >
+                        <Check size={14} strokeWidth={2.4} />
+                      </button>
+                      <button
+                        className="ai-wb-icon-btn"
+                        onClick={cancelEdit}
+                        title="取消"
+                        aria-label="取消"
+                      >
+                        <X size={14} strokeWidth={2.4} />
+                      </button>
+                    </>
                   ) : (
                     <button
                       className="ai-wb-icon-btn"
@@ -231,142 +295,162 @@ export default function PresetPanel({
                   </button>
                 </div>
 
-                {isEditing ? (
-                  <>
-                    <div className="ai-preset-nums">
-                      <label>
-                        temp
-                        <input
-                          type="number"
-                          step={0.05}
-                          value={d.temperature ?? ""}
-                          onChange={(e) =>
-                            setDraft({
-                              ...d,
-                              temperature:
-                                e.target.value === ""
-                                  ? undefined
-                                  : Number(e.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        top_p
-                        <input
-                          type="number"
-                          step={0.05}
-                          value={d.top_p ?? ""}
-                          onChange={(e) =>
-                            setDraft({
-                              ...d,
-                              top_p:
-                                e.target.value === ""
-                                  ? undefined
-                                  : Number(e.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        freq
-                        <input
-                          type="number"
-                          step={0.1}
-                          value={d.frequency_penalty ?? ""}
-                          onChange={(e) =>
-                            setDraft({
-                              ...d,
-                              frequency_penalty:
-                                e.target.value === ""
-                                  ? undefined
-                                  : Number(e.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        pres
-                        <input
-                          type="number"
-                          step={0.1}
-                          value={d.presence_penalty ?? ""}
-                          onChange={(e) =>
-                            setDraft({
-                              ...d,
-                              presence_penalty:
-                                e.target.value === ""
-                                  ? undefined
-                                  : Number(e.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        max
-                        <input
-                          type="number"
-                          step={64}
-                          value={d.max_tokens ?? ""}
-                          onChange={(e) =>
-                            setDraft({
-                              ...d,
-                              max_tokens:
-                                e.target.value === ""
-                                  ? undefined
-                                  : Number(e.target.value),
-                            })
-                          }
-                        />
-                      </label>
-                    </div>
-                    <textarea
-                      className="ai-input ai-wb-content"
-                      placeholder="主提示词（支持 {{char}} / {{user}}）"
-                      rows={4}
-                      value={d.main_prompt}
-                      onChange={(e) =>
-                        setDraft({
-                          ...d,
-                          main_prompt: e.target.value,
-                        })
+                {isEditing && d.prompts.length > 0 && (
+                  <div className="ai-preset-params">
+                    <ParamInput
+                      label="温度"
+                      value={d.params.temperature}
+                      step={0.05}
+                      onChange={(v) =>
+                        patchParam("temperature", v)
                       }
                     />
-                    <textarea
-                      className="ai-input ai-wb-content"
-                      placeholder="历史后附加（可选）"
-                      rows={2}
-                      value={d.post_history}
-                      onChange={(e) =>
-                        setDraft({
-                          ...d,
-                          post_history: e.target.value,
-                        })
+                    <ParamInput
+                      label="top_p"
+                      value={d.params.top_p}
+                      step={0.05}
+                      onChange={(v) => patchParam("top_p", v)}
+                    />
+                    <ParamInput
+                      label="top_k"
+                      value={d.params.top_k}
+                      step={1}
+                      onChange={(v) => patchParam("top_k", v)}
+                    />
+                    <ParamInput
+                      label="min_p"
+                      value={d.params.min_p}
+                      step={0.01}
+                      onChange={(v) => patchParam("min_p", v)}
+                    />
+                    <ParamInput
+                      label="top_a"
+                      value={d.params.top_a}
+                      step={0.01}
+                      onChange={(v) => patchParam("top_a", v)}
+                    />
+                    <ParamInput
+                      label="频偏"
+                      value={d.params.frequency_penalty}
+                      step={0.05}
+                      onChange={(v) =>
+                        patchParam("frequency_penalty", v)
                       }
                     />
-                  </>
-                ) : (
-                  <div
-                    style={{
-                      fontSize: 11.5,
-                      opacity: 0.65,
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    temp {p.temperature ?? "—"} · top_p{" "}
-                    {p.top_p ?? "—"} · max{" "}
-                    {p.max_tokens ?? "—"}
-                    <div
-                      style={{
-                        marginTop: 6,
-                        whiteSpace: "pre-wrap",
-                        maxHeight: 60,
-                        overflow: "hidden",
-                      }}
-                    >
-                      {p.main_prompt.slice(0, 100)}
-                      {p.main_prompt.length > 100 ? "…" : ""}
-                    </div>
+                    <ParamInput
+                      label="呈偏"
+                      value={d.params.presence_penalty}
+                      step={0.05}
+                      onChange={(v) =>
+                        patchParam("presence_penalty", v)
+                      }
+                    />
+                    <ParamInput
+                      label="重罚"
+                      value={d.params.repetition_penalty}
+                      step={0.05}
+                      onChange={(v) =>
+                        patchParam("repetition_penalty", v)
+                      }
+                    />
+                    <ParamInput
+                      label="max_t"
+                      value={d.params.max_tokens}
+                      step={128}
+                      onChange={(v) =>
+                        patchParam("max_tokens", v)
+                      }
+                    />
+                  </div>
+                )}
+
+                {isEditing && (
+                  <div className="ai-preset-prompt-list">
+                    {d.prompts.map((pp, idx) => (
+                      <div
+                        key={pp.id}
+                        className="ai-preset-prompt-item"
+                      >
+                        <div className="ai-preset-prompt-head">
+                          <input
+                            type="checkbox"
+                            checked={pp.enabled}
+                            disabled={pp.isMarker}
+                            onChange={(e) =>
+                              patchPrompt(idx, {
+                                enabled: e.target.checked,
+                              })
+                            }
+                          />
+                          <button
+                            className="ai-preset-prompt-toggle"
+                            onClick={() =>
+                              toggleExpanded(pp.id)
+                            }
+                          >
+                            {expanded.has(pp.id) ? (
+                              <ChevronDown
+                                size={12}
+                                strokeWidth={2.4}
+                              />
+                            ) : (
+                              <ChevronRight
+                                size={12}
+                                strokeWidth={2.4}
+                              />
+                            )}
+                            <span
+                              className={
+                                "ai-preset-prompt-name" +
+                                (pp.isMarker
+                                  ? " is-marker"
+                                  : "")
+                              }
+                            >
+                              {pp.name}
+                              {pp.isMarker && (
+                                <span className="ai-preset-marker-tag">
+                                  槽位
+                                </span>
+                              )}
+                            </span>
+                          </button>
+                          {!pp.isMarker && !expanded.has(pp.id) && (
+                            <span className="ai-preset-preview">
+                              {pp.content.slice(0, 40)}
+                              {pp.content.length > 40
+                                ? "…"
+                                : ""}
+                            </span>
+                          )}
+                        </div>
+                        {expanded.has(pp.id) && !pp.isMarker && (
+                          <textarea
+                            className="ai-input ai-wb-content"
+                            rows={6}
+                            value={pp.content}
+                            onChange={(e) =>
+                              patchPrompt(idx, {
+                                content: e.target.value,
+                              })
+                            }
+                          />
+                        )}
+                        {expanded.has(pp.id) && pp.isMarker && (
+                          <div className="ai-preset-marker-hint">
+                            这是 SillyTavern 的动态槽位
+                            （{pp.marker}），运行时会自动填充
+                            内容。
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!isEditing && p.prompts.length === 0 && (
+                  <div className="ai-preset-empty">
+                    这个预设还没有提示词。
                   </div>
                 )}
               </div>
@@ -394,5 +478,29 @@ export default function PresetPanel({
         {msg && <div className="ai-wb-msg">{msg}</div>}
       </div>
     </div>
+  );
+}
+
+function ParamInput({
+  label,
+  value,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number | undefined;
+  step: number;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="ai-preset-param">
+      <span>{label}</span>
+      <input
+        type="number"
+        step={step}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
   );
 }

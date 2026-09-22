@@ -939,3 +939,183 @@
 .ai-wb-depth-input:focus {
   border-color: var(--ai-accent);
 }
+
+/* ---------- 世界书 tabs ---------- */
+.ai-wb-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ai-border);
+  flex-shrink: 0;
+  scrollbar-width: thin;
+}
+
+.ai-wb-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ai-border);
+  background: transparent;
+  color: inherit;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ai-wb-tab.active {
+  background: var(--ai-accent);
+  color: #fff;
+  border-color: var(--ai-accent);
+}
+
+.ai-wb-tab.disabled {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.ai-wb-tab-count {
+  font-size: 10.5px;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+.ai-wb-tab-add {
+  padding: 0 8px;
+}
+
+.ai-wb-book-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-surface) 90%, transparent);
+  flex-shrink: 0;
+}
+
+.ai-wb-book-name {
+  flex: 1;
+  height: 32px !important;
+  font-size: 13px !important;
+}
+
+/* ---------- 预设参数面板 ---------- */
+.ai-preset-params {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--ai-bg) 40%, transparent);
+  border-radius: 8px;
+}
+
+.ai-preset-param {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10.5px;
+  opacity: 0.8;
+}
+
+.ai-preset-param input {
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-surface) 60%, transparent);
+  color: inherit;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+/* ---------- 预设提示词列表 ---------- */
+.ai-preset-prompt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.ai-preset-prompt-item {
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--ai-bg) 30%, transparent);
+}
+
+.ai-preset-prompt-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-preset-prompt-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  min-width: 0;
+}
+
+.ai-preset-prompt-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-preset-prompt-name.is-marker {
+  opacity: 0.55;
+  font-weight: 400;
+}
+
+.ai-preset-marker-tag {
+  margin-left: 6px;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ai-accent) 20%, transparent);
+  color: var(--ai-accent);
+}
+
+.ai-preset-preview {
+  font-size: 11px;
+  opacity: 0.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+
+.ai-preset-marker-hint {
+  font-size: 11.5px;
+  opacity: 0.6;
+  padding: 8px 0 2px;
+  font-style: italic;
+}
+
+.ai-preset-empty {
+  font-size: 12px;
+  opacity: 0.6;
+  padding: 10px 0;
+  text-align: center;
+}
