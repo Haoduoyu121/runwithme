@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -91,6 +92,25 @@ const BACKGROUNDS: {
 
 const FLIP_DURATION = 300;
 
+/* ★ 把角度同步到 DOM —— 不触发 React 重渲染 */
+function applyFlipVisuals(
+  angle: number,
+  pageEl: HTMLDivElement | null,
+  shadeEl: HTMLDivElement | null,
+  underShadowEl: HTMLDivElement | null
+) {
+  const p = Math.min(1, Math.abs(angle) / 90);
+  if (pageEl) {
+    pageEl.style.transform = `rotateY(${angle}deg)`;
+    pageEl.style.boxShadow = `-${p * 22}px 0 ${
+      p * 40
+    }px rgba(0, 0, 0, ${p * 0.28})`;
+  }
+  if (shadeEl) shadeEl.style.opacity = String(p);
+  if (underShadowEl)
+    underShadowEl.style.opacity = String(p);
+}
+
 export default function ReadReader({
   book,
   onExit,
@@ -146,21 +166,38 @@ export default function ReadReader({
   const [activeHighlightId, setActiveHighlightId] =
     useState<string | null>(null);
 
-  /* ★ 用 callback ref + state 追踪舞台 DOM，解决 loading 分支导致 ref 为空的问题 */
+  /* ★ 舞台 DOM，通过 callback ref 拿到 */
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(
     null
   );
 
+  /* ★ flip 只记录 "正在翻页" 的元信息，不含角度 —— 角度在 DOM 上 */
   const [flip, setFlip] = useState<{
     dir: "next" | "prev";
     from: number;
-    angle: number;
   } | null>(null);
 
-  const activeBodyRef = useRef<HTMLDivElement | null>(null);
+  /* ★ 直接操作 DOM 的 ref */
+  const flipPageRef = useRef<HTMLDivElement | null>(null);
+  const flipShadeRef = useRef<HTMLDivElement | null>(null);
+  const underShadowRef = useRef<HTMLDivElement | null>(
+    null
+  );
+  const currentAngleRef = useRef(0);
   const flipAnimRef = useRef<number | null>(null);
-  const flipRef = useRef(flip);
-  flipRef.current = flip;
+
+  /* ★ 待执行的自动翻页（点击边缘 / 按钮时用） */
+  const flipPendingRef = useRef<{
+    target: number;
+    endPage: number;
+  } | null>(null);
+
+  const flippingRef = useRef(false);
+  useEffect(() => {
+    flippingRef.current = !!flip;
+  }, [flip]);
+
+  const activeBodyRef = useRef<HTMLDivElement | null>(null);
 
   const pageIndexRef = useRef(pageIndex);
   useEffect(() => {
@@ -228,7 +265,7 @@ export default function ReadReader({
     );
   }, [highlights, chapterIndex]);
 
-  /* ---------- 分页（依赖 stageEl，元素到位后才跑） ---------- */
+  /* ---------- 分页 ---------- */
 
   useEffect(() => {
     if (!stageEl) return;
@@ -287,7 +324,7 @@ export default function ReadReader({
 
   const pageCount = pages.length;
 
-  /* ---------- 一起读 ---------- */
+  /* ---------- 一起读 / 自主划线 ---------- */
 
   const lastPageKeyRef = useRef<string>("");
   useEffect(() => {
@@ -428,7 +465,7 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ---------- 翻页 ---------- */
+  /* ---------- 动画工具 ---------- */
 
   function cancelFlipAnim() {
     if (flipAnimRef.current !== null) {
@@ -437,27 +474,90 @@ export default function ReadReader({
     }
   }
 
-  function animateFlipTo(target: number, onDone: () => void) {
+  /* ★ flip state 变化时：先应用起始角度，再启动自动动画（如果有 pending） */
+  useLayoutEffect(() => {
+    if (!flip) {
+      currentAngleRef.current = 0;
+      return;
+    }
+
+    /* DOM 已挂载，先把当前角度刷上去 */
+    applyFlipVisuals(
+      currentAngleRef.current,
+      flipPageRef.current,
+      flipShadeRef.current,
+      underShadowRef.current
+    );
+
+    const pending = flipPendingRef.current;
+    if (!pending) return;
+    const target = pending.target;
+    const endPage = pending.endPage;
+
+    /* 自动动画 */
     cancelFlipAnim();
-    const start = flipRef.current?.angle ?? 0;
+    const start = currentAngleRef.current;
     const t0 = performance.now();
     function step(now: number) {
       const p = Math.min(1, (now - t0) / FLIP_DURATION);
       const eased = 1 - Math.pow(1 - p, 3);
       const a = start + (target - start) * eased;
-      setFlip((prev) => (prev ? { ...prev, angle: a } : null));
+      currentAngleRef.current = a;
+      applyFlipVisuals(
+        a,
+        flipPageRef.current,
+        flipShadeRef.current,
+        underShadowRef.current
+      );
       if (p < 1) {
         flipAnimRef.current = requestAnimationFrame(step);
       } else {
         flipAnimRef.current = null;
-        onDone();
+        setPageIndex(endPage);
+        pageIndexRef.current = endPage;
+        flipPendingRef.current = null;
+        setFlip(null);
+      }
+    }
+    flipAnimRef.current = requestAnimationFrame(step);
+    return () => {
+      cancelFlipAnim();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flip]);
+
+  /* 手势松手后的吸附动画 */
+  function animateToAngle(target: number, endPage: number) {
+    cancelFlipAnim();
+    const start = currentAngleRef.current;
+    const t0 = performance.now();
+    function step(now: number) {
+      const p = Math.min(1, (now - t0) / FLIP_DURATION);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const a = start + (target - start) * eased;
+      currentAngleRef.current = a;
+      applyFlipVisuals(
+        a,
+        flipPageRef.current,
+        flipShadeRef.current,
+        underShadowRef.current
+      );
+      if (p < 1) {
+        flipAnimRef.current = requestAnimationFrame(step);
+      } else {
+        flipAnimRef.current = null;
+        if (endPage !== pageIndexRef.current) {
+          setPageIndex(endPage);
+          pageIndexRef.current = endPage;
+        }
+        setFlip(null);
       }
     }
     flipAnimRef.current = requestAnimationFrame(step);
   }
 
   function goNextPage() {
-    if (flipRef.current) return;
+    if (flippingRef.current) return;
     const idx = pageIndexRef.current;
     const list = pagesRef.current;
     if (idx >= list.length - 1) {
@@ -466,16 +566,16 @@ export default function ReadReader({
       }
       return;
     }
-    setFlip({ dir: "next", from: idx, angle: 0 });
-    animateFlipTo(-180, () => {
-      setPageIndex(idx + 1);
-      pageIndexRef.current = idx + 1;
-      setFlip(null);
-    });
+    currentAngleRef.current = 0;
+    flipPendingRef.current = {
+      target: -180,
+      endPage: idx + 1,
+    };
+    setFlip({ dir: "next", from: idx });
   }
 
   function goPrevPage() {
-    if (flipRef.current) return;
+    if (flippingRef.current) return;
     const idx = pageIndexRef.current;
     if (idx <= 0) {
       if (chapterIndex > 0) {
@@ -483,21 +583,12 @@ export default function ReadReader({
       }
       return;
     }
-    setFlip({ dir: "prev", from: idx - 1, angle: -180 });
-    animateFlipTo(0, () => {
-      setPageIndex(idx - 1);
-      pageIndexRef.current = idx - 1;
-      setFlip(null);
-    });
-  }
-
-  function springBack() {
-    const f = flipRef.current;
-    if (!f) return;
-    const target = f.dir === "next" ? 0 : -180;
-    animateFlipTo(target, () => {
-      setFlip(null);
-    });
+    currentAngleRef.current = -180;
+    flipPendingRef.current = {
+      target: 0,
+      endPage: idx - 1,
+    };
+    setFlip({ dir: "prev", from: idx - 1 });
   }
 
   /* ---------- 手势 ---------- */
@@ -513,10 +604,8 @@ export default function ReadReader({
 
   const goPrevRef = useRef(goPrevPage);
   const goNextRef = useRef(goNextPage);
-  const springBackRef = useRef(springBack);
   goPrevRef.current = goPrevPage;
   goNextRef.current = goNextPage;
-  springBackRef.current = springBack;
 
   useEffect(() => {
     if (!stageEl) return;
@@ -533,7 +622,7 @@ export default function ReadReader({
         touchRef.current = null;
         return;
       }
-      if (flipRef.current) {
+      if (flippingRef.current) {
         touchRef.current = null;
         return;
       }
@@ -559,11 +648,16 @@ export default function ReadReader({
 
       if (st.locked === null) {
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-        st.locked = Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
+        st.locked =
+          Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
       }
       if (st.locked === "v") return;
 
       st.moved = true;
+
+      const w = W();
+
+      /* 首次决定方向：挂载翻转页 + 初始化角度 */
       if (!st.dir) {
         const idx = pageIndexRef.current;
         const list = pagesRef.current;
@@ -574,6 +668,9 @@ export default function ReadReader({
           )
             return;
           st.dir = "next";
+          currentAngleRef.current = 0;
+          flipPendingRef.current = null;
+          setFlip({ dir: "next", from: idx });
         } else {
           if (
             idx <= 0 &&
@@ -581,35 +678,46 @@ export default function ReadReader({
           )
             return;
           st.dir = "prev";
+          currentAngleRef.current = -180;
+          flipPendingRef.current = null;
+          setFlip({ dir: "prev", from: idx - 1 });
         }
+        /* 立刻更新角度（ref 可能还没挂，但 currentAngleRef 会记下） */
+        applyFlipVisuals(
+          currentAngleRef.current,
+          flipPageRef.current,
+          flipShadeRef.current,
+          underShadowRef.current
+        );
+        return;
       }
-      const w = W();
+
       if (st.dir === "next") {
-        const progress = Math.max(0, Math.min(1, -dx / w));
+        const progress = Math.max(
+          0,
+          Math.min(1, -dx / w)
+        );
         const angle = -progress * 180;
-        setFlip((prev) => {
-          if (prev && prev.dir === "next") {
-            return { ...prev, angle };
-          }
-          return {
-            dir: "next",
-            from: pageIndexRef.current,
-            angle,
-          };
-        });
+        currentAngleRef.current = angle;
+        applyFlipVisuals(
+          angle,
+          flipPageRef.current,
+          flipShadeRef.current,
+          underShadowRef.current
+        );
       } else {
-        const progress = Math.max(0, Math.min(1, dx / w));
+        const progress = Math.max(
+          0,
+          Math.min(1, dx / w)
+        );
         const angle = -180 + progress * 180;
-        setFlip((prev) => {
-          if (prev && prev.dir === "prev") {
-            return { ...prev, angle };
-          }
-          return {
-            dir: "prev",
-            from: pageIndexRef.current - 1,
-            angle,
-          };
-        });
+        currentAngleRef.current = angle;
+        applyFlipVisuals(
+          angle,
+          flipPageRef.current,
+          flipShadeRef.current,
+          underShadowRef.current
+        );
       }
     }
 
@@ -623,6 +731,7 @@ export default function ReadReader({
       const dy = t.clientY - st.y;
       const dt = Math.max(1, Date.now() - st.t);
 
+      /* 轻触：切 UI / 边缘翻页 */
       if (
         !st.moved &&
         Math.abs(dx) < 10 &&
@@ -642,27 +751,28 @@ export default function ReadReader({
         return;
       }
 
+      /* 滑动结束：吸附或回弹 */
       if (st.moved && st.dir) {
-        const f = flipRef.current;
-        if (!f) return;
+        const angle = currentAngleRef.current;
         const progress =
-          f.dir === "next"
-            ? -f.angle / 180
-            : (f.angle + 180) / 180;
+          st.dir === "next"
+            ? Math.abs(angle) / 180
+            : (angle + 180) / 180;
         const v = Math.abs(dx) / dt;
         const shouldFlip = progress > 0.3 || v > 0.5;
+        const idx = pageIndexRef.current;
         if (shouldFlip) {
-          const target = f.dir === "next" ? -180 : 0;
-          const fromPage = f.from;
-          animateFlipTo(target, () => {
-            const nextIdx =
-              f.dir === "next" ? fromPage + 1 : fromPage;
-            setPageIndex(nextIdx);
-            pageIndexRef.current = nextIdx;
-            setFlip(null);
-          });
+          if (st.dir === "next") {
+            animateToAngle(-180, idx + 1);
+          } else {
+            animateToAngle(0, idx - 1);
+          }
         } else {
-          springBackRef.current();
+          if (st.dir === "next") {
+            animateToAngle(0, idx);
+          } else {
+            animateToAngle(-180, idx);
+          }
         }
       }
     }
@@ -684,7 +794,10 @@ export default function ReadReader({
       stage.removeEventListener("touchstart", onTouchStart);
       stage.removeEventListener("touchmove", onTouchMove);
       stage.removeEventListener("touchend", onTouchEnd);
-      stage.removeEventListener("touchcancel", onTouchEnd);
+      stage.removeEventListener(
+        "touchcancel",
+        onTouchEnd
+      );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stageEl, chapters.length]);
@@ -886,7 +999,10 @@ export default function ReadReader({
       .map((h) => ({
         ...h,
         startOffset: Math.max(0, h.startOffset - range.start),
-        endOffset: Math.min(slice.length, h.endOffset - range.start),
+        endOffset: Math.min(
+          slice.length,
+          h.endOffset - range.start
+        ),
       }))
       .sort((a, b) => a.startOffset - b.startOffset);
 
@@ -902,7 +1018,9 @@ export default function ReadReader({
         <mark
           key={`hl-${h.id}-${key++}`}
           className={
-            h.kind === "note" ? "read-hl read-hl-note" : "read-hl"
+            h.kind === "note"
+              ? "read-hl read-hl-note"
+              : "read-hl"
           }
           data-hl-id={h.id}
           data-hl-author={h.author}
@@ -951,7 +1069,9 @@ export default function ReadReader({
     return (
       <div className="read-reader read-reader-error">
         <div className="read-reader-error-box">
-          <div className="read-reader-error-title">{loadErr}</div>
+          <div className="read-reader-error-title">
+            {loadErr}
+          </div>
           <button
             className="read-reader-error-btn"
             onClick={onExit}
@@ -966,7 +1086,9 @@ export default function ReadReader({
   if (!text || !currentChapter) {
     return (
       <div className="read-reader read-reader-loading">
-        <div className="read-reader-loading-text">正在打开…</div>
+        <div className="read-reader-loading-text">
+          正在打开…
+        </div>
       </div>
     );
   }
@@ -976,11 +1098,14 @@ export default function ReadReader({
     pageCount > 0 ? pageIndex / pageCount : 0;
   const progressPct =
     totalChapters > 0
-      ? ((chapterIndex + chapterProgress) / totalChapters) * 100
+      ? ((chapterIndex + chapterProgress) /
+          totalChapters) *
+        100
       : 100;
 
   const activeHighlight = activeHighlightId
-    ? highlights.find((h) => h.id === activeHighlightId) ?? null
+    ? highlights.find((h) => h.id === activeHighlightId) ??
+      null
     : null;
 
   let underIdx = pageIndex;
@@ -991,10 +1116,6 @@ export default function ReadReader({
       underIdx = pageIndex;
     }
   }
-
-    const flipProgress = flip
-    ? Math.min(1, Math.abs(flip.angle) / 90)
-    : 0;
 
   return (
     <div className="read-reader" data-bg={settings.background}>
@@ -1014,25 +1135,23 @@ export default function ReadReader({
               {renderPage(underIdx, !flip)}
               {flip && (
                 <div
+                  ref={underShadowRef}
                   className="read-page-under-shadow"
-                  style={{ opacity: flipProgress }}
+                  style={{ opacity: 0 }}
                 />
               )}
             </div>
             {flip && (
               <div
+                ref={flipPageRef}
                 className="read-page read-page-flip"
-                style={{
-                  transform: `rotateY(${flip.angle}deg)`,
-                  boxShadow: `-${flipProgress * 22}px 0 ${
-                    flipProgress * 40
-                  }px rgba(0, 0, 0, ${flipProgress * 0.28})`,
-                }}
+                style={{ transform: "rotateY(0deg)" }}
               >
                 {renderPage(flip.from, false)}
                 <div
+                  ref={flipShadeRef}
                   className="read-page-flip-shade"
-                  style={{ opacity: flipProgress }}
+                  style={{ opacity: 0 }}
                 />
                 <div className="read-page-flip-edge" />
               </div>
@@ -1050,7 +1169,9 @@ export default function ReadReader({
           >
             <ChevronLeft size={24} strokeWidth={2.4} />
           </button>
-          <div className="read-reader-book-title">{book.title}</div>
+          <div className="read-reader-book-title">
+            {book.title}
+          </div>
           <button
             className={
               session
@@ -1117,7 +1238,9 @@ export default function ReadReader({
                 </div>
               )}
             </div>
-            <span className="read-together-label">一起读</span>
+            <span className="read-together-label">
+              一起读
+            </span>
           </button>
           <button
             className="read-together-exit"
@@ -1211,7 +1334,9 @@ export default function ReadReader({
             </div>
 
             <div className="read-reader-settings-group">
-              <div className="read-reader-settings-label">背景</div>
+              <div className="read-reader-settings-label">
+                背景
+              </div>
               <div className="read-reader-bg-row">
                 {BACKGROUNDS.map((bg) => (
                   <button
@@ -1223,7 +1348,9 @@ export default function ReadReader({
                     }
                     data-bg={bg.id}
                     onClick={() =>
-                      updateSettings({ background: bg.id })
+                      updateSettings({
+                        background: bg.id,
+                      })
                     }
                   >
                     <span>{bg.label}</span>
@@ -1263,7 +1390,9 @@ export default function ReadReader({
                 value={settings.lineHeight}
                 onChange={(e) =>
                   updateSettings({
-                    lineHeight: Number(e.target.value),
+                    lineHeight: Number(
+                      e.target.value
+                    ),
                   })
                 }
                 className="read-reader-slider"
@@ -1271,7 +1400,9 @@ export default function ReadReader({
             </div>
 
             <div className="read-reader-settings-group">
-              <div className="read-reader-settings-label">字体</div>
+              <div className="read-reader-settings-label">
+                字体
+              </div>
               <div className="read-reader-font-row">
                 <button
                   className={
@@ -1280,7 +1411,9 @@ export default function ReadReader({
                       : "read-reader-font-btn"
                   }
                   onClick={() =>
-                    updateSettings({ fontFamily: "serif" })
+                    updateSettings({
+                      fontFamily: "serif",
+                    })
                   }
                 >
                   宋体
@@ -1292,7 +1425,9 @@ export default function ReadReader({
                       : "read-reader-font-btn"
                   }
                   onClick={() =>
-                    updateSettings({ fontFamily: "sans" })
+                    updateSettings({
+                      fontFamily: "sans",
+                    })
                   }
                 >
                   黑体
@@ -1425,10 +1560,14 @@ export default function ReadReader({
         />
       )}
 
-      {toast && <div className="read-reader-toast">{toast}</div>}
+      {toast && (
+        <div className="read-reader-toast">{toast}</div>
+      )}
     </div>
   );
 }
+
+/* ---------- 辅助 ---------- */
 
 function textOffsetIn(
   root: HTMLElement,

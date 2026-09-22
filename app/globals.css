@@ -63524,3 +63524,9 @@ html[data-runwithme-theme="dark"] .read-reader .read-page-flip-edge {
     rgba(255, 255, 255, 0)
   );
 }
+
+/* 让翻转页走 GPU 合成层，减少重绘 */
+.read-reader .read-page-flip {
+  transform: translateZ(0);
+  will-change: transform;
+}
