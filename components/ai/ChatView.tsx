@@ -31,6 +31,13 @@ import {
   HighlightNoteEditor,
 } from "@/components/apps/read/HighlightOverlays";
 import { useCollection } from "@/lib/CollectionContext";
+import WorldbookPanel from "./WorldbookPanel";
+import {
+  loadWorldbook,
+  collectTriggered,
+  buildWorldbookBlock,
+  type WorldbookEntry,
+} from "@/lib/ai/worldbook";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "https://api.yulewin.cn";
@@ -137,6 +144,10 @@ export default function ChatView({ cardId }: { cardId: string }) {
   } | null>(null);
 
   const [toast, setToast] = useState<string | null>(null);
+  const [showWorldbook, setShowWorldbook] = useState(false);
+  const [worldbook, setWorldbook] = useState<WorldbookEntry[]>(
+    []
+  );
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef(false);
@@ -190,6 +201,13 @@ export default function ChatView({ cardId }: { cardId: string }) {
         setErr("找不到这张角色卡");
         setLoaded(true);
         return;
+      }
+
+            try {
+        const wb = await loadWorldbook(cardId);
+        if (!cancelled) setWorldbook(wb);
+      } catch {
+        /* ignore */
       }
 
       const stored = await loadChat(cardId);
@@ -489,9 +507,14 @@ export default function ChatView({ cardId }: { cardId: string }) {
     setStreaming(true);
     abortRef.current = false;
 
+    const triggered = collectTriggered(worldbook, history);
+    const wbBlock = buildWorldbookBlock(triggered);
+    const sysContent =
+      buildSystemPrompt(c) +
+      (wbBlock ? "\n\n" + wbBlock : "");
     const sys: ChatMessage = {
       role: "system",
-      content: buildSystemPrompt(c),
+      content: sysContent,
     };
     const payload: ChatMessage[] = [
       sys,
@@ -707,13 +730,28 @@ export default function ChatView({ cardId }: { cardId: string }) {
               {card.scenario}
             </div>
           )}
-          <button
-            className="ai-chat-clear"
-            onClick={clearAll}
-            disabled={streaming}
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              justifyContent: "center",
+              marginTop: 10,
+            }}
           >
-            清空对话
-          </button>
+            <button
+              className="ai-chat-clear"
+              onClick={() => setShowWorldbook(true)}
+            >
+              📖 世界书（{worldbook.length}）
+            </button>
+            <button
+              className="ai-chat-clear"
+              onClick={clearAll}
+              disabled={streaming}
+            >
+              清空对话
+            </button>
+          </div>
         </div>
 
         {messages.map((m, i) => {
@@ -973,6 +1011,20 @@ export default function ChatView({ cardId }: { cardId: string }) {
         </div>
       )}
 
+      {showWorldbook && (
+        <WorldbookPanel
+          cardId={cardId}
+          onClose={async () => {
+            setShowWorldbook(false);
+            try {
+              const wb = await loadWorldbook(cardId);
+              setWorldbook(wb);
+            } catch {
+              /* ignore */
+            }
+          }}
+        />
+      )}
       {toast && (
         <div className="ai-chat-toast">{toast}</div>
       )}

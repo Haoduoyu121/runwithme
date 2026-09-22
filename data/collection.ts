@@ -18,7 +18,7 @@ export type CollectionSource =
   | "daily-sentence"
   | "read";
 
-export type CollectionSender = "You" | "Levi" | "Erwin";
+export type CollectionSender = string;
 
 export type CollectionItem = {
   id: string;
