@@ -49,6 +49,8 @@ import {
   pickApiParams,
   type AiPreset,
 } from "@/lib/ai/presets";
+import { ThinkingFilter, stripThinking } from "@/lib/ai/thinkingFilter";
+import { applyRegexScripts } from "@/lib/ai/regex";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "https://api.yulewin.cn";
@@ -614,22 +616,57 @@ export default function ChatView({ cardId }: { cardId: string }) {
     setMessages([...history, placeholder]);
 
     try {
-      let acc = "";
-      for await (const chunk of streamChat(cfg, payload, params)) {
+      let raw = "";
+      let display = "";
+      const filter = new ThinkingFilter();
+
+      for await (const chunk of streamChat(
+        cfg,
+        payload,
+        params
+      )) {
         if (abortRef.current) break;
-        acc += chunk;
+        raw += chunk;
+        const visible = filter.feed(chunk);
+        if (visible) {
+          display += visible;
+          const d = display;
+          setMessages((prev) => {
+            const copy = [...prev];
+            copy[copy.length - 1] = {
+              ...copy[copy.length - 1],
+              content: d,
+            };
+            return copy;
+          });
+        }
+      }
+
+      /* 流结束：flush + ST 正则 */
+      const tail = filter.flush();
+      display += tail;
+
+      /* 应用预设正则（placement=2，AI 输出） */
+      let final = display;
+      if (preset?.regexScripts && preset.regexScripts.length > 0) {
+        final = applyRegexScripts(final, preset.regexScripts, 2);
+      }
+
+      /* 兜底：再来一次完整思维链清理 */
+      final = stripThinking(final).trim();
+
+      if (!final) {
+        setMessages(history);
+        setErr("AI 返回了空内容，请重试。");
+      } else {
         setMessages((prev) => {
           const copy = [...prev];
           copy[copy.length - 1] = {
             ...copy[copy.length - 1],
-            content: acc,
+            content: final,
           };
           return copy;
         });
-      }
-      if (!acc) {
-        setMessages(history);
-        setErr("AI 返回了空内容，请重试。");
       }
     } catch (e) {
       setErr(

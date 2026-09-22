@@ -1,7 +1,10 @@
+import {
+  extractRegexScripts,
+  type RegexScripts,
+} from "./regex";
+
 const KEY = "runwithme_ai_presets_v1";
 const ACTIVE_KEY = "runwithme_ai_active_preset_v1";
-
-/* ---------- 类型 ---------- */
 
 export type PresetPrompt = {
   id: string;
@@ -31,8 +34,8 @@ export type AiPreset = {
   name: string;
   params: AiPresetParams;
   prompts: PresetPrompt[];
+  regexScripts?: RegexScripts;
   source: "custom" | "sillytavern";
-  /* 兼容旧数据 */
   main_prompt?: string;
   post_history?: string;
 };
@@ -52,8 +55,6 @@ function genId(): string {
   );
 }
 
-/* ---------- 已知的 ST marker ---------- */
-
 const KNOWN_MARKERS = new Set([
   "main",
   "chatHistory",
@@ -71,8 +72,6 @@ const KNOWN_MARKERS = new Set([
   "agentTask",
   "agentResults",
 ]);
-
-/* ---------- 新建空白预设 ---------- */
 
 export function newPreset(): AiPreset {
   return {
@@ -101,14 +100,11 @@ export function newPreset(): AiPreset {
   };
 }
 
-/* ---------- 读写 ---------- */
-
 export function loadPresets(): AiPreset[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || "[]");
     if (!Array.isArray(raw)) return [];
-    /* 兼容旧数据：老版本只有 main_prompt */
     return raw.map((p: AiPreset) => {
       if (!Array.isArray(p.prompts)) {
         return {
@@ -151,8 +147,6 @@ export function setActivePresetId(id: string): void {
   localStorage.setItem(ACTIVE_KEY, id);
 }
 
-/* ---------- 工具 ---------- */
-
 function num(v: unknown): number | undefined {
   return typeof v === "number" && Number.isFinite(v)
     ? v
@@ -163,8 +157,6 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-/* ---------- SillyTavern 预设解析 ---------- */
-
 type STPromptEntry = {
   identifier?: string;
   name?: string;
@@ -172,9 +164,6 @@ type STPromptEntry = {
   role?: string;
   marker?: boolean;
   system_prompt?: boolean;
-  enabled?: boolean;
-  injection_position?: number;
-  injection_depth?: number;
 };
 
 type STOrderEntry = {
@@ -198,6 +187,7 @@ type STPreset = {
   openai_max_context?: number;
 };
 
+/* ★ 保持同步函数，内部静态 import 正则模块 */
 export function parseSillyTavernPreset(
   json: unknown
 ): AiPreset {
@@ -207,7 +197,6 @@ export function parseSillyTavernPreset(
     ? j.prompt_order
     : [];
 
-  /* 优先使用 character_id: 100001 的顺序（有角色时） */
   const activeOrder =
     orders.find((o) => o.character_id === 100001) ||
     orders[0] ||
@@ -226,7 +215,6 @@ export function parseSillyTavernPreset(
     });
   }
 
-  /* 逐条解析 */
   const out: PresetPrompt[] = [];
   for (const p of prompts) {
     const id = str(p.identifier);
@@ -236,7 +224,6 @@ export function parseSillyTavernPreset(
       !!p.marker || KNOWN_MARKERS.has(id);
 
     const om = orderMap.get(id);
-    /* 不在 prompt_order 里的条目跳过 */
     if (!om) continue;
 
     out.push({
@@ -254,10 +241,8 @@ export function parseSillyTavernPreset(
     });
   }
 
-  /* 按顺序排 */
   out.sort((a, b) => a.orderIndex - b.orderIndex);
 
-  /* 参数 */
   const params: AiPresetParams = {
     temperature: num(j.temperature),
     top_p: num(j.top_p),
@@ -270,21 +255,21 @@ export function parseSillyTavernPreset(
     max_tokens: num(j.openai_max_tokens),
   };
 
-  /* 兼容字段：main_prompt = main prompt 的内容 */
   const mainEntry = out.find((x) => x.id === "main");
   const mainPrompt = mainEntry?.content || "";
+
+  const regexScripts = extractRegexScripts(json);
 
   return {
     id: genId(),
     name: str(j.name) || "导入的预设",
     params,
     prompts: out,
+    regexScripts,
     source: "sillytavern",
     main_prompt: mainPrompt,
   };
 }
-
-/* ---------- 模板变量替换 ---------- */
 
 export function applyTemplate(
   text: string,
@@ -299,8 +284,6 @@ export function applyTemplate(
     .trim();
 }
 
-/* ---------- 拼装 system prompt ---------- */
-
 export function buildPresetSystemPrompt(
   preset: AiPreset,
   vars: { char: string; user: string }
@@ -309,7 +292,10 @@ export function buildPresetSystemPrompt(
   const parts: string[] = [];
 
   const enabled = preset.prompts
-    .filter((p) => p.enabled && !p.isMarker && p.content.trim())
+    .filter(
+      (p) =>
+        p.enabled && !p.isMarker && p.content.trim()
+    )
     .sort((a, b) => a.orderIndex - b.orderIndex);
 
   if (enabled.length > 0) {
@@ -328,8 +314,6 @@ export function buildPresetSystemPrompt(
 
   return parts.join("\n\n");
 }
-
-/* ---------- 参数提取（给 API 用） ---------- */
 
 export function pickApiParams(preset: AiPreset | null) {
   if (!preset || !preset.params) return {};

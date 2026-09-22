@@ -255,6 +255,9 @@ export default function PresetPanel({
                           ? "ST"
                           : "自定义"}{" "}
                         · {useCount}/{p.prompts.length} 启用
+                        {p.regexScripts &&
+                          p.regexScripts.length > 0 &&
+                          ` · ${p.regexScripts.length} 正则`}
                       </span>
                     </span>
                   )}

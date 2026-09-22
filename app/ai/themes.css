@@ -1119,3 +1119,18 @@
   padding: 10px 0;
   text-align: center;
 }
+
+/* ============================================================
+   修：对话框无法滚动
+   .ai-root 用 min-height 时会被内容撑高，导致内部 overflow 失效
+   改成固定高度 + overflow hidden
+   ============================================================ */
+.ai-root {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.ai-chat-view {
+  min-height: 0;
+}
