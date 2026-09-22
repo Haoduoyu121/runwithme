@@ -888,3 +888,54 @@
 .ai-chat-toolbar .ai-chat-clear {
   margin-top: 0;
 }
+
+/* ---------- 世界书位置选择 ---------- */
+.ai-wb-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.ai-wb-select-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  opacity: 0.75;
+  min-width: 100px;
+}
+
+.ai-wb-select {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-surface) 60%, transparent);
+  color: inherit;
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+}
+
+.ai-wb-select:focus {
+  border-color: var(--ai-accent);
+}
+
+.ai-wb-depth-input {
+  height: 30px;
+  width: 70px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-surface) 60%, transparent);
+  color: inherit;
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.ai-wb-depth-input:focus {
+  border-color: var(--ai-accent);
+}

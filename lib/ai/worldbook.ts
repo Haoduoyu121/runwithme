@@ -1,14 +1,30 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "https://api.yulewin.cn";
 
+export type WorldbookPosition = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export const POSITION_LABELS: Record<
+  WorldbookPosition,
+  string
+> = {
+  0: "角色前",
+  1: "角色后",
+  2: "作者注前",
+  3: "作者注后",
+  4: "@深度",
+  5: "示例前",
+  6: "示例后",
+};
+
 export type WorldbookEntry = {
   id: string;
   keywords: string[];
   content: string;
   enabled: boolean;
-  /** true = 总是注入，不看关键词 */
   constant: boolean;
   caseSensitive: boolean;
+  position: WorldbookPosition;
+  depth: number;
 };
 
 function genId(): string {
@@ -34,6 +50,38 @@ export function newEntry(): WorldbookEntry {
     enabled: true,
     constant: false,
     caseSensitive: false,
+    position: 1,
+    depth: 0,
+  };
+}
+
+function normalize(raw: unknown): WorldbookEntry | null {
+  if (!raw || typeof raw !== "object") return null;
+  const e = raw as Partial<WorldbookEntry>;
+  const pos = e.position;
+  const position: WorldbookPosition =
+    typeof pos === "number" &&
+    pos >= 0 &&
+    pos <= 6 &&
+    Number.isInteger(pos)
+      ? (pos as WorldbookPosition)
+      : 1;
+  return {
+    id: typeof e.id === "string" && e.id ? e.id : genId(),
+    keywords: Array.isArray(e.keywords)
+      ? e.keywords.filter(
+          (x): x is string => typeof x === "string"
+        )
+      : [],
+    content: typeof e.content === "string" ? e.content : "",
+    enabled: e.enabled !== false,
+    constant: !!e.constant,
+    caseSensitive: !!e.caseSensitive,
+    position,
+    depth:
+      typeof e.depth === "number" && e.depth >= 0
+        ? Math.floor(e.depth)
+        : 0,
   };
 }
 
@@ -42,11 +90,16 @@ export async function loadWorldbook(
 ): Promise<WorldbookEntry[]> {
   try {
     const r = await fetch(
-      `${API_BASE}/api/ai/worldbook/${encodeURIComponent(cardId)}`
+      `${API_BASE}/api/ai/worldbook/${encodeURIComponent(
+        cardId
+      )}`
     );
     if (!r.ok) return [];
     const data = await r.json();
-    return Array.isArray(data.entries) ? data.entries : [];
+    if (!Array.isArray(data.entries)) return [];
+    return data.entries
+      .map(normalize)
+      .filter((x: WorldbookEntry | null): x is WorldbookEntry => !!x);
   } catch {
     return [];
   }
@@ -57,7 +110,9 @@ export async function saveWorldbook(
   entries: WorldbookEntry[]
 ): Promise<void> {
   await fetch(
-    `${API_BASE}/api/ai/worldbook/${encodeURIComponent(cardId)}`,
+    `${API_BASE}/api/ai/worldbook/${encodeURIComponent(
+      cardId
+    )}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -71,17 +126,43 @@ export async function saveWorldbook(
 type STEntry = {
   uid?: number;
   key?: string[];
-  keysecondary?: string[];
   content?: string;
   comment?: string;
   constant?: boolean;
   disable?: boolean;
   caseSensitive?: boolean;
+  position?: number | string;
+  depth?: number;
+  order?: number;
 };
 
 type STWorldbook = {
   entries?: Record<string, STEntry>;
 };
+
+function parseSTPosition(v: unknown): WorldbookPosition {
+  if (typeof v === "number" && v >= 0 && v <= 6) {
+    return v as WorldbookPosition;
+  }
+  if (typeof v === "string") {
+    const n = parseInt(v, 10);
+    if (Number.isFinite(n) && n >= 0 && n <= 6) {
+      return n as WorldbookPosition;
+    }
+    /* ST 有些版本用字符串常量 */
+    const m: Record<string, WorldbookPosition> = {
+      before_char: 0,
+      after_char: 1,
+      before_an: 2,
+      after_an: 3,
+      at_depth: 4,
+      before_em: 5,
+      after_em: 6,
+    };
+    if (v in m) return m[v];
+  }
+  return 1;
+}
 
 export function parseSillyTavernWorldbook(
   json: unknown
@@ -107,6 +188,11 @@ export function parseSillyTavernWorldbook(
       enabled: !e.disable,
       constant: !!e.constant,
       caseSensitive: !!e.caseSensitive,
+      position: parseSTPosition(e.position),
+      depth:
+        typeof e.depth === "number" && e.depth >= 0
+          ? Math.floor(e.depth)
+          : 0,
     });
   }
   return out;
@@ -114,7 +200,6 @@ export function parseSillyTavernWorldbook(
 
 /* ---------- 触发 ---------- */
 
-/** 从最近消息里构建待匹配文本 */
 function buildRecentText(
   messages: { role: string; content: string }[],
   windowSize = 6
@@ -125,19 +210,39 @@ function buildRecentText(
   return recent.map((m) => m.content).join("\n");
 }
 
+export type TriggeredByPos = {
+  beforeChar: WorldbookEntry[];
+  afterChar: WorldbookEntry[];
+  beforeAn: WorldbookEntry[];
+  afterAn: WorldbookEntry[];
+  atDepth: WorldbookEntry[];
+  beforeEm: WorldbookEntry[];
+  afterEm: WorldbookEntry[];
+};
+
+const EMPTY: TriggeredByPos = {
+  beforeChar: [],
+  afterChar: [],
+  beforeAn: [],
+  afterAn: [],
+  atDepth: [],
+  beforeEm: [],
+  afterEm: [],
+};
+
 export function collectTriggered(
   entries: WorldbookEntry[],
   messages: { role: string; content: string }[]
-): WorldbookEntry[] {
+): TriggeredByPos {
+  if (entries.length === 0) return EMPTY;
+
   const text = buildRecentText(messages);
-  if (!text) {
-    /* 还没聊，只注入 constant */
-    return entries.filter((e) => e.enabled && e.constant);
-  }
   const lower = text.toLowerCase();
-  return entries.filter((e) => {
+
+  function active(e: WorldbookEntry): boolean {
     if (!e.enabled) return false;
     if (e.constant) return true;
+    if (!text) return false;
     if (e.keywords.length === 0) return false;
     return e.keywords.some((kw) => {
       if (!kw) return false;
@@ -145,13 +250,69 @@ export function collectTriggered(
       const t = e.caseSensitive ? text : lower;
       return t.includes(k);
     });
-  });
+  }
+
+  const out: TriggeredByPos = {
+    beforeChar: [],
+    afterChar: [],
+    beforeAn: [],
+    afterAn: [],
+    atDepth: [],
+    beforeEm: [],
+    afterEm: [],
+  };
+
+  for (const e of entries) {
+    if (!active(e)) continue;
+    switch (e.position) {
+      case 0:
+        out.beforeChar.push(e);
+        break;
+      case 2:
+        out.beforeAn.push(e);
+        break;
+      case 3:
+        out.afterAn.push(e);
+        break;
+      case 4:
+        out.atDepth.push(e);
+        break;
+      case 5:
+        out.beforeEm.push(e);
+        break;
+      case 6:
+        out.afterEm.push(e);
+        break;
+      case 1:
+      default:
+        out.afterChar.push(e);
+    }
+  }
+  return out;
 }
 
-export function buildWorldbookBlock(
-  triggered: WorldbookEntry[]
+export function formatEntries(
+  entries: WorldbookEntry[]
 ): string {
-  if (triggered.length === 0) return "";
-  const lines = triggered.map((e) => `- ${e.content}`);
-  return `[世界书 / 设定参考]\n${lines.join("\n")}`;
+  if (entries.length === 0) return "";
+  return entries.map((e) => `- ${e.content}`).join("\n");
+}
+
+/** 兼容旧调用（拼成单块） */
+export function buildWorldbookBlock(
+  triggered: WorldbookEntry[] | TriggeredByPos
+): string {
+  if (Array.isArray(triggered)) {
+    return formatEntries(triggered);
+  }
+  const all: WorldbookEntry[] = [
+    ...triggered.beforeChar,
+    ...triggered.afterChar,
+    ...triggered.beforeAn,
+    ...triggered.afterAn,
+    ...triggered.beforeEm,
+    ...triggered.afterEm,
+    ...triggered.atDepth,
+  ];
+  return formatEntries(all);
 }

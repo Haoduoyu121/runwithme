@@ -14,7 +14,9 @@ import {
   saveWorldbook,
   newEntry,
   parseSillyTavernWorldbook,
+  POSITION_LABELS,
   type WorldbookEntry,
+  type WorldbookPosition,
 } from "@/lib/ai/worldbook";
 
 export default function WorldbookPanel({
@@ -96,7 +98,21 @@ export default function WorldbookPanel({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="ai-wb-header">
-          <h2>世界书</h2>
+          <h2>
+            世界书
+            {cardId === "__global__" && (
+              <span
+                style={{
+                  marginLeft: 8,
+                  fontSize: 11,
+                  opacity: 0.55,
+                  fontWeight: 400,
+                }}
+              >
+                全局
+              </span>
+            )}
+          </h2>
           <div style={{ display: "flex", gap: 6 }}>
             <button
               className="ai-wb-icon-btn"
@@ -151,7 +167,9 @@ export default function WorldbookPanel({
                     type="checkbox"
                     checked={e.enabled}
                     onChange={(ev) =>
-                      patch(e.id, { enabled: ev.target.checked })
+                      patch(e.id, {
+                        enabled: ev.target.checked,
+                      })
                     }
                   />
                   启用
@@ -161,7 +179,9 @@ export default function WorldbookPanel({
                     type="checkbox"
                     checked={e.constant}
                     onChange={(ev) =>
-                      patch(e.id, { constant: ev.target.checked })
+                      patch(e.id, {
+                        constant: ev.target.checked,
+                      })
                     }
                   />
                   总是注入
@@ -187,6 +207,52 @@ export default function WorldbookPanel({
                 </button>
               </div>
 
+              <div className="ai-wb-row">
+                <label className="ai-wb-select-label">
+                  位置
+                  <select
+                    className="ai-wb-select"
+                    value={e.position}
+                    onChange={(ev) =>
+                      patch(e.id, {
+                        position: Number(
+                          ev.target.value
+                        ) as WorldbookPosition,
+                      })
+                    }
+                  >
+                    {(
+                      [0, 1, 2, 3, 4, 5, 6] as WorldbookPosition[]
+                    ).map((p) => (
+                      <option key={p} value={p}>
+                        {POSITION_LABELS[p]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {e.position === 4 && (
+                  <label className="ai-wb-select-label">
+                    深度
+                    <input
+                      className="ai-wb-depth-input"
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={e.depth}
+                      onChange={(ev) =>
+                        patch(e.id, {
+                          depth: Math.max(
+                            0,
+                            parseInt(ev.target.value) || 0
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                )}
+              </div>
+
               <input
                 className="ai-input ai-wb-keywords"
                 placeholder="关键词，用逗号分隔"
@@ -203,7 +269,7 @@ export default function WorldbookPanel({
 
               <textarea
                 className="ai-input ai-wb-content"
-                placeholder="触发时注入到 system prompt 的内容"
+                placeholder="触发时注入的内容"
                 rows={3}
                 value={e.content}
                 onChange={(ev) =>

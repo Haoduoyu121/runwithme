@@ -35,8 +35,9 @@ import PresetPanel from "./PresetPanel";
 import {
   loadWorldbook,
   collectTriggered,
-  buildWorldbookBlock,
+  formatEntries,
   type WorldbookEntry,
+  type TriggeredByPos,
 } from "@/lib/ai/worldbook";
 import {
   loadPresets,
@@ -80,7 +81,8 @@ const DEFAULT_SYS =
 
 function buildSystemPrompt(
   card: Card,
-  preset: AiPreset | null
+  preset: AiPreset | null,
+  wb: TriggeredByPos
 ): string {
   const vars = { char: card.name, user: "你" };
   const parts: string[] = [];
@@ -93,16 +95,42 @@ function buildSystemPrompt(
     parts.push(DEFAULT_SYS);
   }
 
+  /* 位置 0：角色描述前 */
+  const wbBeforeChar = formatEntries(wb.beforeChar);
+  if (wbBeforeChar) parts.push(wbBeforeChar);
+
   if (card.description)
     parts.push(`[角色描述]\n${card.description}`);
+
+  /* 位置 1：角色描述后 */
+  const wbAfterChar = formatEntries(wb.afterChar);
+  if (wbAfterChar) parts.push(wbAfterChar);
+
   if (card.personality)
     parts.push(`[性格]\n${card.personality}`);
   if (card.scenario) parts.push(`[场景]\n${card.scenario}`);
-  if (card.mes_example)
-    parts.push(`[示例对话]\n${card.mes_example}`);
+
+  /* 位置 2：作者注前 */
+  const wbBeforeAn = formatEntries(wb.beforeAn);
+  if (wbBeforeAn) parts.push(wbBeforeAn);
 
   if (preset?.post_history)
     parts.push(applyTemplate(preset.post_history, vars));
+
+  /* 位置 3：作者注后 */
+  const wbAfterAn = formatEntries(wb.afterAn);
+  if (wbAfterAn) parts.push(wbAfterAn);
+
+  /* 位置 5：示例对话前 */
+  const wbBeforeEm = formatEntries(wb.beforeEm);
+  if (wbBeforeEm) parts.push(wbBeforeEm);
+
+  if (card.mes_example)
+    parts.push(`[示例对话]\n${card.mes_example}`);
+
+  /* 位置 6：示例对话后 */
+  const wbAfterEm = formatEntries(wb.afterEm);
+  if (wbAfterEm) parts.push(wbAfterEm);
 
   return parts.filter(Boolean).join("\n\n");
 }
@@ -543,22 +571,35 @@ export default function ChatView({ cardId }: { cardId: string }) {
     abortRef.current = false;
 
     const triggered = collectTriggered(worldbook, history);
-    const wbBlock = buildWorldbookBlock(triggered);
-    const sysContent =
-      buildSystemPrompt(c, preset) +
-      (wbBlock ? "\n\n" + wbBlock : "");
+    const sysContent = buildSystemPrompt(c, preset, triggered);
 
     const sys: ChatMessage = {
       role: "system",
       content: sysContent,
     };
-    const payload: ChatMessage[] = [
-      sys,
-      ...history.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    ];
+
+    const historyMsgs: ChatMessage[] = history.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    /* 位置 4（@深度）：合成一条 system 插到 history 里 */
+    const atDepthText = formatEntries(triggered.atDepth);
+    if (atDepthText) {
+      const minDepth = Math.min(
+        ...triggered.atDepth.map((e) => e.depth)
+      );
+      const insertAt = Math.max(
+        0,
+        historyMsgs.length - 1 - minDepth
+      );
+      historyMsgs.splice(insertAt, 0, {
+        role: "system",
+        content: atDepthText,
+      });
+    }
+
+    const payload: ChatMessage[] = [sys, ...historyMsgs];
 
     const params: Record<string, unknown> = {};
     if (preset) {
