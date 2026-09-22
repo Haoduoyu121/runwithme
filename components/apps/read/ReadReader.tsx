@@ -123,7 +123,7 @@ export default function ReadReader({
   const [showInvite, setShowInvite] = useState(false);
   const [chapterLimit, setChapterLimit] = useState(3);
   const [toast, setToast] = useState<string | null>(null);
-    const avatars = useCharacterAvatars();
+  const avatars = useCharacterAvatars();
 
   /* 选中态 */
   const [selection, setSelection] = useState<{
@@ -146,24 +146,27 @@ export default function ReadReader({
     useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const scrollEndTimerRef = useRef<number | null>(null);
   const pagesRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  const animRef = useRef<number | null>(null);
 
   const chapterIndexRef = useRef(chapterIndex);
   const pageIndexRef = useRef(pageIndex);
+  const pageCountRef = useRef(pageCount);
   useEffect(() => {
     chapterIndexRef.current = chapterIndex;
   }, [chapterIndex]);
   useEffect(() => {
     pageIndexRef.current = pageIndex;
   }, [pageIndex]);
+  useEffect(() => {
+    pageCountRef.current = pageCount;
+  }, [pageCount]);
 
   /* ★ 首次挂载时读取划线上限 */
   useEffect(() => {
     setChapterLimit(loadChapterLimit());
   }, []);
-
 
   /* ---------- 加载正文 ---------- */
 
@@ -292,7 +295,7 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, currentChapter, book.id]);
 
-    /* ---------- 系统主动邀请：打开书时消费 pending ---------- */
+  /* ---------- 系统主动邀请：打开书时消费 pending ---------- */
 
   const pendingCheckedRef = useRef<string>("");
   useEffect(() => {
@@ -408,20 +411,17 @@ export default function ReadReader({
   /* ---------- 切章 ---------- */
 
   const prevChapterRef = useRef(chapterIndex);
-   useEffect(() => {
+  useEffect(() => {
     if (prevChapterRef.current === chapterIndex) return;
     prevChapterRef.current = chapterIndex;
+    cancelAnim();
     const scroll = scrollRef.current;
     if (scroll) scroll.scrollLeft = 0;
     pageIndexRef.current = 0;
     setPageIndex(0);
-    if (scrollEndTimerRef.current !== null) {
-      window.clearTimeout(scrollEndTimerRef.current);
-      scrollEndTimerRef.current = null;
-    }
   }, [chapterIndex]);
 
-   /* ---------- 保存进度（翻页触发） ---------- */
+  /* ---------- 保存进度（翻页触发） ---------- */
 
   const savedOnceRef = useRef(false);
   useEffect(() => {
@@ -454,15 +454,60 @@ export default function ReadReader({
           updatedAt: Date.now(),
         },
       });
-      if (scrollEndTimerRef.current !== null) {
-        window.clearTimeout(scrollEndTimerRef.current);
+      if (animRef.current !== null) {
+        cancelAnimationFrame(animRef.current);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  /* ---------- 滚动 ---------- */
 
-    function handleScroll() {
+  /* ---------- 动画工具 ---------- */
+
+  function cancelAnim() {
+    if (animRef.current !== null) {
+      cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+    }
+  }
+
+  function animateTo(target: number) {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    cancelAnim();
+    const start = scroll.scrollLeft;
+    const delta = target - start;
+    if (Math.abs(delta) < 1) {
+      scroll.scrollLeft = target;
+      return;
+    }
+    const duration = 260;
+    const t0 = performance.now();
+    function step(now: number) {
+      const el = scrollRef.current;
+      if (!el) return;
+      const p = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.scrollLeft = start + delta * eased;
+      if (p < 1) {
+        animRef.current = requestAnimationFrame(step);
+      } else {
+        animRef.current = null;
+        const w = el.clientWidth;
+        if (w > 0) {
+          const tp = Math.round(target / w);
+          if (tp !== pageIndexRef.current) {
+            pageIndexRef.current = tp;
+            setPageIndex(tp);
+          }
+        }
+      }
+    }
+    animRef.current = requestAnimationFrame(step);
+  }
+
+  /* ---------- 滚动：只更新页码，不做任何吸附 ---------- */
+
+  function handleScroll() {
     const scroll = scrollRef.current;
     if (!scroll) return;
     const w = scroll.clientWidth;
@@ -472,52 +517,23 @@ export default function ReadReader({
       pageIndexRef.current = p;
       setPageIndex(p);
     }
-
-    if (scrollEndTimerRef.current !== null) {
-      window.clearTimeout(scrollEndTimerRef.current);
-    }
-    scrollEndTimerRef.current = window.setTimeout(() => {
-      snapToNearestPage();
-    }, 90);
   }
 
-  function snapToNearestPage() {
-    const scroll = scrollRef.current;
-    if (!scroll) return;
-    const w = scroll.clientWidth;
-    if (w <= 0) return;
-
-    const current = scroll.scrollLeft;
-    const page = Math.round(current / w);
-    const target = page * w;
-    const diff = Math.abs(current - target);
-
-    if (diff < 2) return;
-
-    scroll.scrollTo({
-      left: target,
-      behavior: "auto",
-    });
-  }
-
-  /* ---------- 翻页 ---------- */
+  /* ---------- 翻页（按钮 / 边缘点击） ---------- */
 
   function goPrevPage() {
     const scroll = scrollRef.current;
     if (!scroll) return;
     const w = scroll.clientWidth;
     if (w <= 0) return;
-
-    if (scroll.scrollLeft <= 4) {
+    const cur = Math.round(scroll.scrollLeft / w);
+    if (cur <= 0) {
       if (chapterIndex > 0) {
         setChapterIndex(chapterIndex - 1);
       }
-    } else {
-      scroll.scrollTo({
-        left: scroll.scrollLeft - w,
-        behavior: "auto",
-      });
+      return;
     }
+    animateTo((cur - 1) * w);
   }
 
   function goNextPage() {
@@ -525,92 +541,17 @@ export default function ReadReader({
     if (!scroll) return;
     const w = scroll.clientWidth;
     if (w <= 0) return;
-    const maxScroll = scroll.scrollWidth - w;
-
-    if (scroll.scrollLeft >= maxScroll - 4) {
+    const cur = Math.round(scroll.scrollLeft / w);
+    if (cur >= pageCountRef.current - 1) {
       if (chapterIndex < chapters.length - 1) {
         setChapterIndex(chapterIndex + 1);
       }
-    } else {
-      scroll.scrollTo({
-        left: scroll.scrollLeft + w,
-        behavior: "auto",
-      });
-    }
-  }
-
-  /* ---------- 点击分区 + 选区检测 ---------- */
-
-  const pointerRef = useRef<{
-    x: number;
-    y: number;
-    t: number;
-    id: number;
-  } | null>(null);
-
-    function handlePointerDown(e: React.PointerEvent) {
-    /* ★ 用户触摸瞬间，如果位置在两页之间，立即跳到最近页 */
-    const scroll = scrollRef.current;
-    if (scroll) {
-      const w = scroll.clientWidth;
-      if (w > 0) {
-        const page = Math.round(scroll.scrollLeft / w);
-        const target = page * w;
-        if (Math.abs(scroll.scrollLeft - target) > 2) {
-          scroll.scrollTo({ left: target, behavior: "auto" });
-        }
-      }
-    }
-
-    /* ...下面保留原有逻辑... */
-    const t = e.target as HTMLElement;
-    if (t.closest("mark[data-hl-id]")) return;
-
-    pointerRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      t: Date.now(),
-      id: e.pointerId,
-    };
-  }
-
-  function handlePointerUp(e: React.PointerEvent) {
-    const t = e.target as HTMLElement;
-    if (t.closest("mark[data-hl-id]")) return;
-
-    const start = pointerRef.current;
-    pointerRef.current = null;
-    if (!start || start.id !== e.pointerId) return;
-
-    const dx = Math.abs(e.clientX - start.x);
-    const dy = Math.abs(e.clientY - start.y);
-    const dt = Date.now() - start.t;
-
-    if (dx > 12 || dy > 12 || dt > 900) {
-      window.setTimeout(checkSelection, 30);
       return;
     }
-
-    const sel = window.getSelection();
-    if (sel && !sel.isCollapsed) {
-      checkSelection();
-      return;
-    }
-
-    const w = window.innerWidth;
-    const x = e.clientX;
-
-    // iOS 左边缘返回手势区，不处理
-    if (x < 40) return;
-
-    if (x < w * 0.28) {
-      goPrevPage();
-    } else if (x > w * 0.72) {
-      goNextPage();
-    } else {
-      setChromeVisible((v) => !v);
-    }
+    animateTo((cur + 1) * w);
   }
+
+  /* ---------- 选区检测 ---------- */
 
   function checkSelection() {
     const sel = window.getSelection();
@@ -669,6 +610,168 @@ export default function ReadReader({
     const sel = window.getSelection();
     if (sel) sel.removeAllRanges();
   }
+
+  /* ---------- 原生 touch 手势：完全接管横向滚动 ---------- */
+
+  const touchStateRef = useRef<{
+    startX: number;
+    startY: number;
+    startScrollLeft: number;
+    startT: number;
+    moved: boolean;
+    lockDir: "h" | "v" | null;
+  } | null>(null);
+
+  /* 用 ref 引用最新的回调，避免 useEffect 频繁重挂 */
+  const goPrevRef = useRef(goPrevPage);
+  const goNextRef = useRef(goNextPage);
+  const checkSelectionRef = useRef(checkSelection);
+  goPrevRef.current = goPrevPage;
+  goNextRef.current = goNextPage;
+  checkSelectionRef.current = checkSelection;
+
+  useEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length !== 1) {
+        touchStateRef.current = null;
+        return;
+      }
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest("mark[data-hl-id]")) {
+        touchStateRef.current = null;
+        return;
+      }
+      const sc = scrollRef.current;
+      if (!sc) return;
+      const t = e.touches[0];
+
+      cancelAnim();
+
+      /* 若卡在两页之间，立即吸附到最近页，给手势一个干净起点 */
+      const w = sc.clientWidth;
+      if (w > 0) {
+        const nearest = Math.round(sc.scrollLeft / w);
+        const targetLeft = nearest * w;
+        if (Math.abs(sc.scrollLeft - targetLeft) > 1) {
+          sc.scrollLeft = targetLeft;
+        }
+      }
+
+      touchStateRef.current = {
+        startX: t.clientX,
+        startY: t.clientY,
+        startScrollLeft: sc.scrollLeft,
+        startT: Date.now(),
+        moved: false,
+        lockDir: null,
+      };
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      const state = touchStateRef.current;
+      if (!state) return;
+      if (e.touches.length !== 1) return;
+      const sc = scrollRef.current;
+      if (!sc) return;
+      const t = e.touches[0];
+      const dx = t.clientX - state.startX;
+      const dy = t.clientY - state.startY;
+
+      if (state.lockDir === null) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        state.lockDir =
+          Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
+      }
+      if (state.lockDir === "v") return;
+
+      state.moved = true;
+      sc.scrollLeft = state.startScrollLeft - dx;
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      const state = touchStateRef.current;
+      touchStateRef.current = null;
+      if (!state) return;
+      const sc = scrollRef.current;
+      if (!sc) return;
+      const w = sc.clientWidth;
+      if (w <= 0) return;
+
+      const t = e.changedTouches[0];
+      const dx = state.startX - t.clientX; /* 正 = 手指向左滑 */
+      const dy = state.startY - t.clientY;
+      const dt = Math.max(1, Date.now() - state.startT);
+
+      /* 文本选区兜底（长按高亮） */
+      window.setTimeout(
+        () => checkSelectionRef.current(),
+        30
+      );
+
+      /* 轻触 → 点击翻页 / 切 UI */
+      if (
+        !state.moved &&
+        Math.abs(dx) < 10 &&
+        Math.abs(dy) < 10 &&
+        dt < 300
+      ) {
+        const w2 = window.innerWidth;
+        const x = t.clientX;
+        if (x < 40) return; /* iOS 左边缘返回手势区 */
+        if (x < w2 * 0.28) goPrevRef.current();
+        else if (x > w2 * 0.72) goNextRef.current();
+        else setChromeVisible((v) => !v);
+        return;
+      }
+
+      if (!state.moved) return;
+
+      /* 滑动 → 判定翻页或回弹 */
+      const v = dx / dt; /* 正 = 向左快速滑 */
+      const startPage = state.startScrollLeft / w;
+      const nearest = Math.round(startPage);
+      const threshold = w * 0.18;
+      let targetPage = nearest;
+      if (Math.abs(dx) > threshold || Math.abs(v) > 0.4) {
+        targetPage = nearest + (dx > 0 ? 1 : -1);
+      }
+      targetPage = Math.max(
+        0,
+        Math.min(pageCountRef.current - 1, targetPage)
+      );
+      animateTo(targetPage * w);
+    }
+
+    scroll.addEventListener("touchstart", onTouchStart, {
+      passive: true,
+    });
+    scroll.addEventListener("touchmove", onTouchMove, {
+      passive: true,
+    });
+    scroll.addEventListener("touchend", onTouchEnd, {
+      passive: true,
+    });
+    scroll.addEventListener("touchcancel", onTouchEnd, {
+      passive: true,
+    });
+
+    return () => {
+      scroll.removeEventListener(
+        "touchstart",
+        onTouchStart
+      );
+      scroll.removeEventListener("touchmove", onTouchMove);
+      scroll.removeEventListener("touchend", onTouchEnd);
+      scroll.removeEventListener(
+        "touchcancel",
+        onTouchEnd
+      );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ---------- 高亮操作 ---------- */
 
@@ -782,7 +885,7 @@ export default function ReadReader({
 
   /* ---------- 一起读 ---------- */
 
-   function handleInvite(accepted: ReadingPartner[]) {
+  function handleInvite(accepted: ReadingPartner[]) {
     if (accepted.length === 0) {
       setToast("他们都没空，下次再试吧。");
       setShowInvite(false);
@@ -921,13 +1024,10 @@ export default function ReadReader({
           paddingBottom: `${settings.paddingBottom}px`,
         }}
       >
-
         <div
           ref={scrollRef}
           className="read-reader-scroll-h"
           onScroll={handleScroll}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
         >
           <div
             ref={pagesRef}
@@ -1233,43 +1333,43 @@ export default function ReadReader({
 
             <div className="read-reader-settings-group">
               <div className="read-reader-settings-label">
-                            <div className="read-reader-settings-group">
-              <div className="read-reader-settings-label">
-                上边距 {settings.paddingTop}px
-              </div>
-              <input
-                type="range"
-                min={20}
-                max={120}
-                step={2}
-                value={settings.paddingTop}
-                onChange={(e) =>
-                  updateSettings({
-                    paddingTop: Number(e.target.value),
-                  })
-                }
-                className="read-reader-slider"
-              />
-            </div>
+                <div className="read-reader-settings-group">
+                  <div className="read-reader-settings-label">
+                    上边距 {settings.paddingTop}px
+                  </div>
+                  <input
+                    type="range"
+                    min={20}
+                    max={120}
+                    step={2}
+                    value={settings.paddingTop}
+                    onChange={(e) =>
+                      updateSettings({
+                        paddingTop: Number(e.target.value),
+                      })
+                    }
+                    className="read-reader-slider"
+                  />
+                </div>
 
-            <div className="read-reader-settings-group">
-              <div className="read-reader-settings-label">
-                下边距 {settings.paddingBottom}px
-              </div>
-              <input
-                type="range"
-                min={40}
-                max={160}
-                step={2}
-                value={settings.paddingBottom}
-                onChange={(e) =>
-                  updateSettings({
-                    paddingBottom: Number(e.target.value),
-                  })
-                }
-                className="read-reader-slider"
-              />
-            </div>
+                <div className="read-reader-settings-group">
+                  <div className="read-reader-settings-label">
+                    下边距 {settings.paddingBottom}px
+                  </div>
+                  <input
+                    type="range"
+                    min={40}
+                    max={160}
+                    step={2}
+                    value={settings.paddingBottom}
+                    onChange={(e) =>
+                      updateSettings({
+                        paddingBottom: Number(e.target.value),
+                      })
+                    }
+                    className="read-reader-slider"
+                  />
+                </div>
                 一起读 · 每章划线上限 {chapterLimit}
               </div>
               <input
@@ -1361,8 +1461,6 @@ export default function ReadReader({
     </div>
   );
 }
-
-
 
 /* ---------- 辅助：拿 node 在 root 内的文本 offset ---------- */
 

@@ -63292,3 +63292,14 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
   -webkit-tap-highlight-color: transparent;
   touch-action: auto !important;
 }
+/* ============================================================
+   Read 翻页接管（2026-09-22）
+   彻底禁止原生横向滚动，改由 JS 完全控制 scrollLeft
+   放在最后，覆盖前面所有 .read-reader-scroll-h 定义
+   ============================================================ */
+.read-reader .read-reader-scroll-h {
+  overflow: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: auto;
+}
