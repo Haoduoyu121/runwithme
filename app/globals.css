@@ -63326,3 +63326,76 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
   will-change: transform;
   column-fill: auto;
 }
+/* ============================================================
+   Read 3D 翻页（2026-09-22）
+   舞台 + 底层页 + 翻转页
+   放在末尾，覆盖前面所有 .read-reader-scroll-h / .read-reader-pages 定义
+   ============================================================ */
+
+/* 舞台外层：只负责占位 */
+.read-reader .read-reader-stage-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 3D 舞台：给旋转提供透视 */
+.read-reader .read-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 2200px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+}
+
+/* 通用页面 */
+.read-reader .read-page {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: transparent;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* 底层页：不参与 3D */
+.read-reader .read-page-under {
+  z-index: 1;
+}
+
+/* 翻转页：绕左边缘旋转 + 阴影 */
+.read-reader .read-page-flip {
+  z-index: 2;
+  transform-origin: left center;
+  will-change: transform;
+  box-shadow:
+    -4px 0 24px rgba(0, 0, 0, 0.14),
+    0 0 40px rgba(0, 0, 0, 0.06);
+  /* 深色主题下的阴影更柔和 */
+}
+
+html[data-runwithme-theme="dark"] .read-reader .read-page-flip {
+  box-shadow:
+    -4px 0 24px rgba(0, 0, 0, 0.55),
+    0 0 40px rgba(0, 0, 0, 0.35);
+}
+
+/* 页面内容 */
+.read-reader .read-page-inner {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 确保页面内部 body 也是 pre-wrap（继承分页时的排版假设） */
+.read-reader .read-page-inner .read-reader-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
