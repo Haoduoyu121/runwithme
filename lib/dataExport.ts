@@ -1,10 +1,20 @@
 /* =========================================================================
-   全量数据导出 / 导入
-   - 打包所有 runwithme_ 前缀的 localStorage
-   - 打包所有 IndexedDB 库（图片以 base64 存储）
-   - PWA 兼容：优先 Web Share API，降级为可见链接
+   全量数据导出 / 导入 v2
+   - ZIP 打包（fflate），二进制直存，不用 base64
+   - 兼容旧 JSON 备份导入
    ========================================================================= */
 
+import {
+  zip,
+  unzip,
+  strToU8,
+  strFromU8,
+  type AsyncZippable,
+} from "fflate";
+
+/* ==================== 类型 ==================== */
+
+/* v1（旧 JSON）*/
 export type ExportData = {
   version: number;
   exportedAt: number;
@@ -15,6 +25,25 @@ export type ExportData = {
     Record<string, Record<string, string>>
   >;
 };
+
+/* v2（新 ZIP）*/
+type ManifestV2 = {
+  version: 2;
+  exportedAt: number;
+  app: string;
+  localStorage: Record<string, string>;
+  dbs: {
+    db: string;
+    store: string;
+    records: {
+      key: string;
+      file: string; /* zip 内路径 */
+      mime: string;
+    }[];
+  }[];
+};
+
+const MANIFEST_PATH = "manifest.json";
 
 const APP_DBS: { db: string; store: string }[] = [
   { db: "runwithme_image_db", store: "image_files" },
@@ -32,41 +61,7 @@ const APP_DBS: { db: string; store: string }[] = [
   { db: "runwithme_home_db", store: "home_files" },
 ];
 
-/* ---------- base64 转换 ---------- */
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("读取失败"));
-        return;
-      }
-      const idx = result.indexOf(",");
-      resolve(idx >= 0 ? result.slice(idx + 1) : result);
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
-
-function base64ToBlob(
-  base64: string,
-  mime: string
-): Blob {
-  const binary = atob(base64);
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return new Blob([bytes], {
-    type: mime || "application/octet-stream",
-  });
-}
-
-/* ---------- IndexedDB 打开 ---------- */
+/* ==================== IDB 打开 ==================== */
 
 function openReadonly(
   name: string
@@ -105,138 +100,70 @@ function openWritable(
   });
 }
 
-/* ---------- 导出 ---------- */
-
-export async function exportAllData(): Promise<ExportData> {
-  const ls: Record<string, string> = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    if (!key.startsWith("runwithme_")) continue;
-    const v = localStorage.getItem(key);
-    if (v !== null) ls[key] = v;
-  }
-
-  const idb: ExportData["indexedDB"] = {};
-
-  for (const { db: dbName, store } of APP_DBS) {
-    const db = await openReadonly(dbName);
-    if (!db) continue;
-
-    if (!db.objectStoreNames.contains(store)) {
-      db.close();
-      continue;
-    }
-
-    /* ★ 第一步：事务里只做同步操作，把所有记录读进内存
-       绝不能在这里 await / .then，否则事务会被 commit */
+/* 把 IDB store 全部同步读进内存（不 await，事务安全） */
+function readStoreRaw(
+  db: IDBDatabase,
+  store: string
+): Promise<{ key: string; value: unknown }[]> {
+  return new Promise((resolve) => {
     const raw: { key: string; value: unknown }[] = [];
+    const tx = db.transaction(store, "readonly");
+    const req = tx.objectStore(store).openCursor();
 
-    await new Promise<void>((resolve) => {
-      const tx = db.transaction(store, "readonly");
-      const st = tx.objectStore(store);
-      const cursorReq = st.openCursor();
-
-      cursorReq.onsuccess = () => {
-        const cursor = cursorReq.result;
-        if (!cursor) {
-          resolve();
-          return;
-        }
-        raw.push({
-          key: String(cursor.key),
-          value: cursor.value,
-        });
-        cursor.continue(); /* 纯同步，事务安全 */
-      };
-
-      cursorReq.onerror = () => {
-        resolve();
-      };
-      tx.onerror = () => {
-        resolve();
-      };
-      tx.onabort = () => {
-        resolve();
-      };
-    });
-
-    db.close();
-
-    /* ★ 第二步：事务已结束，安全地做异步编码 */
-    const records: Record<string, string> = {};
-
-    for (const { key, value } of raw) {
-      if (value instanceof Blob) {
-        try {
-          const b64 = await blobToBase64(value);
-          const mime =
-            value.type || "application/octet-stream";
-          records[key] = `${mime}|${b64}`;
-        } catch (e) {
-          console.warn(
-            "[dataExport] blob 编码失败，跳过:",
-            dbName,
-            key,
-            e
-          );
-        }
-      } else if (typeof value === "string") {
-        try {
-          records[key] = `text/plain|${btoa(
-            unescape(encodeURIComponent(value))
-          )}`;
-        } catch (e) {
-          console.warn(
-            "[dataExport] string 编码失败，跳过:",
-            dbName,
-            key,
-            e
-          );
-        }
-      } else if (value instanceof ArrayBuffer) {
-        try {
-          const blob = new Blob([value]);
-          const b64 = await blobToBase64(blob);
-          records[key] = `application/octet-stream|${b64}`;
-        } catch (e) {
-          console.warn(
-            "[dataExport] ArrayBuffer 编码失败，跳过:",
-            dbName,
-            key,
-            e
-          );
-        }
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (!cursor) {
+        resolve(raw);
+        return;
       }
-      /* 其他类型（数字 / 对象等）忽略，原有逻辑也不处理 */
-    }
-
-    if (Object.keys(records).length > 0) {
-      idb[dbName] = { [store]: records };
-    }
-  }
-
-  return {
-    version: 1,
-    exportedAt: Date.now(),
-    app: "RunWithme",
-    localStorage: ls,
-    indexedDB: idb,
-  };
+      raw.push({
+        key: String(cursor.key),
+        value: cursor.value,
+      });
+      cursor.continue(); /* 纯同步，事务安全 */
+    };
+    req.onerror = () => resolve(raw);
+    tx.onerror = () => resolve(raw);
+    tx.onabort = () => resolve(raw);
+  });
 }
 
-/* -------------------------------------------------------
-   下载 / 分享
-   -------------------------------------------------------
-   iOS PWA standalone 下 <a download> 无效 →
-   优先 Web Share API（可以分享 File）
-   降级：复制 JSON 到剪贴板
-   ------------------------------------------------------- */
+/* ==================== 工具 ==================== */
+
+async function blobToU8(blob: Blob): Promise<Uint8Array> {
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+function zipAsync(files: AsyncZippable): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    zip(files, (err, data) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      /* 拷贝成干净的 ArrayBuffer，避免 TS 的 ArrayBufferLike 兼容问题 */
+      const buf = new ArrayBuffer(data.byteLength);
+      new Uint8Array(buf).set(data);
+      resolve(buf);
+    });
+  });
+}
+
+function unzipAsync(
+  u8: Uint8Array
+): Promise<Record<string, Uint8Array>> {
+  return new Promise((resolve, reject) => {
+    unzip(u8, (err, data) => {
+      if (err) reject(err);
+      else resolve(data);
+    });
+  });
+}
+
+/* ==================== 导出 ==================== */
 
 export type DownloadResult =
-  | { ok: true; method: "download"; bytes: number }
-  | { ok: true; method: "share"; bytes: number }
-  | { ok: true; method: "clipboard"; bytes: number }
+  | { ok: true; method: "download" | "share" | "clipboard"; bytes: number }
   | { ok: false; message: string };
 
 function isStandalonePWA(): boolean {
@@ -248,55 +175,153 @@ function isStandalonePWA(): boolean {
   );
 }
 
-export async function downloadExport(): Promise<DownloadResult> {
-  let data: ExportData;
+export async function downloadExport(
+  onProgress?: (msg: string) => void
+): Promise<DownloadResult> {
+  const log = (m: string) => {
+    try {
+      onProgress?.(m);
+    } catch {
+      /* 忽略进度回调里的错误 */
+    }
+  };
+
+  /* ---------- 1. localStorage ---------- */
+  log("读取本地设置…");
+  const ls: Record<string, string> = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    if (!key.startsWith("runwithme_")) continue;
+    const v = localStorage.getItem(key);
+    if (v !== null) ls[key] = v;
+  }
+
+  /* ---------- 2. 遍历 IDB ---------- */
+  const files: AsyncZippable = {};
+  const dbs: ManifestV2["dbs"] = [];
+
+  for (let i = 0; i < APP_DBS.length; i++) {
+    const { db: dbName, store } = APP_DBS[i];
+    log(
+      `读取数据库 ${i + 1}/${APP_DBS.length}：${dbName}`
+    );
+
+    const db = await openReadonly(dbName);
+    if (!db) continue;
+    if (!db.objectStoreNames.contains(store)) {
+      db.close();
+      continue;
+    }
+
+    const raw = await readStoreRaw(db, store);
+    db.close();
+
+    const records: ManifestV2["dbs"][0]["records"] = [];
+    let idx = 0;
+    const dir = `idb/${dbName}__${store}`;
+
+    for (const { key, value } of raw) {
+      if (value instanceof Blob) {
+        try {
+          const u8 = await blobToU8(value);
+          const path = `${dir}/${idx}.bin`;
+          files[path] = u8;
+          records.push({
+            key,
+            file: path,
+            mime:
+              value.type || "application/octet-stream",
+          });
+        } catch (e) {
+          console.warn(
+            "[dataExport] blob 读取失败，跳过:",
+            dbName,
+            key,
+            e
+          );
+        }
+      } else if (typeof value === "string") {
+        const path = `${dir}/${idx}.txt`;
+        files[path] = strToU8(value);
+        records.push({
+          key,
+          file: path,
+          mime: "text/plain",
+        });
+      } else if (value instanceof ArrayBuffer) {
+        const path = `${dir}/${idx}.bin`;
+        files[path] = new Uint8Array(value);
+        records.push({
+          key,
+          file: path,
+          mime: "application/octet-stream",
+        });
+      }
+      /* 其他类型忽略 */
+      idx++;
+    }
+
+    if (records.length > 0) {
+      dbs.push({ db: dbName, store, records });
+    }
+  }
+
+  /* ---------- 3. manifest ---------- */
+  const manifest: ManifestV2 = {
+    version: 2,
+    exportedAt: Date.now(),
+    app: "RunWithme",
+    localStorage: ls,
+    dbs,
+  };
+  files[MANIFEST_PATH] = strToU8(JSON.stringify(manifest));
+
+  /* ---------- 4. ZIP ---------- */
+  log("打包压缩…（数据多时会慢，请稍等）");
+  let zipped: ArrayBuffer;
   try {
-    data = await exportAllData();
+    zipped = await zipAsync(files);
   } catch (e) {
     return {
       ok: false,
       message:
-        "收集数据失败：" +
+        "打包失败：" +
         (e instanceof Error ? e.message : String(e)),
     };
   }
 
-  const str = JSON.stringify(data);
-  const bytes = str.length * 2;
+  const blob = new Blob([zipped], {
+    type: "application/zip",
+  });
+  const bytes = blob.size;
 
   const stamp = new Date()
     .toISOString()
     .slice(0, 19)
     .replace(/[:T]/g, "-");
-  const filename = `runwithme-backup-${stamp}.json`;
+  const filename = `runwithme-backup-${stamp}.zip`;
 
-  const blob = new Blob([str], {
-    type: "application/json",
-  });
-
-  /* ---------- 1. iOS PWA standalone → 优先 Web Share ---------- */
+  /* ---------- 5. 输出：PWA 优先 Share ---------- */
   if (isStandalonePWA()) {
     try {
       const file = new File([blob], filename, {
-        type: "application/json",
+        type: "application/zip",
       });
-
       const nav = window.navigator as Navigator & {
-        canShare?: (data: {
-          files?: File[];
-        }) => boolean;
-        share?: (data: {
+        canShare?: (d: { files?: File[] }) => boolean;
+        share?: (d: {
           files?: File[];
           title?: string;
           text?: string;
         }) => Promise<void>;
       };
-
       if (
         nav.share &&
         nav.canShare &&
         nav.canShare({ files: [file] })
       ) {
+        log("弹出分享菜单…");
         await nav.share({
           files: [file],
           title: "RunWithme Backup",
@@ -305,13 +330,12 @@ export async function downloadExport(): Promise<DownloadResult> {
         return { ok: true, method: "share", bytes };
       }
     } catch (e) {
-      /* 用户取消分享 or 失败，继续走降级 */
       console.warn("[dataExport] Web Share 失败:", e);
     }
   }
 
-  /* ---------- 2. 常规浏览器 → a.download ---------- */
   try {
+    log("开始下载…");
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -320,32 +344,22 @@ export async function downloadExport(): Promise<DownloadResult> {
     document.body.appendChild(a);
     a.click();
     a.remove();
-
-    /* 延迟 revoke，给 iOS 一点缓冲 */
     window.setTimeout(() => {
       URL.revokeObjectURL(url);
-    }, 4000);
-
+    }, 60000);
     return { ok: true, method: "download", bytes };
   } catch (e) {
     console.warn("[dataExport] a.download 失败:", e);
   }
 
-  /* ---------- 3. 兜底：复制到剪贴板 ---------- */
-  try {
-    await navigator.clipboard.writeText(str);
-    return { ok: true, method: "clipboard", bytes };
-  } catch (e) {
-    return {
-      ok: false,
-      message:
-        "导出失败，请用系统浏览器（Safari / Chrome）打开 RunWithme 后再试。\n\n" +
-        (e instanceof Error ? e.message : String(e)),
-    };
-  }
+  return {
+    ok: false,
+    message:
+      "导出失败：当前环境不支持下载或分享，请在 Safari / Chrome 里打开 RunWithme 后重试。",
+  };
 }
 
-/* ---------- 导入 ---------- */
+/* ==================== 导入 ==================== */
 
 export type ImportResult = {
   ok: boolean;
@@ -360,101 +374,15 @@ export async function importAllData(
   file: File
 ): Promise<ImportResult> {
   try {
-    const text = await file.text();
-    const data = JSON.parse(text) as ExportData;
+    const isZip =
+      file.name.toLowerCase().endsWith(".zip") ||
+      file.type === "application/zip" ||
+      file.type === "application/x-zip-compressed";
 
-    if (
-      !data ||
-      typeof data !== "object" ||
-      data.version !== 1
-    ) {
-      return {
-        ok: false,
-        message: "备份文件格式不正确或版本不兼容。",
-      };
+    if (isZip) {
+      return importZipV2(file);
     }
-
-    let lsCount = 0;
-    let dbCount = 0;
-
-    if (
-      data.localStorage &&
-      typeof data.localStorage === "object"
-    ) {
-      for (const [key, value] of Object.entries(
-        data.localStorage
-      )) {
-        if (!key.startsWith("runwithme_")) continue;
-        if (typeof value !== "string") continue;
-        localStorage.setItem(key, value);
-        lsCount++;
-      }
-    }
-
-    if (
-      data.indexedDB &&
-      typeof data.indexedDB === "object"
-    ) {
-      for (const [dbName, stores] of Object.entries(
-        data.indexedDB
-      )) {
-        if (!dbName.startsWith("runwithme_")) continue;
-
-        for (const [storeName, records] of Object.entries(
-          stores
-        )) {
-          const db = await openWritable(
-            dbName,
-            storeName
-          );
-          if (!db) continue;
-
-          await new Promise<void>((resolve) => {
-            const tx = db.transaction(
-              storeName,
-              "readwrite"
-            );
-            const st = tx.objectStore(storeName);
-
-            for (const [id, encoded] of Object.entries(
-              records
-            )) {
-              const idx = encoded.indexOf("|");
-              if (idx < 0) continue;
-
-              const mime = encoded.slice(0, idx);
-              const b64 = encoded.slice(idx + 1);
-
-              try {
-                const blob = base64ToBlob(b64, mime);
-                st.put(blob, id);
-                dbCount++;
-              } catch (e) {
-                console.error("导入失败:", dbName, id, e);
-              }
-            }
-
-            tx.oncomplete = () => {
-              db.close();
-              resolve();
-            };
-            tx.onerror = () => {
-              db.close();
-              resolve();
-            };
-          });
-        }
-      }
-    }
-
-    return {
-      ok: true,
-      message: "导入成功。",
-      counts: {
-        localStorageKeys: lsCount,
-        dbRecords: dbCount,
-      },
-    };
+    return importJsonV1(file);
   } catch (e) {
     return {
       ok: false,
@@ -465,7 +393,214 @@ export async function importAllData(
   }
 }
 
-/* ---------- 全量清空 ---------- */
+/* --------- v2 ZIP 导入 --------- */
+
+async function importZipV2(
+  file: File
+): Promise<ImportResult> {
+  const u8 = new Uint8Array(await file.arrayBuffer());
+  const entries = await unzipAsync(u8);
+
+  const manifestU8 = entries[MANIFEST_PATH];
+  if (!manifestU8) {
+    return {
+      ok: false,
+      message: "ZIP 里找不到 manifest.json，可能不是 RunWithme 备份。",
+    };
+  }
+
+  let manifest: ManifestV2;
+  try {
+    manifest = JSON.parse(strFromU8(manifestU8));
+  } catch {
+    return {
+      ok: false,
+      message: "manifest.json 解析失败。",
+    };
+  }
+
+  if (manifest.version !== 2 || manifest.app !== "RunWithme") {
+    return {
+      ok: false,
+      message: "备份文件版本不兼容。",
+    };
+  }
+
+  let lsCount = 0;
+  let dbCount = 0;
+
+  if (manifest.localStorage) {
+    for (const [key, value] of Object.entries(
+      manifest.localStorage
+    )) {
+      if (!key.startsWith("runwithme_")) continue;
+      if (typeof value !== "string") continue;
+      localStorage.setItem(key, value);
+      lsCount++;
+    }
+  }
+
+  for (const dbEntry of manifest.dbs || []) {
+    const { db: dbName, store, records } = dbEntry;
+    if (!dbName.startsWith("runwithme_")) continue;
+
+    const db = await openWritable(dbName, store);
+    if (!db) continue;
+
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(store, "readwrite");
+      const st = tx.objectStore(store);
+
+      for (const rec of records) {
+        const payload = entries[rec.file];
+        if (!payload) continue;
+        try {
+          /* slice 出干净的 ArrayBuffer，避免共享底层内存 */
+          const copy = new Uint8Array(payload.length);
+          copy.set(payload);
+          const blob = new Blob([copy], {
+            type: rec.mime || "application/octet-stream",
+          });
+          st.put(blob, rec.key);
+          dbCount++;
+        } catch (e) {
+          console.error(
+            "[dataExport] 写入失败:",
+            dbName,
+            rec.key,
+            e
+          );
+        }
+      }
+
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        resolve();
+      };
+      tx.onabort = () => {
+        db.close();
+        resolve();
+      };
+    });
+  }
+
+  return {
+    ok: true,
+    message: "导入成功。",
+    counts: { localStorageKeys: lsCount, dbRecords: dbCount },
+  };
+}
+
+/* --------- v1 JSON 导入（兼容旧备份） --------- */
+
+async function importJsonV1(
+  file: File
+): Promise<ImportResult> {
+  const text = await file.text();
+  const data = JSON.parse(text) as ExportData;
+
+  if (
+    !data ||
+    typeof data !== "object" ||
+    data.version !== 1
+  ) {
+    return {
+      ok: false,
+      message: "备份文件格式不正确或版本不兼容。",
+    };
+  }
+
+  let lsCount = 0;
+  let dbCount = 0;
+
+  if (data.localStorage) {
+    for (const [key, value] of Object.entries(
+      data.localStorage
+    )) {
+      if (!key.startsWith("runwithme_")) continue;
+      if (typeof value !== "string") continue;
+      localStorage.setItem(key, value);
+      lsCount++;
+    }
+  }
+
+  if (data.indexedDB) {
+    for (const [dbName, stores] of Object.entries(
+      data.indexedDB
+    )) {
+      if (!dbName.startsWith("runwithme_")) continue;
+
+      for (const [storeName, records] of Object.entries(
+        stores
+      )) {
+        const db = await openWritable(dbName, storeName);
+        if (!db) continue;
+
+        await new Promise<void>((resolve) => {
+          const tx = db.transaction(storeName, "readwrite");
+          const st = tx.objectStore(storeName);
+
+          for (const [id, encoded] of Object.entries(
+            records
+          )) {
+            const idx = encoded.indexOf("|");
+            if (idx < 0) continue;
+            const mime = encoded.slice(0, idx);
+            const b64 = encoded.slice(idx + 1);
+
+            try {
+              const binary = atob(b64);
+              const len = binary.length;
+              const bytes = new Uint8Array(len);
+              for (let i = 0; i < len; i++) {
+                bytes[i] = binary.charCodeAt(i);
+              }
+              st.put(
+                new Blob([bytes], {
+                  type: mime || "application/octet-stream",
+                }),
+                id
+              );
+              dbCount++;
+            } catch (e) {
+              console.error(
+                "[dataExport] v1 导入失败:",
+                dbName,
+                id,
+                e
+              );
+            }
+          }
+
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => {
+            db.close();
+            resolve();
+          };
+          tx.onabort = () => {
+            db.close();
+            resolve();
+          };
+        });
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    message: "导入成功。",
+    counts: { localStorageKeys: lsCount, dbRecords: dbCount },
+  };
+}
+
+/* ==================== 清空 ==================== */
 
 export async function clearAllData(): Promise<void> {
   const toRemove: string[] = [];
