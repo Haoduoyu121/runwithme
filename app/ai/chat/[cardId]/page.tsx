@@ -1,14 +1,9 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import ChatView from "@/components/ai/ChatView";
+import AiChatPageClient from "@/components/ai/AiChatPageClient";
 
 export function generateStaticParams() {
-  return [{ cardId: '__demo__' }];
+  return [{ cardId: "__demo__" }];
 }
 
 export default function AiChatPage() {
-  const params = useParams<{ cardId: string }>();
-  const cardId = params?.cardId || "";
-  return <ChatView cardId={cardId} />;
+  return <AiChatPageClient />;
 }
