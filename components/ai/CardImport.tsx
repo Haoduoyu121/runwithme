@@ -24,9 +24,10 @@ export default function CardImport({
     total: number;
   } | null>(null);
 
-  async function handleFiles(files: FileList) {
+  async function handleFiles(files: File[]) {
     setBusy(true);
     setMsg("");
+    console.log("[import] 收到文件：", files.map(f => `${f.name} (${f.size}B)`));
     const total = files.length;
     let ok = 0;
     let fail = 0;
@@ -112,9 +113,9 @@ export default function CardImport({
         multiple
         style={{ display: "none" }}
         onChange={(e) => {
-          const fs = e.target.files;
+          const fs = Array.from(e.target.files || []);
           e.target.value = "";
-          if (fs && fs.length) void handleFiles(fs);
+          if (fs.length) void handleFiles(fs);
         }}
       />
 
