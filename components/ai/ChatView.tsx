@@ -23,9 +23,13 @@ import {
   type StoredMessage,
 } from "@/lib/ai/chatStore";
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE || "https://api.yulewin.cn";
+
 type Card = {
   id: string;
   name: string;
+  avatar?: string;
   description: string;
   personality: string;
   scenario: string;
@@ -48,11 +52,20 @@ const DEMO_CARD: Card = {
 };
 
 function buildSystemPrompt(card: Card): string {
-  const parts = [card.system_prompt];
-  if (card.description) parts.push(`[角色描述]\n${card.description}`);
-  if (card.personality) parts.push(`[性格]\n${card.personality}`);
+  const parts: string[] = [];
+  if (card.system_prompt)
+    parts.push(card.system_prompt);
+  else
+    parts.push(
+      "你是一个沉浸式角色扮演引擎。严格保持角色语气，用中文回答。不要跳出角色，不要解释。回复长度适中，有画面感。"
+    );
+  if (card.description)
+    parts.push(`[角色描述]\n${card.description}`);
+  if (card.personality)
+    parts.push(`[性格]\n${card.personality}`);
   if (card.scenario) parts.push(`[场景]\n${card.scenario}`);
-  if (card.mes_example) parts.push(`[示例对话]\n${card.mes_example}`);
+  if (card.mes_example)
+    parts.push(`[示例对话]\n${card.mes_example}`);
   return parts.filter(Boolean).join("\n\n");
 }
 
@@ -85,24 +98,55 @@ export default function ChatView({ cardId }: { cardId: string }) {
     setErr("");
 
     (async () => {
-      /* 卡片 */
       let c: Card | null = null;
+
       if (cardId === "__demo__") {
         c = DEMO_CARD;
+      } else if (cardId) {
+        try {
+          const r = await fetch(`${API_BASE}/api/ai/cards`);
+          const data = await r.json();
+          const found = (data.cards || []).find(
+            (x: { id: string }) => x.id === cardId
+          );
+          if (found) {
+            const p = found.payload || {};
+            c = {
+              id: found.id,
+              name: found.name,
+              avatar: found.avatar || undefined,
+              description: p.description || "",
+              personality: p.personality || "",
+              scenario: p.scenario || "",
+              first_mes: p.first_mes || "",
+              mes_example: p.mes_example || "",
+              system_prompt: p.system_prompt || "",
+            };
+          }
+        } catch {
+          /* ignore */
+        }
       }
+
       if (cancelled) return;
       setCard(c);
 
-      /* 历史 */
-      if (!c) return;
+      if (!c) {
+        setErr("找不到这张角色卡");
+        setLoaded(true);
+        return;
+      }
+
       const stored = await loadChat(cardId);
       if (cancelled) return;
       if (stored.length > 0) {
         setMessages(stored);
-      } else {
+      } else if (c.first_mes) {
         setMessages([
           { role: "assistant", content: c.first_mes },
         ]);
+      } else {
+        setMessages([]);
       }
       setLoaded(true);
     })();
@@ -112,7 +156,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
     };
   }, [cardId]);
 
-  /* ---------- 保存（防抖，streaming 中不存） ---------- */
+  /* ---------- 保存 ---------- */
 
   useEffect(() => {
     if (!loaded) return;
@@ -131,15 +175,11 @@ export default function ChatView({ cardId }: { cardId: string }) {
     };
   }, [messages, streaming, loaded, cardId]);
 
-  /* ---------- 自动滚底 ---------- */
-
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages, streaming]);
-
-  /* ---------- 关闭弹出的菜单（点别处） ---------- */
 
   useEffect(() => {
     function onClick() {
@@ -147,11 +187,12 @@ export default function ChatView({ cardId }: { cardId: string }) {
     }
     if (openMenuIdx !== null) {
       window.addEventListener("click", onClick);
-      return () => window.removeEventListener("click", onClick);
+      return () =>
+        window.removeEventListener("click", onClick);
     }
   }, [openMenuIdx]);
 
-  /* ---------- 发送 ---------- */
+  /* ---------- 流式 ---------- */
 
   async function runStream(
     history: StoredMessage[],
@@ -174,8 +215,10 @@ export default function ChatView({ cardId }: { cardId: string }) {
     };
     const payload = [sys, ...history];
 
-    /* 占位 */
-    setMessages([...history, { role: "assistant", content: "" }]);
+    setMessages([
+      ...history,
+      { role: "assistant", content: "" },
+    ]);
 
     try {
       let acc = "";
@@ -191,7 +234,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
           return copy;
         });
       }
-      /* 空回复兜底 */
       if (!acc) {
         setMessages(history);
         setErr("AI 返回了空内容，请重试。");
@@ -221,7 +263,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
 
   async function regenerate() {
     if (!card || streaming) return;
-    /* 找最后一条 assistant */
     let lastA = -1;
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "assistant") {
@@ -260,13 +301,10 @@ export default function ChatView({ cardId }: { cardId: string }) {
   }
 
   function deleteMsg(i: number) {
-    if (
-      !window.confirm(
-        "删除这条消息？"
-      )
-    )
-      return;
-    setMessages((prev) => prev.filter((_, idx) => idx !== i));
+    if (!window.confirm("删除这条消息？")) return;
+    setMessages((prev) =>
+      prev.filter((_, idx) => idx !== i)
+    );
     setOpenMenuIdx(null);
   }
 
@@ -279,9 +317,11 @@ export default function ChatView({ cardId }: { cardId: string }) {
       return;
     await deleteChat(cardId);
     if (card) {
-      setMessages([
-        { role: "assistant", content: card.first_mes },
-      ]);
+      setMessages(
+        card.first_mes
+          ? [{ role: "assistant", content: card.first_mes }]
+          : []
+      );
     }
   }
 
@@ -290,7 +330,9 @@ export default function ChatView({ cardId }: { cardId: string }) {
   if (!card) {
     return (
       <div className="ai-home">
-        <div className="ai-empty">{err || "加载中…"}</div>
+        <div className="ai-empty">
+          {err || (loaded ? "未找到角色卡" : "加载中…")}
+        </div>
       </div>
     );
   }
@@ -306,10 +348,20 @@ export default function ChatView({ cardId }: { cardId: string }) {
     <div className="ai-chat-view">
       <div className="ai-chat-messages" ref={scrollRef}>
         <div className="ai-chat-card-head">
+          {card.avatar && (
+            <div
+              className="ai-chat-card-avatar"
+              style={{
+                background: `url(${card.avatar}) center/cover`,
+              }}
+            />
+          )}
           <div className="ai-chat-card-name">{card.name}</div>
-          <div className="ai-chat-card-scenario">
-            {card.scenario}
-          </div>
+          {card.scenario && (
+            <div className="ai-chat-card-scenario">
+              {card.scenario}
+            </div>
+          )}
           <button
             className="ai-chat-clear"
             onClick={clearAll}
@@ -439,7 +491,10 @@ export default function ChatView({ cardId }: { cardId: string }) {
                           className="ai-msg-menu-item"
                           onClick={() => startEdit(i)}
                         >
-                          <Pencil size={12} strokeWidth={2.2} />
+                          <Pencil
+                            size={12}
+                            strokeWidth={2.2}
+                          />
                           编辑
                         </button>
                         <button
