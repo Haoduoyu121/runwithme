@@ -1,0 +1,315 @@
+/* AI 区域主题系统 —— 所有颜色/圆角/字体都走 CSS 变量 */
+
+.ai-root {
+  --ai-bg: #f4ecd8;
+  --ai-surface: #fbf6e9;
+  --ai-text: #2b2419;
+  --ai-text-dim: #7a6b52;
+  --ai-accent: #8b6b3d;
+  --ai-border: rgba(90, 60, 20, 0.12);
+  --ai-radius: 4px;
+  --ai-font: "Songti SC", "Noto Serif SC", Georgia, serif;
+  --ai-shadow: 0 2px 8px rgba(90, 60, 20, 0.08);
+  --ai-pattern: none;
+  --ai-pattern-size: auto;
+}
+
+.ai-root[data-ai-theme="library"] {
+  --ai-bg: #f4ecd8;
+  --ai-surface: #fbf6e9;
+  --ai-text: #2b2419;
+  --ai-text-dim: #7a6b52;
+  --ai-accent: #8b6b3d;
+  --ai-border: rgba(90, 60, 20, 0.12);
+  --ai-radius: 4px;
+  --ai-font: "Songti SC", "Noto Serif SC", Georgia, serif;
+  --ai-shadow: 0 2px 8px rgba(90, 60, 20, 0.08);
+  --ai-pattern: repeating-linear-gradient(
+    45deg,
+    rgba(139, 107, 61, 0.03) 0 8px,
+    transparent 8px 16px
+  );
+}
+
+.ai-root[data-ai-theme="archive"] {
+  --ai-bg: #0e1014;
+  --ai-surface: #161a22;
+  --ai-text: #d8dde5;
+  --ai-text-dim: #7b8496;
+  --ai-accent: #5b8ff9;
+  --ai-border: rgba(91, 143, 249, 0.18);
+  --ai-radius: 12px;
+  --ai-font: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  --ai-shadow: 0 0 24px rgba(91, 143, 249, 0.18);
+  --ai-pattern: linear-gradient(
+      rgba(91, 143, 249, 0.04) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(91, 143, 249, 0.04) 1px,
+      transparent 1px
+    );
+  --ai-pattern-size: 32px 32px;
+}
+
+.ai-root[data-ai-theme="tram"] {
+  --ai-bg: #0f1a2e;
+  --ai-surface: #1a2740;
+  --ai-text: #e0e7f0;
+  --ai-text-dim: #8899b0;
+  --ai-accent: #f5a623;
+  --ai-border: rgba(245, 166, 35, 0.2);
+  --ai-radius: 8px;
+  --ai-font: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  --ai-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --ai-pattern: radial-gradient(
+      circle at 20% 30%,
+      rgba(245, 166, 35, 0.08),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(245, 166, 35, 0.05),
+      transparent 40%
+    );
+  --ai-pattern-size: auto;
+}
+
+/* 基础布局 */
+.ai-root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--ai-bg);
+  background-image: var(--ai-pattern);
+  background-size: var(--ai-pattern-size);
+  color: var(--ai-text);
+  font-family: var(--ai-font);
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-surface) 82%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.ai-topbar-title {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.6px;
+  flex: 1;
+  text-align: center;
+}
+
+.ai-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ai-radius);
+  border: 1px solid var(--ai-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.ai-icon-btn:hover {
+  background: var(--ai-border);
+}
+
+.ai-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 主题浮层 */
+.ai-theme-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.ai-theme-panel {
+  width: 100%;
+  max-width: 500px;
+  background: var(--ai-surface);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  padding: 20px;
+  color: var(--ai-text);
+  box-shadow: var(--ai-shadow);
+  max-height: 85vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.ai-theme-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  letter-spacing: 0.6px;
+}
+
+.ai-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.ai-theme-card {
+  border: 1px solid var(--ai-border);
+  border-radius: 10px;
+  padding: 12px 10px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 12px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  transition: transform 0.12s;
+}
+
+.ai-theme-card:active {
+  transform: scale(0.97);
+}
+
+.ai-theme-card.active {
+  border-color: var(--ai-accent);
+  box-shadow: 0 0 0 1px var(--ai-accent) inset;
+}
+
+.ai-theme-swatch {
+  width: 100%;
+  height: 34px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+/* 设置页 */
+.ai-settings-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-section {
+  margin-bottom: 24px;
+}
+
+.ai-section-title {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  opacity: 0.6;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.ai-field {
+  margin-bottom: 14px;
+}
+
+.ai-field-label {
+  display: block;
+  font-size: 12px;
+  opacity: 0.7;
+  margin-bottom: 6px;
+}
+
+.ai-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: var(--ai-radius);
+  border: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-surface) 60%, transparent);
+  color: inherit;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.ai-input:focus {
+  border-color: var(--ai-accent);
+}
+
+.ai-btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--ai-radius);
+  border: 1px solid var(--ai-border);
+  background: var(--ai-surface);
+  color: inherit;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.ai-btn:hover {
+  opacity: 0.85;
+}
+
+.ai-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ai-btn.primary {
+  background: var(--ai-accent);
+  color: #fff;
+  border-color: var(--ai-accent);
+}
+
+/* 首页 */
+.ai-home {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-home-title {
+  font-size: 28px;
+  font-weight: 300;
+  margin: 0 0 6px;
+  letter-spacing: 1px;
+}
+
+.ai-home-sub {
+  font-size: 13px;
+  opacity: 0.6;
+  margin: 0 0 32px;
+  font-style: italic;
+}
+
+.ai-empty {
+  padding: 60px 20px;
+  text-align: center;
+  opacity: 0.55;
+  font-size: 14px;
+}
