@@ -819,3 +819,72 @@
   opacity: 0.75;
   text-align: center;
 }
+
+/* ---------- 预设面板 ---------- */
+.ai-preset-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ai-border);
+  background: transparent;
+  color: inherit;
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.ai-preset-pick.active {
+  background: var(--ai-accent);
+  color: #fff;
+  border-color: var(--ai-accent);
+  opacity: 1;
+}
+
+.ai-preset-nums {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.ai-preset-nums label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10.5px;
+  opacity: 0.75;
+}
+
+.ai-preset-nums input {
+  width: 100%;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-surface) 60%, transparent);
+  color: inherit;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.ai-preset-nums input:focus {
+  border-color: var(--ai-accent);
+}
+
+/* ---------- 对话页头部工具栏 ---------- */
+.ai-chat-toolbar {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.ai-chat-toolbar .ai-chat-clear {
+  margin-top: 0;
+}

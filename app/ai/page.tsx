@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import CardImport from "@/components/ai/CardImport";
+import WorldbookPanel from "@/components/ai/WorldbookPanel";
+import PresetPanel from "@/components/ai/PresetPanel";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "https://api.yulewin.cn";
@@ -17,6 +19,8 @@ type CardRow = {
 export default function AiHomePage() {
   const [cards, setCards] = useState<CardRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showGlobalWb, setShowGlobalWb] = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -48,6 +52,20 @@ export default function AiHomePage() {
 
       <div className="ai-home-actions">
         <CardImport onImported={refresh} />
+        <button
+          className="ai-btn"
+          onClick={() => setShowGlobalWb(true)}
+          style={{ display: "inline-flex", alignItems: "center" }}
+        >
+          🌍 全局世界书
+        </button>
+        <button
+          className="ai-btn"
+          onClick={() => setShowPresets(true)}
+          style={{ display: "inline-flex", alignItems: "center" }}
+        >
+          ⚙ 预设
+        </button>
       </div>
 
       <div className="ai-section-title">角色卡</div>
@@ -81,6 +99,22 @@ export default function AiHomePage() {
             </Link>
           ))}
         </div>
+      )}
+
+      {showGlobalWb && (
+        <WorldbookPanel
+          cardId="__global__"
+          onClose={() => setShowGlobalWb(false)}
+        />
+      )}
+
+      {showPresets && (
+        <PresetPanel
+          onClose={() => setShowPresets(false)}
+          onChanged={() => {
+            /* 首页不需要重新加载 */
+          }}
+        />
       )}
     </div>
   );

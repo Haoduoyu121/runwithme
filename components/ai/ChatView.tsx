@@ -24,7 +24,6 @@ import {
   createMessage,
   newHighlightId,
   type StoredMessage,
-  type StoredHighlight,
 } from "@/lib/ai/chatStore";
 import {
   HighlightActionMenu,
@@ -32,15 +31,24 @@ import {
 } from "@/components/apps/read/HighlightOverlays";
 import { useCollection } from "@/lib/CollectionContext";
 import WorldbookPanel from "./WorldbookPanel";
+import PresetPanel from "./PresetPanel";
 import {
   loadWorldbook,
   collectTriggered,
   buildWorldbookBlock,
   type WorldbookEntry,
 } from "@/lib/ai/worldbook";
+import {
+  loadPresets,
+  getActivePresetId,
+  applyTemplate,
+  type AiPreset,
+} from "@/lib/ai/presets";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "https://api.yulewin.cn";
+
+const GLOBAL_WB_ID = "__global__";
 
 type Card = {
   id: string;
@@ -67,12 +75,24 @@ const DEMO_CARD: Card = {
     "你是一个沉浸式角色扮演引擎。严格保持角色语气，用中文回答。不要跳出角色，不要解释。回复长度适中，有画面感。",
 };
 
-function buildSystemPrompt(card: Card): string {
+const DEFAULT_SYS =
+  "你是一个沉浸式角色扮演引擎。严格保持角色语气，用中文回答。不要跳出角色，不要解释。回复长度适中，有画面感。";
+
+function buildSystemPrompt(
+  card: Card,
+  preset: AiPreset | null
+): string {
+  const vars = { char: card.name, user: "你" };
   const parts: string[] = [];
-  parts.push(
-    card.system_prompt ||
-      "你是一个沉浸式角色扮演引擎。严格保持角色语气，用中文回答。不要跳出角色，不要解释。回复长度适中，有画面感。"
-  );
+
+  if (preset?.main_prompt) {
+    parts.push(applyTemplate(preset.main_prompt, vars));
+  } else if (card.system_prompt) {
+    parts.push(card.system_prompt);
+  } else {
+    parts.push(DEFAULT_SYS);
+  }
+
   if (card.description)
     parts.push(`[角色描述]\n${card.description}`);
   if (card.personality)
@@ -80,10 +100,13 @@ function buildSystemPrompt(card: Card): string {
   if (card.scenario) parts.push(`[场景]\n${card.scenario}`);
   if (card.mes_example)
     parts.push(`[示例对话]\n${card.mes_example}`);
+
+  if (preset?.post_history)
+    parts.push(applyTemplate(preset.post_history, vars));
+
   return parts.filter(Boolean).join("\n\n");
 }
 
-/* 拿 node 在 root 内的文本 offset */
 function textOffsetIn(
   root: HTMLElement,
   node: Node,
@@ -120,7 +143,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
   );
   const [editDraft, setEditDraft] = useState("");
 
-  /* 选区 */
   const [selection, setSelection] = useState<{
     msgIndex: number;
     rect: DOMRect;
@@ -129,7 +151,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
     text: string;
   } | null>(null);
 
-  /* 笔记编辑态 */
   const [editingNote, setEditingNote] = useState<{
     msgIndex: number;
     hlId: string | null;
@@ -137,23 +158,53 @@ export default function ChatView({ cardId }: { cardId: string }) {
     initial: string;
   } | null>(null);
 
-  /* 高亮详情态 */
   const [activeHl, setActiveHl] = useState<{
     msgIndex: number;
     hlId: string;
   } | null>(null);
 
   const [toast, setToast] = useState<string | null>(null);
+
+  /* 世界书：全局 + 卡片 */
   const [showWorldbook, setShowWorldbook] = useState(false);
-  const [worldbook, setWorldbook] = useState<WorldbookEntry[]>(
-    []
-  );
+  const [globalWb, setGlobalWb] = useState<WorldbookEntry[]>([]);
+  const [cardWb, setCardWb] = useState<WorldbookEntry[]>([]);
+
+  /* 预设 */
+  const [showPreset, setShowPreset] = useState(false);
+  const [preset, setPreset] = useState<AiPreset | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
 
   const { add: addToCollection } = useCollection();
+
+  const worldbook = useMemo(
+    () => [...globalWb, ...cardWb],
+    [globalWb, cardWb]
+  );
+
+  function refreshPreset() {
+    const list = loadPresets();
+    const id = getActivePresetId();
+    setPreset(list.find((p) => p.id === id) || null);
+  }
+
+  async function refreshWorldbook() {
+    try {
+      const [g, c] = await Promise.all([
+        loadWorldbook(GLOBAL_WB_ID),
+        cardId !== GLOBAL_WB_ID
+          ? loadWorldbook(cardId)
+          : Promise.resolve([] as WorldbookEntry[]),
+      ]);
+      setGlobalWb(g);
+      setCardWb(c);
+    } catch {
+      /* ignore */
+    }
+  }
 
   /* ---------- 加载 ---------- */
 
@@ -203,12 +254,8 @@ export default function ChatView({ cardId }: { cardId: string }) {
         return;
       }
 
-            try {
-        const wb = await loadWorldbook(cardId);
-        if (!cancelled) setWorldbook(wb);
-      } catch {
-        /* ignore */
-      }
+      await refreshWorldbook();
+      if (cancelled) return;
 
       const stored = await loadChat(cardId);
       if (cancelled) return;
@@ -220,11 +267,13 @@ export default function ChatView({ cardId }: { cardId: string }) {
         ]);
       }
       setLoaded(true);
+      refreshPreset();
     })();
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardId]);
 
   /* ---------- 保存 ---------- */
@@ -282,17 +331,12 @@ export default function ChatView({ cardId }: { cardId: string }) {
     const ae = document.activeElement as HTMLElement | null;
     if (
       ae &&
-      (ae.tagName === "INPUT" ||
-        ae.tagName === "TEXTAREA")
+      (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")
     )
       return;
 
     const sel = window.getSelection();
-    if (
-      !sel ||
-      sel.rangeCount === 0 ||
-      sel.isCollapsed
-    ) {
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
       setSelection(null);
       return;
     }
@@ -340,10 +384,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
       setSelection(null);
       return;
     }
-    const text = messages[msgIndex].content.slice(
-      start,
-      end
-    );
+    const text = messages[msgIndex].content.slice(start, end);
     if (!text.trim()) {
       setSelection(null);
       return;
@@ -431,11 +472,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
       } else {
         m.highlights = (m.highlights || []).map((h) =>
           h.id === editingNote.hlId
-            ? {
-                ...h,
-                note: trimmed,
-                kind: "note" as const,
-              }
+            ? { ...h, note: trimmed, kind: "note" as const }
             : h
         );
       }
@@ -458,8 +495,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
     });
     setActiveHl(null);
   }
-
-  /* ---------- 收藏到 Collection ---------- */
 
   function handleCollect() {
     if (!activeHl || !card) return;
@@ -510,8 +545,9 @@ export default function ChatView({ cardId }: { cardId: string }) {
     const triggered = collectTriggered(worldbook, history);
     const wbBlock = buildWorldbookBlock(triggered);
     const sysContent =
-      buildSystemPrompt(c) +
+      buildSystemPrompt(c, preset) +
       (wbBlock ? "\n\n" + wbBlock : "");
+
     const sys: ChatMessage = {
       role: "system",
       content: sysContent,
@@ -524,12 +560,26 @@ export default function ChatView({ cardId }: { cardId: string }) {
       })),
     ];
 
+    const params: Record<string, unknown> = {};
+    if (preset) {
+      if (preset.temperature !== undefined)
+        params.temperature = preset.temperature;
+      if (preset.top_p !== undefined)
+        params.top_p = preset.top_p;
+      if (preset.frequency_penalty !== undefined)
+        params.frequency_penalty = preset.frequency_penalty;
+      if (preset.presence_penalty !== undefined)
+        params.presence_penalty = preset.presence_penalty;
+      if (preset.max_tokens !== undefined)
+        params.max_tokens = preset.max_tokens;
+    }
+
     const placeholder = createMessage("assistant", "");
     setMessages([...history, placeholder]);
 
     try {
       let acc = "";
-      for await (const chunk of streamChat(cfg, payload)) {
+      for await (const chunk of streamChat(cfg, payload, params)) {
         if (abortRef.current) break;
         acc += chunk;
         setMessages((prev) => {
@@ -598,7 +648,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
       copy[editingIdx] = {
         ...copy[editingIdx],
         content: trimmed,
-        /* 内容改了，高亮失效 */
         highlights: [],
       };
       return copy;
@@ -631,8 +680,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
     }
   }
 
-  /* ---------- 渲染正文（含高亮） ---------- */
-
   function renderContent(m: StoredMessage): React.ReactNode {
     if (!m.content) {
       return (
@@ -653,15 +700,12 @@ export default function ChatView({ cardId }: { cardId: string }) {
       const s = Math.max(cursor, h.start);
       const e = Math.min(m.content.length, h.end);
       if (e <= s) continue;
-      if (s > cursor)
-        out.push(m.content.slice(cursor, s));
+      if (s > cursor) out.push(m.content.slice(cursor, s));
       out.push(
         <mark
           key={`hl-${h.id}-${key++}`}
           className={
-            h.kind === "note"
-              ? "ai-hl ai-hl-note"
-              : "ai-hl"
+            h.kind === "note" ? "ai-hl ai-hl-note" : "ai-hl"
           }
           data-hl-id={h.id}
           onClick={(ev) => {
@@ -681,8 +725,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
       out.push(m.content.slice(cursor));
     return out;
   }
-
-  /* ---------- 派生 ---------- */
 
   const activeDetail = useMemo(() => {
     if (!activeHl) return null;
@@ -730,19 +772,27 @@ export default function ChatView({ cardId }: { cardId: string }) {
               {card.scenario}
             </div>
           )}
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              justifyContent: "center",
-              marginTop: 10,
-            }}
-          >
+          <div className="ai-chat-toolbar">
+            <button
+              className="ai-chat-clear"
+              onClick={() => setShowPreset(true)}
+            >
+              ⚙ 预设{preset ? `：${preset.name}` : "（默认）"}
+            </button>
             <button
               className="ai-chat-clear"
               onClick={() => setShowWorldbook(true)}
             >
-              📖 世界书（{worldbook.length}）
+              📖 世界书（
+              {globalWb.length > 0 ? `G${globalWb.length}` : ""}
+              {globalWb.length > 0 && cardWb.length > 0
+                ? "+"
+                : ""}
+              {cardWb.length > 0 ? cardWb.length : ""}
+              {globalWb.length + cardWb.length === 0
+                ? "0"
+                : ""}
+              ）
             </button>
             <button
               className="ai-chat-clear"
@@ -921,7 +971,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
         </button>
       </div>
 
-      {/* 划词菜单 */}
       {selection && (
         <HighlightActionMenu
           rect={selection.rect}
@@ -931,7 +980,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
         />
       )}
 
-      {/* 笔记编辑 */}
       {editingNote && (
         <HighlightNoteEditor
           initial={editingNote.initial}
@@ -941,7 +989,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
         />
       )}
 
-      {/* 高亮详情（AI 版） */}
       {activeDetail && (
         <div
           className="hl-note-backdrop"
@@ -1016,18 +1063,19 @@ export default function ChatView({ cardId }: { cardId: string }) {
           cardId={cardId}
           onClose={async () => {
             setShowWorldbook(false);
-            try {
-              const wb = await loadWorldbook(cardId);
-              setWorldbook(wb);
-            } catch {
-              /* ignore */
-            }
+            await refreshWorldbook();
           }}
         />
       )}
-      {toast && (
-        <div className="ai-chat-toast">{toast}</div>
+
+      {showPreset && (
+        <PresetPanel
+          onClose={() => setShowPreset(false)}
+          onChanged={refreshPreset}
+        />
       )}
+
+      {toast && <div className="ai-chat-toast">{toast}</div>}
     </div>
   );
 }
