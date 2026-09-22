@@ -148,7 +148,9 @@ export default function ReadReader({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pagesRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
-  const animRef = useRef<number | null>(null);
+
+  /* ★ 真实列宽（由 layout 计算写入） */
+  const columnWidthRef = useRef(0);
 
   const chapterIndexRef = useRef(chapterIndex);
   const pageIndexRef = useRef(pageIndex);
@@ -163,7 +165,6 @@ export default function ReadReader({
     pageCountRef.current = pageCount;
   }, [pageCount]);
 
-  /* ★ 首次挂载时读取划线上限 */
   useEffect(() => {
     setChapterLimit(loadChapterLimit());
   }, []);
@@ -212,8 +213,6 @@ export default function ReadReader({
     if (!text || !currentChapter) return "";
     return getChapterText(text, currentChapter);
   }, [text, currentChapter]);
-
-  /* ---------- 当前章节的高亮 ---------- */
 
   const chapterHighlights = useMemo(() => {
     return highlights.filter(
@@ -270,7 +269,7 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterIndex, pageIndex, session, chapterText]);
 
-  /* ---------- 24h 自主划线：打开书时判定 ---------- */
+  /* ---------- 24h 自主划线 ---------- */
 
   const autoCheckBookRef = useRef<string>("");
   useEffect(() => {
@@ -295,7 +294,7 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, currentChapter, book.id]);
 
-  /* ---------- 系统主动邀请：打开书时消费 pending ---------- */
+  /* ---------- 系统主动邀请 ---------- */
 
   const pendingCheckedRef = useRef<string>("");
   useEffect(() => {
@@ -323,7 +322,7 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, currentChapter, session, book.id]);
 
-   /* ---------- 列宽 + 页数（合并计算，锁定列数消除亚像素错位） ---------- */
+  /* ---------- 布局：多列 + 真实列宽 ---------- */
 
   useLayoutEffect(() => {
     const scroll = scrollRef.current;
@@ -334,30 +333,29 @@ export default function ReadReader({
 
     function layout() {
       if (!scroll || !pages) return;
-      const w = Math.floor(scroll.clientWidth);
+      const w = scroll.getBoundingClientRect().width;
       if (w <= 0) {
         raf = requestAnimationFrame(layout);
         return;
       }
 
-      // 步骤 1：释放锁定，让浏览器按 columnWidth 自然多列排版
+      /* 步骤 1：先释放锁定，按 columnWidth 自然排版测列数 */
+      pages.style.transition = "none";
       pages.style.width = "";
       pages.style.columnCount = "";
       pages.style.columnWidth = `${w}px`;
       pages.style.columnGap = "0px";
       pages.style.columnFill = "auto";
 
-      // 步骤 2：读一次 scrollWidth（触发重排）
       const sw1 = pages.scrollWidth;
       let count = Math.max(1, Math.ceil((sw1 - 0.5) / w));
 
-      // 步骤 3：锁定 column-count + 明确 width
-      //   每列宽 = width / count = w（消除亚像素累积误差）
+      /* 步骤 2：锁定列数 + 明确宽度，让每列宽 = w 精确 */
       pages.style.columnWidth = "";
       pages.style.columnCount = String(count);
       pages.style.width = `${count * w}px`;
 
-      // 步骤 4：若仍溢出（内容塞不下 count 列），加列重试
+      /* 步骤 3：若内容溢出，加列重试 */
       let sw2 = pages.scrollWidth;
       let guard = 0;
       while (sw2 > count * w + 1 && guard < 200) {
@@ -368,15 +366,29 @@ export default function ReadReader({
         guard++;
       }
 
+      /* 步骤 4：记录真实列宽 */
+      columnWidthRef.current = w;
       setPageCount(count);
 
-      // 步骤 5：对齐 scrollLeft 到整页
-      const cur = Math.round(scroll.scrollLeft / w);
-      const clamped = Math.max(0, Math.min(count - 1, cur));
-      const target = clamped * w;
-      if (Math.abs(scroll.scrollLeft - target) > 1) {
-        scroll.scrollLeft = target;
+      /* 步骤 5：把当前页 clamp 到有效范围，并立即定位 */
+      const clamped = Math.max(
+        0,
+        Math.min(count - 1, pageIndexRef.current)
+      );
+      if (clamped !== pageIndexRef.current) {
+        pageIndexRef.current = clamped;
+        setPageIndex(clamped);
       }
+      pages.style.transform = `translate3d(${
+        -clamped * w
+      }px, 0, 0)`;
+
+      /* 下一帧恢复过渡（避免上面这次瞬移被动画化） */
+      requestAnimationFrame(() => {
+        if (pagesRef.current) {
+          pagesRef.current.style.transition = "";
+        }
+      });
     }
 
     layout();
@@ -413,13 +425,27 @@ export default function ReadReader({
 
     let attempts = 0;
     const tryRestore = () => {
-      const scroll = scrollRef.current;
-      if (!scroll) return;
-      const w = scroll.clientWidth;
-      if (w > 0) {
-        scroll.scrollLeft = savedPage * w;
+      const pages = pagesRef.current;
+      const w = columnWidthRef.current;
+      const pc = pageCountRef.current;
+      if (pages && w > 0 && pc > 0) {
+        const clamped = Math.max(
+          0,
+          Math.min(pc - 1, savedPage)
+        );
+        pages.style.transition = "none";
+        pages.style.transform = `translate3d(${
+          -clamped * w
+        }px, 0, 0)`;
+        pageIndexRef.current = clamped;
+        setPageIndex(clamped);
+        requestAnimationFrame(() => {
+          if (pagesRef.current) {
+            pagesRef.current.style.transition = "";
+          }
+        });
         restoredRef.current = true;
-      } else if (attempts < 20) {
+      } else if (attempts < 40) {
         attempts++;
         requestAnimationFrame(tryRestore);
       }
@@ -428,17 +454,15 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ---------- 切章 ---------- */
+  /* ---------- 切章：回到第 0 页 ---------- */
 
   const prevChapterRef = useRef(chapterIndex);
   useEffect(() => {
     if (prevChapterRef.current === chapterIndex) return;
     prevChapterRef.current = chapterIndex;
-    cancelAnim();
-    const scroll = scrollRef.current;
-    if (scroll) scroll.scrollLeft = 0;
     pageIndexRef.current = 0;
     setPageIndex(0);
+    /* 实际位置由 layout 重跑后写 transform */
   }, [chapterIndex]);
 
   /* ---------- 保存进度（翻页触发） ---------- */
@@ -461,7 +485,7 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterIndex, pageIndex]);
 
-  /* ---------- 保存进度（卸载时兜底） ---------- */
+  /* ---------- 保存进度（卸载兜底） ---------- */
 
   useEffect(() => {
     return () => {
@@ -474,101 +498,47 @@ export default function ReadReader({
           updatedAt: Date.now(),
         },
       });
-      if (animRef.current !== null) {
-        cancelAnimationFrame(animRef.current);
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ---------- 动画工具 ---------- */
+  /* ---------- 翻页核心 ---------- */
 
-  function cancelAnim() {
-    if (animRef.current !== null) {
-      cancelAnimationFrame(animRef.current);
-      animRef.current = null;
-    }
+  function goToPage(index: number) {
+    const pages = pagesRef.current;
+    const w = columnWidthRef.current;
+    if (!pages || w <= 0) return;
+    const clamped = Math.max(
+      0,
+      Math.min(pageCountRef.current - 1, index)
+    );
+    pages.style.transform = `translate3d(${
+      -clamped * w
+    }px, 0, 0)`;
+    pageIndexRef.current = clamped;
+    setPageIndex(clamped);
   }
-
-  function animateTo(target: number) {
-    const scroll = scrollRef.current;
-    if (!scroll) return;
-    cancelAnim();
-    const start = scroll.scrollLeft;
-    const delta = target - start;
-    if (Math.abs(delta) < 1) {
-      scroll.scrollLeft = target;
-      return;
-    }
-    const duration = 260;
-    const t0 = performance.now();
-    function step(now: number) {
-      const el = scrollRef.current;
-      if (!el) return;
-      const p = Math.min(1, (now - t0) / duration);
-      const eased = 1 - Math.pow(1 - p, 3);
-      el.scrollLeft = start + delta * eased;
-      if (p < 1) {
-        animRef.current = requestAnimationFrame(step);
-      } else {
-        animRef.current = null;
-        const w = el.clientWidth;
-        if (w > 0) {
-          const tp = Math.round(target / w);
-          if (tp !== pageIndexRef.current) {
-            pageIndexRef.current = tp;
-            setPageIndex(tp);
-          }
-        }
-      }
-    }
-    animRef.current = requestAnimationFrame(step);
-  }
-
-  /* ---------- 滚动：只更新页码，不做任何吸附 ---------- */
-
-  function handleScroll() {
-    const scroll = scrollRef.current;
-    if (!scroll) return;
-    const w = scroll.clientWidth;
-    if (w <= 0) return;
-    const p = Math.round(scroll.scrollLeft / w);
-    if (p !== pageIndexRef.current) {
-      pageIndexRef.current = p;
-      setPageIndex(p);
-    }
-  }
-
-  /* ---------- 翻页（按钮 / 边缘点击） ---------- */
 
   function goPrevPage() {
-    const scroll = scrollRef.current;
-    if (!scroll) return;
-    const w = scroll.clientWidth;
-    if (w <= 0) return;
-    const cur = Math.round(scroll.scrollLeft / w);
+    const cur = pageIndexRef.current;
     if (cur <= 0) {
       if (chapterIndex > 0) {
         setChapterIndex(chapterIndex - 1);
       }
       return;
     }
-    animateTo((cur - 1) * w);
+    goToPage(cur - 1);
   }
 
   function goNextPage() {
-    const scroll = scrollRef.current;
-    if (!scroll) return;
-    const w = scroll.clientWidth;
-    if (w <= 0) return;
-    const cur = Math.round(scroll.scrollLeft / w);
+    const cur = pageIndexRef.current;
     if (cur >= pageCountRef.current - 1) {
       if (chapterIndex < chapters.length - 1) {
         setChapterIndex(chapterIndex + 1);
       }
       return;
     }
-    animateTo((cur + 1) * w);
+    goToPage(cur + 1);
   }
 
   /* ---------- 选区检测 ---------- */
@@ -631,18 +601,17 @@ export default function ReadReader({
     if (sel) sel.removeAllRanges();
   }
 
-  /* ---------- 原生 touch 手势：完全接管横向滚动 ---------- */
+  /* ---------- 手势：transform 翻页 ---------- */
 
   const touchStateRef = useRef<{
     startX: number;
     startY: number;
-    startScrollLeft: number;
+    startTx: number;
     startT: number;
     moved: boolean;
     lockDir: "h" | "v" | null;
   } | null>(null);
 
-  /* 用 ref 引用最新的回调，避免 useEffect 频繁重挂 */
   const goPrevRef = useRef(goPrevPage);
   const goNextRef = useRef(goNextPage);
   const checkSelectionRef = useRef(checkSelection);
@@ -664,26 +633,19 @@ export default function ReadReader({
         touchStateRef.current = null;
         return;
       }
-      const sc = scrollRef.current;
-      if (!sc) return;
+      const pages = pagesRef.current;
+      if (!pages) return;
+      const w = columnWidthRef.current;
+      if (w <= 0) return;
       const t = e.touches[0];
 
-      cancelAnim();
-
-      /* 若卡在两页之间，立即吸附到最近页，给手势一个干净起点 */
-      const w = sc.clientWidth;
-      if (w > 0) {
-        const nearest = Math.round(sc.scrollLeft / w);
-        const targetLeft = nearest * w;
-        if (Math.abs(sc.scrollLeft - targetLeft) > 1) {
-          sc.scrollLeft = targetLeft;
-        }
-      }
+      pages.style.transition = "none";
+      const startTx = -pageIndexRef.current * w;
 
       touchStateRef.current = {
         startX: t.clientX,
         startY: t.clientY,
-        startScrollLeft: sc.scrollLeft,
+        startTx,
         startT: Date.now(),
         moved: false,
         lockDir: null,
@@ -694,8 +656,8 @@ export default function ReadReader({
       const state = touchStateRef.current;
       if (!state) return;
       if (e.touches.length !== 1) return;
-      const sc = scrollRef.current;
-      if (!sc) return;
+      const pages = pagesRef.current;
+      if (!pages) return;
       const t = e.touches[0];
       const dx = t.clientX - state.startX;
       const dy = t.clientY - state.startY;
@@ -708,30 +670,33 @@ export default function ReadReader({
       if (state.lockDir === "v") return;
 
       state.moved = true;
-      sc.scrollLeft = state.startScrollLeft - dx;
+      pages.style.transform = `translate3d(${
+        state.startTx + dx
+      }px, 0, 0)`;
     }
 
     function onTouchEnd(e: TouchEvent) {
       const state = touchStateRef.current;
       touchStateRef.current = null;
-      if (!state) return;
-      const sc = scrollRef.current;
-      if (!sc) return;
-      const w = sc.clientWidth;
+      const pages = pagesRef.current;
+      if (!state || !pages) return;
+      const w = columnWidthRef.current;
       if (w <= 0) return;
 
+      /* 恢复 CSS 过渡，让后续 goToPage 动画生效 */
+      pages.style.transition = "";
+
       const t = e.changedTouches[0];
-      const dx = state.startX - t.clientX; /* 正 = 手指向左滑 */
-      const dy = state.startY - t.clientY;
+      const dx = t.clientX - state.startX;
+      const dy = t.clientY - state.startY;
       const dt = Math.max(1, Date.now() - state.startT);
 
-      /* 文本选区兜底（长按高亮） */
       window.setTimeout(
         () => checkSelectionRef.current(),
         30
       );
 
-      /* 轻触 → 点击翻页 / 切 UI */
+      /* 轻触判定 */
       if (
         !state.moved &&
         Math.abs(dx) < 10 &&
@@ -740,29 +705,42 @@ export default function ReadReader({
       ) {
         const w2 = window.innerWidth;
         const x = t.clientX;
-        if (x < 40) return; /* iOS 左边缘返回手势区 */
-        if (x < w2 * 0.28) goPrevRef.current();
-        else if (x > w2 * 0.72) goNextRef.current();
-        else setChromeVisible((v) => !v);
+        if (x < 40) {
+          goToPage(pageIndexRef.current);
+          return;
+        }
+        if (x < w2 * 0.28) {
+          goPrevRef.current();
+        } else if (x > w2 * 0.72) {
+          goNextRef.current();
+        } else {
+          setChromeVisible((v) => !v);
+          goToPage(pageIndexRef.current);
+        }
         return;
       }
 
-      if (!state.moved) return;
+      if (!state.moved) {
+        goToPage(pageIndexRef.current);
+        return;
+      }
 
-      /* 滑动 → 判定翻页或回弹 */
-      const v = dx / dt; /* 正 = 向左快速滑 */
-      const startPage = state.startScrollLeft / w;
-      const nearest = Math.round(startPage);
+      /* 滑动判定：dx > 0 手指向右 = 上一页；dx < 0 = 下一页 */
+      const startPage = Math.round(-state.startTx / w);
       const threshold = w * 0.18;
-      let targetPage = nearest;
-      if (Math.abs(dx) > threshold || Math.abs(v) > 0.4) {
-        targetPage = nearest + (dx > 0 ? 1 : -1);
+      const v = dx / dt;
+      let targetPage = startPage;
+      if (
+        Math.abs(dx) > threshold ||
+        Math.abs(v) > 0.4
+      ) {
+        targetPage = startPage + (dx > 0 ? -1 : 1);
       }
       targetPage = Math.max(
         0,
         Math.min(pageCountRef.current - 1, targetPage)
       );
-      animateTo(targetPage * w);
+      goToPage(targetPage);
     }
 
     scroll.addEventListener("touchstart", onTouchStart, {
@@ -874,19 +852,7 @@ export default function ReadReader({
   ) {
     setChapterIndex(ci);
     requestAnimationFrame(() => {
-      const scroll = scrollRef.current;
-      const body = bodyRef.current;
-      if (!scroll || !body) return;
-      const w = scroll.clientWidth;
-      if (w <= 0) return;
-      const mark = body.querySelector(
-        `mark[data-hl-id]`
-      ) as HTMLElement | null;
-      if (!mark) {
-        scroll.scrollLeft = 0;
-        return;
-      }
-      scroll.scrollLeft = 0;
+      goToPage(0);
     });
   }
 
@@ -1047,7 +1013,6 @@ export default function ReadReader({
         <div
           ref={scrollRef}
           className="read-reader-scroll-h"
-          onScroll={handleScroll}
         >
           <div
             ref={pagesRef}

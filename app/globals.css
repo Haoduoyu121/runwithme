@@ -63310,3 +63310,19 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
 .read-reader .read-reader-pages {
   column-fill: auto;
 }
+/* ============================================================
+   Read 翻页 transform 化（2026-09-22）
+   - 彻底放弃 scrollLeft，改用 transform 位移，消除亚像素吸附
+   ============================================================ */
+.read-reader .read-reader-scroll-h {
+  overflow: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  position: relative;
+}
+
+.read-reader .read-reader-pages {
+  transition: transform 260ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+  column-fill: auto;
+}
