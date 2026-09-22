@@ -63441,3 +63441,86 @@ html[data-runwithme-theme="dark"] .read-reader .read-page-flip {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ============================================================
+   Read 3D 翻页 — 光影加强（2026-09-22）
+   ============================================================ */
+
+/* 翻转页上的受光渐变：折痕处（左侧）最暗，向右逐渐变亮 */
+.read-reader .read-page-flip-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.52) 0%,
+    rgba(0, 0, 0, 0.3) 18%,
+    rgba(0, 0, 0, 0.12) 45%,
+    rgba(0, 0, 0, 0.03) 72%,
+    transparent 92%
+  );
+}
+
+/* 折痕处的细高光线，模拟纸张边缘反光 */
+.read-reader .read-page-flip-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1.5px;
+  z-index: 11;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0)
+  );
+}
+
+/* 底层页上的翻转页投影：从左边缘向右递减 */
+.read-reader .read-page-under-shadow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.34) 3%,
+    rgba(0, 0, 0, 0.16) 9%,
+    rgba(0, 0, 0, 0.05) 18%,
+    transparent 34%
+  );
+}
+
+/* 深色主题下阴影加深 */
+html[data-runwithme-theme="dark"] .read-reader .read-page-flip-shade {
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.7) 0%,
+    rgba(0, 0, 0, 0.42) 18%,
+    rgba(0, 0, 0, 0.18) 45%,
+    rgba(0, 0, 0, 0.05) 72%,
+    transparent 92%
+  );
+}
+
+html[data-runwithme-theme="dark"] .read-reader .read-page-under-shadow {
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.48) 3%,
+    rgba(0, 0, 0, 0.22) 9%,
+    rgba(0, 0, 0, 0.06) 18%,
+    transparent 34%
+  );
+}
+
+html[data-runwithme-theme="dark"] .read-reader .read-page-flip-edge {
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.28),
+    rgba(255, 255, 255, 0)
+  );
+}

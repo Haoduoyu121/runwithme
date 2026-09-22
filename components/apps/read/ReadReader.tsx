@@ -992,6 +992,10 @@ export default function ReadReader({
     }
   }
 
+    const flipProgress = flip
+    ? Math.min(1, Math.abs(flip.angle) / 90)
+    : 0;
+
   return (
     <div className="read-reader" data-bg={settings.background}>
       <div
@@ -1008,15 +1012,29 @@ export default function ReadReader({
           <div className="read-stage">
             <div className="read-page read-page-under">
               {renderPage(underIdx, !flip)}
+              {flip && (
+                <div
+                  className="read-page-under-shadow"
+                  style={{ opacity: flipProgress }}
+                />
+              )}
             </div>
             {flip && (
               <div
                 className="read-page read-page-flip"
                 style={{
                   transform: `rotateY(${flip.angle}deg)`,
+                  boxShadow: `-${flipProgress * 22}px 0 ${
+                    flipProgress * 40
+                  }px rgba(0, 0, 0, ${flipProgress * 0.28})`,
                 }}
               >
                 {renderPage(flip.from, false)}
+                <div
+                  className="read-page-flip-shade"
+                  style={{ opacity: flipProgress }}
+                />
+                <div className="read-page-flip-edge" />
               </div>
             )}
           </div>
