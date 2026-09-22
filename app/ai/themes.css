@@ -640,3 +640,49 @@
   margin: 0 auto 10px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 }
+
+/* ---------- AI 高亮 ---------- */
+.ai-msg-text .ai-hl {
+  background: color-mix(in srgb, var(--ai-accent) 28%, transparent);
+  border-radius: 3px;
+  padding: 0 1px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ai-msg-text .ai-hl:hover {
+  background: color-mix(in srgb, var(--ai-accent) 45%, transparent);
+}
+
+.ai-msg-text .ai-hl-note {
+  background: color-mix(in srgb, var(--ai-accent) 20%, transparent);
+  border-bottom: 1px dashed
+    color-mix(in srgb, var(--ai-accent) 70%, transparent);
+}
+
+/* ---------- Toast ---------- */
+.ai-chat-toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  z-index: 200;
+  pointer-events: none;
+  animation: ai-toast-in 0.25s ease;
+}
+
+@keyframes ai-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

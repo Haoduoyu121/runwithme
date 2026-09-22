@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Send,
   Sparkles,
@@ -10,6 +10,7 @@ import {
   Trash2,
   X,
   Check,
+  BookmarkPlus,
 } from "lucide-react";
 import {
   loadConfig,
@@ -20,8 +21,16 @@ import {
   loadChat,
   saveChat,
   deleteChat,
+  createMessage,
+  newHighlightId,
   type StoredMessage,
+  type StoredHighlight,
 } from "@/lib/ai/chatStore";
+import {
+  HighlightActionMenu,
+  HighlightNoteEditor,
+} from "@/components/apps/read/HighlightOverlays";
+import { useCollection } from "@/lib/CollectionContext";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "https://api.yulewin.cn";
@@ -53,12 +62,10 @@ const DEMO_CARD: Card = {
 
 function buildSystemPrompt(card: Card): string {
   const parts: string[] = [];
-  if (card.system_prompt)
-    parts.push(card.system_prompt);
-  else
-    parts.push(
+  parts.push(
+    card.system_prompt ||
       "你是一个沉浸式角色扮演引擎。严格保持角色语气，用中文回答。不要跳出角色，不要解释。回复长度适中，有画面感。"
-    );
+  );
   if (card.description)
     parts.push(`[角色描述]\n${card.description}`);
   if (card.personality)
@@ -67,6 +74,27 @@ function buildSystemPrompt(card: Card): string {
   if (card.mes_example)
     parts.push(`[示例对话]\n${card.mes_example}`);
   return parts.filter(Boolean).join("\n\n");
+}
+
+/* 拿 node 在 root 内的文本 offset */
+function textOffsetIn(
+  root: HTMLElement,
+  node: Node,
+  offsetInNode: number
+): number {
+  let total = 0;
+  const walker = document.createTreeWalker(
+    root,
+    NodeFilter.SHOW_TEXT,
+    null
+  );
+  let cur: Node | null = walker.nextNode();
+  while (cur) {
+    if (cur === node) return total + offsetInNode;
+    total += cur.textContent?.length ?? 0;
+    cur = walker.nextNode();
+  }
+  return -1;
 }
 
 export default function ChatView({ cardId }: { cardId: string }) {
@@ -85,11 +113,38 @@ export default function ChatView({ cardId }: { cardId: string }) {
   );
   const [editDraft, setEditDraft] = useState("");
 
+  /* 选区 */
+  const [selection, setSelection] = useState<{
+    msgIndex: number;
+    rect: DOMRect;
+    start: number;
+    end: number;
+    text: string;
+  } | null>(null);
+
+  /* 笔记编辑态 */
+  const [editingNote, setEditingNote] = useState<{
+    msgIndex: number;
+    hlId: string | null;
+    quote: string;
+    initial: string;
+  } | null>(null);
+
+  /* 高亮详情态 */
+  const [activeHl, setActiveHl] = useState<{
+    msgIndex: number;
+    hlId: string;
+  } | null>(null);
+
+  const [toast, setToast] = useState<string | null>(null);
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
 
-  /* ---------- 加载卡片 + 历史 ---------- */
+  const { add: addToCollection } = useCollection();
+
+  /* ---------- 加载 ---------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -143,10 +198,8 @@ export default function ChatView({ cardId }: { cardId: string }) {
         setMessages(stored);
       } else if (c.first_mes) {
         setMessages([
-          { role: "assistant", content: c.first_mes },
+          createMessage("assistant", c.first_mes),
         ]);
-      } else {
-        setMessages([]);
       }
       setLoaded(true);
     })();
@@ -192,6 +245,233 @@ export default function ChatView({ cardId }: { cardId: string }) {
     }
   }, [openMenuIdx]);
 
+  /* ---------- 选区检测 ---------- */
+
+  useEffect(() => {
+    function check() {
+      window.setTimeout(checkSelection, 50);
+    }
+    document.addEventListener("pointerup", check);
+    document.addEventListener("touchend", check);
+    return () => {
+      document.removeEventListener("pointerup", check);
+      document.removeEventListener("touchend", check);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
+  function checkSelection() {
+    const ae = document.activeElement as HTMLElement | null;
+    if (
+      ae &&
+      (ae.tagName === "INPUT" ||
+        ae.tagName === "TEXTAREA")
+    )
+      return;
+
+    const sel = window.getSelection();
+    if (
+      !sel ||
+      sel.rangeCount === 0 ||
+      sel.isCollapsed
+    ) {
+      setSelection(null);
+      return;
+    }
+
+    const range = sel.getRangeAt(0);
+
+    let node: Node | null = range.commonAncestorContainer;
+    let host: HTMLElement | null = null;
+    while (node) {
+      if (
+        node instanceof HTMLElement &&
+        node.dataset &&
+        node.dataset.msgId
+      ) {
+        host = node;
+        break;
+      }
+      node = node.parentNode;
+    }
+    if (!host) {
+      setSelection(null);
+      return;
+    }
+
+    const msgId = host.dataset.msgId!;
+    const msgIndex = messages.findIndex(
+      (m) => m.id === msgId
+    );
+    if (msgIndex < 0) {
+      setSelection(null);
+      return;
+    }
+
+    const start = textOffsetIn(
+      host,
+      range.startContainer,
+      range.startOffset
+    );
+    const end = textOffsetIn(
+      host,
+      range.endContainer,
+      range.endOffset
+    );
+    if (start < 0 || end <= start) {
+      setSelection(null);
+      return;
+    }
+    const text = messages[msgIndex].content.slice(
+      start,
+      end
+    );
+    if (!text.trim()) {
+      setSelection(null);
+      return;
+    }
+
+    setSelection({
+      msgIndex,
+      rect: range.getBoundingClientRect(),
+      start,
+      end,
+      text,
+    });
+  }
+
+  function closeSelection() {
+    setSelection(null);
+    const s = window.getSelection();
+    if (s) s.removeAllRanges();
+  }
+
+  function handleCreateHighlight() {
+    if (!selection) return;
+    const { msgIndex, start, end, text } = selection;
+    setMessages((prev) => {
+      const copy = [...prev];
+      const m = { ...copy[msgIndex] };
+      m.highlights = [
+        ...(m.highlights || []),
+        {
+          id: newHighlightId(),
+          start,
+          end,
+          text,
+          kind: "highlight" as const,
+          createdAt: Date.now(),
+        },
+      ];
+      copy[msgIndex] = m;
+      return copy;
+    });
+    closeSelection();
+  }
+
+  function handleCreateNote() {
+    if (!selection) return;
+    const { msgIndex, start, end, text } = selection;
+    const id = newHighlightId();
+    setMessages((prev) => {
+      const copy = [...prev];
+      const m = { ...copy[msgIndex] };
+      m.highlights = [
+        ...(m.highlights || []),
+        {
+          id,
+          start,
+          end,
+          text,
+          kind: "note" as const,
+          note: "",
+          createdAt: Date.now(),
+        },
+      ];
+      copy[msgIndex] = m;
+      return copy;
+    });
+    setEditingNote({
+      msgIndex,
+      hlId: id,
+      quote: text,
+      initial: "",
+    });
+    closeSelection();
+  }
+
+  function handleSaveNote(text: string) {
+    if (!editingNote) return;
+    const trimmed = text.trim();
+    setMessages((prev) => {
+      const copy = [...prev];
+      const m = { ...copy[editingNote.msgIndex] };
+      if (!trimmed) {
+        m.highlights = (m.highlights || []).filter(
+          (h) => h.id !== editingNote.hlId
+        );
+      } else {
+        m.highlights = (m.highlights || []).map((h) =>
+          h.id === editingNote.hlId
+            ? {
+                ...h,
+                note: trimmed,
+                kind: "note" as const,
+              }
+            : h
+        );
+      }
+      copy[editingNote.msgIndex] = m;
+      return copy;
+    });
+    setEditingNote(null);
+  }
+
+  function handleDeleteHighlight() {
+    if (!activeHl) return;
+    setMessages((prev) => {
+      const copy = [...prev];
+      const m = { ...copy[activeHl.msgIndex] };
+      m.highlights = (m.highlights || []).filter(
+        (h) => h.id !== activeHl.hlId
+      );
+      copy[activeHl.msgIndex] = m;
+      return copy;
+    });
+    setActiveHl(null);
+  }
+
+  /* ---------- 收藏到 Collection ---------- */
+
+  function handleCollect() {
+    if (!activeHl || !card) return;
+    const m = messages[activeHl.msgIndex];
+    const h = (m?.highlights || []).find(
+      (x) => x.id === activeHl.hlId
+    );
+    if (!h) return;
+
+    addToCollection({
+      owner: "levi",
+      source: "read",
+      sourceId: `ai:${cardId}:${h.id}`,
+      content: h.text,
+      note: h.note || "",
+      sender: null,
+      originalAt: h.createdAt,
+      meta: {
+        from: "ai",
+        cardId,
+        cardName: card.name,
+        msgIndex: activeHl.msgIndex,
+      },
+    });
+
+    setToast("已收藏到 Collection");
+    window.setTimeout(() => setToast(null), 2400);
+    setActiveHl(null);
+  }
+
   /* ---------- 流式 ---------- */
 
   async function runStream(
@@ -213,12 +493,16 @@ export default function ChatView({ cardId }: { cardId: string }) {
       role: "system",
       content: buildSystemPrompt(c),
     };
-    const payload = [sys, ...history];
+    const payload: ChatMessage[] = [
+      sys,
+      ...history.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    ];
 
-    setMessages([
-      ...history,
-      { role: "assistant", content: "" },
-    ]);
+    const placeholder = createMessage("assistant", "");
+    setMessages([...history, placeholder]);
 
     try {
       let acc = "";
@@ -228,7 +512,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
         setMessages((prev) => {
           const copy = [...prev];
           copy[copy.length - 1] = {
-            role: "assistant",
+            ...copy[copy.length - 1],
             content: acc,
           };
           return copy;
@@ -251,10 +535,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
 
   async function send() {
     if (!card || !input.trim() || streaming) return;
-    const userMsg: StoredMessage = {
-      role: "user",
-      content: input.trim(),
-    };
+    const userMsg = createMessage("user", input.trim());
     const next = [...messages, userMsg];
     setInput("");
     setOpenMenuIdx(null);
@@ -294,6 +575,8 @@ export default function ChatView({ cardId }: { cardId: string }) {
       copy[editingIdx] = {
         ...copy[editingIdx],
         content: trimmed,
+        /* 内容改了，高亮失效 */
+        highlights: [],
       };
       return copy;
     });
@@ -319,13 +602,75 @@ export default function ChatView({ cardId }: { cardId: string }) {
     if (card) {
       setMessages(
         card.first_mes
-          ? [{ role: "assistant", content: card.first_mes }]
+          ? [createMessage("assistant", card.first_mes)]
           : []
       );
     }
   }
 
-  /* ---------- 渲染 ---------- */
+  /* ---------- 渲染正文（含高亮） ---------- */
+
+  function renderContent(m: StoredMessage): React.ReactNode {
+    if (!m.content) {
+      return (
+        <span className="ai-msg-typing">
+          <Sparkles size={13} strokeWidth={2} /> 正在思考…
+        </span>
+      );
+    }
+    const hls = (m.highlights || [])
+      .slice()
+      .sort((a, b) => a.start - b.start);
+    if (hls.length === 0) return m.content;
+
+    const out: React.ReactNode[] = [];
+    let cursor = 0;
+    let key = 0;
+    for (const h of hls) {
+      const s = Math.max(cursor, h.start);
+      const e = Math.min(m.content.length, h.end);
+      if (e <= s) continue;
+      if (s > cursor)
+        out.push(m.content.slice(cursor, s));
+      out.push(
+        <mark
+          key={`hl-${h.id}-${key++}`}
+          className={
+            h.kind === "note"
+              ? "ai-hl ai-hl-note"
+              : "ai-hl"
+          }
+          data-hl-id={h.id}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            setActiveHl({
+              msgIndex: messages.indexOf(m),
+              hlId: h.id,
+            });
+          }}
+        >
+          {m.content.slice(s, e)}
+        </mark>
+      );
+      cursor = e;
+    }
+    if (cursor < m.content.length)
+      out.push(m.content.slice(cursor));
+    return out;
+  }
+
+  /* ---------- 派生 ---------- */
+
+  const activeDetail = useMemo(() => {
+    if (!activeHl) return null;
+    const m = messages[activeHl.msgIndex];
+    if (!m) return null;
+    const h = (m.highlights || []).find(
+      (x) => x.id === activeHl.hlId
+    );
+    if (!h) return null;
+    return { ...h, msgIndex: activeHl.msgIndex };
+  }, [activeHl, messages]);
 
   if (!card) {
     return (
@@ -378,7 +723,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
 
           return (
             <div
-              key={i}
+              key={m.id}
               className={
                 isUser
                   ? "ai-msg ai-msg-user"
@@ -440,16 +785,11 @@ export default function ChatView({ cardId }: { cardId: string }) {
                   </div>
                 ) : (
                   <>
-                    <div className="ai-msg-text">
-                      {m.content || (
-                        <span className="ai-msg-typing">
-                          <Sparkles
-                            size={13}
-                            strokeWidth={2}
-                          />{" "}
-                          正在思考…
-                        </span>
-                      )}
+                    <div
+                      className="ai-msg-text"
+                      data-msg-id={m.id}
+                    >
+                      {renderContent(m)}
                     </div>
 
                     {!streaming && m.content && (
@@ -542,6 +882,100 @@ export default function ChatView({ cardId }: { cardId: string }) {
           <Send size={16} strokeWidth={2.2} />
         </button>
       </div>
+
+      {/* 划词菜单 */}
+      {selection && (
+        <HighlightActionMenu
+          rect={selection.rect}
+          onHighlight={handleCreateHighlight}
+          onNote={handleCreateNote}
+          onClose={closeSelection}
+        />
+      )}
+
+      {/* 笔记编辑 */}
+      {editingNote && (
+        <HighlightNoteEditor
+          initial={editingNote.initial}
+          quote={editingNote.quote}
+          onSave={handleSaveNote}
+          onCancel={() => setEditingNote(null)}
+        />
+      )}
+
+      {/* 高亮详情（AI 版） */}
+      {activeDetail && (
+        <div
+          className="hl-note-backdrop"
+          onClick={() => setActiveHl(null)}
+        >
+          <div
+            className="hl-note-sheet"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="hl-note-header">
+              <h3>
+                {activeDetail.kind === "note"
+                  ? "笔记"
+                  : "高亮"}
+              </h3>
+              <button
+                onClick={() => setActiveHl(null)}
+                aria-label="关闭"
+              >
+                <X size={15} strokeWidth={2.2} />
+              </button>
+            </div>
+            <div className="hl-note-quote hl-note-quote-full">
+              {activeDetail.text}
+            </div>
+            {activeDetail.note && (
+              <div className="hl-detail-note">
+                {activeDetail.note}
+              </div>
+            )}
+            <div className="hl-note-footer">
+              <button
+                className="hl-note-btn danger"
+                onClick={handleDeleteHighlight}
+              >
+                <Trash2 size={13} strokeWidth={2.4} />
+                删除
+              </button>
+              <button
+                className="hl-note-btn"
+                onClick={() => {
+                  setEditingNote({
+                    msgIndex: activeDetail.msgIndex,
+                    hlId: activeDetail.id,
+                    quote: activeDetail.text,
+                    initial: activeDetail.note || "",
+                  });
+                  setActiveHl(null);
+                }}
+              >
+                {activeDetail.note ? "改笔记" : "写笔记"}
+              </button>
+              <button
+                className="hl-note-btn"
+                onClick={handleCollect}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <BookmarkPlus size={13} strokeWidth={2.4} />
+                收藏
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="ai-chat-toast">{toast}</div>
+      )}
     </div>
   );
 }
