@@ -63530,3 +63530,21 @@ html[data-runwithme-theme="dark"] .read-reader .read-page-flip-edge {
   transform: translateZ(0);
   will-change: transform;
 }
+
+/* ============================================================
+   Read 3D 舞台高度兜底（2026-09-22）
+   确保 stage-wrap 从父级拿到高度，分页器才能启动
+   ============================================================ */
+.read-reader .read-reader-pad {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.read-reader .read-reader-stage-wrap {
+  flex: 1 1 0%;
+  min-height: 0;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
