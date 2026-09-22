@@ -907,6 +907,78 @@ export default function ChatSettingsPanel({
             </div>
           </section>
 
+          {/* 我的表情包 */}
+          <section className="chat-settings-section">
+            <div className="chat-settings-section-title">
+              我的表情包
+            </div>
+            <div className="chat-settings-stickers">
+              <div className="chat-settings-stickers-actions">
+                <label className="chat-settings-btn">
+                  ＋ 添加表情
+                  <input
+                    type="file"
+                    className="ios-file-input"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file =
+                        event.target.files?.[0];
+                      if (file) void addSticker(file);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+                <span className="chat-settings-stickers-count">
+                  共 {stickers.length} 个
+                </span>
+              </div>
+
+              {stickers.length === 0 ? (
+                <div className="chat-settings-stickers-empty">
+                  还没有表情包，点上面按钮添加
+                </div>
+              ) : (
+                <div className="chat-settings-stickers-grid">
+                  {stickers.map((s) => {
+                    const url = stickerUrls[s.id];
+                    return (
+                      <div
+                        key={s.id}
+                        className={`chat-settings-sticker${
+                          s.enabled ? "" : " is-disabled"
+                        }`}
+                      >
+                        <div className="chat-settings-sticker-thumb">
+                          {url ? (
+                            <img src={url} alt="表情" />
+                          ) : (
+                            <span>…</span>
+                          )}
+                        </div>
+                        <div className="chat-settings-sticker-btns">
+                          <button
+                            onClick={() =>
+                              toggleStickerEnabled(s.id)
+                            }
+                          >
+                            {s.enabled ? "停用" : "启用"}
+                          </button>
+                          <button
+                            className="danger"
+                            onClick={() =>
+                              void removeSticker(s.id)
+                            }
+                          >
+                            删除
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* 消息通知 */}
           <section className="chat-settings-section">

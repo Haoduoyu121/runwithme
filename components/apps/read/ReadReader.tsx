@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -39,10 +40,6 @@ import {
   updateHighlight,
   type Highlight,
 } from "@/lib/readHighlights";
-import {
-  paginateChapter,
-  type PageRange,
-} from "@/lib/readPaginator";
 
 import {
   HighlightActionMenu,
@@ -89,9 +86,6 @@ const BACKGROUNDS: {
   { id: "night", label: "夜间" },
 ];
 
-/* 翻页动画时长 */
-const FLIP_DURATION = 300;
-
 export default function ReadReader({
   book,
   onExit,
@@ -104,7 +98,7 @@ export default function ReadReader({
   const [pageIndex, setPageIndex] = useState(
     book.progress.pageIndex ?? 0
   );
-  const [pages, setPages] = useState<PageRange[]>([]);
+  const [pageCount, setPageCount] = useState(1);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [showToc, setShowToc] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -129,7 +123,7 @@ export default function ReadReader({
   const [showInvite, setShowInvite] = useState(false);
   const [chapterLimit, setChapterLimit] = useState(3);
   const [toast, setToast] = useState<string | null>(null);
-  const avatars = useCharacterAvatars();
+    const avatars = useCharacterAvatars();
 
   /* 选中态 */
   const [selection, setSelection] = useState<{
@@ -151,39 +145,25 @@ export default function ReadReader({
   const [activeHighlightId, setActiveHighlightId] =
     useState<string | null>(null);
 
-  /* ★ 翻页动画状态 */
-  const [flip, setFlip] = useState<{
-    dir: "next" | "prev";
-    /** 正在翻转的源页码 */
-    from: number;
-    /** 当前角度：0 = 未翻起；-180 = 完全翻到左侧 */
-    angle: number;
-  } | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollEndTimerRef = useRef<number | null>(null);
+  const pagesRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
-  const stageWrapRef = useRef<HTMLDivElement | null>(null);
-  const activeBodyRef = useRef<HTMLDivElement | null>(null);
-  const flipAnimRef = useRef<number | null>(null);
-  const flipRef = useRef(flip);
-  flipRef.current = flip;
-
+  const chapterIndexRef = useRef(chapterIndex);
   const pageIndexRef = useRef(pageIndex);
+  useEffect(() => {
+    chapterIndexRef.current = chapterIndex;
+  }, [chapterIndex]);
   useEffect(() => {
     pageIndexRef.current = pageIndex;
   }, [pageIndex]);
 
-  const pagesRef = useRef<PageRange[]>([]);
-  useEffect(() => {
-    pagesRef.current = pages;
-  }, [pages]);
-
-  const chapterIndexRef = useRef(chapterIndex);
-  useEffect(() => {
-    chapterIndexRef.current = chapterIndex;
-  }, [chapterIndex]);
-
+  /* ★ 首次挂载时读取划线上限 */
   useEffect(() => {
     setChapterLimit(loadChapterLimit());
   }, []);
+
 
   /* ---------- 加载正文 ---------- */
 
@@ -230,72 +210,13 @@ export default function ReadReader({
     return getChapterText(text, currentChapter);
   }, [text, currentChapter]);
 
+  /* ---------- 当前章节的高亮 ---------- */
+
   const chapterHighlights = useMemo(() => {
     return highlights.filter(
       (h) => h.chapterIndex === chapterIndex
     );
   }, [highlights, chapterIndex]);
-
-  /* ---------- 分页 ---------- */
-
-  useEffect(() => {
-    if (!chapterText) {
-      setPages([]);
-      return;
-    }
-    const wrap = stageWrapRef.current;
-    if (!wrap) return;
-
-    // 等一帧拿到稳定尺寸
-    let raf = 0;
-    const run = () => {
-      const w = wrap.clientWidth;
-      const h = wrap.clientHeight;
-      if (w <= 0 || h <= 0) {
-        raf = requestAnimationFrame(run);
-        return;
-      }
-      const fontFamily =
-        settings.fontFamily === "serif"
-          ? '"Songti SC", "Noto Serif SC", Georgia, serif'
-          : '-apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif';
-      const ranges = paginateChapter({
-        text: chapterText,
-        width: w,
-        height: h,
-        fontSize: settings.fontSize,
-        lineHeight: settings.lineHeight,
-        fontFamily,
-        title: currentChapter?.title ?? "",
-      });
-      setPages(ranges);
-      // 页码 clamp
-      setPageIndex((prev) =>
-        Math.max(0, Math.min(ranges.length - 1, prev))
-      );
-    };
-    raf = requestAnimationFrame(run);
-
-    const ro = new ResizeObserver(() => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(run);
-    });
-    ro.observe(wrap);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    chapterText,
-    settings.fontSize,
-    settings.lineHeight,
-    settings.fontFamily,
-    currentChapter?.title,
-  ]);
-
-  const pageCount = pages.length;
 
   /* ---------- 一起读：翻页掷骰子 ---------- */
 
@@ -346,7 +267,7 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterIndex, pageIndex, session, chapterText]);
 
-  /* ---------- 24h 自主划线 ---------- */
+  /* ---------- 24h 自主划线：打开书时判定 ---------- */
 
   const autoCheckBookRef = useRef<string>("");
   useEffect(() => {
@@ -371,7 +292,7 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, currentChapter, book.id]);
 
-  /* ---------- 系统主动邀请 ---------- */
+    /* ---------- 系统主动邀请：打开书时消费 pending ---------- */
 
   const pendingCheckedRef = useRef<string>("");
   useEffect(() => {
@@ -399,17 +320,108 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, currentChapter, session, book.id]);
 
-  /* ---------- 切章：页码归 0 ---------- */
+  /* ---------- 设置列宽 ---------- */
+
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    const pages = pagesRef.current;
+    if (!scroll || !pages) return;
+
+    function apply() {
+      if (!scroll || !pages) return;
+      const w = scroll.clientWidth;
+      if (w <= 0) return;
+      pages.style.columnWidth = `${w}px`;
+      pages.style.columnGap = "0px";
+    }
+
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(scroll);
+    return () => ro.disconnect();
+  }, [
+    chapterText,
+    settings.fontSize,
+    settings.lineHeight,
+    settings.fontFamily,
+    chapterHighlights.length,
+  ]);
+
+  /* ---------- 测量页数 ---------- */
+
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+
+    let raf = 0;
+    const measure = () => {
+      if (!scroll) return;
+      const w = scroll.clientWidth;
+      if (w <= 0) {
+        raf = requestAnimationFrame(measure);
+        return;
+      }
+      const sw = scroll.scrollWidth;
+      const n = Math.max(1, Math.round(sw / w));
+      setPageCount(n);
+    };
+    raf = requestAnimationFrame(measure);
+
+    return () => cancelAnimationFrame(raf);
+  }, [
+    chapterText,
+    settings.fontSize,
+    settings.lineHeight,
+    settings.fontFamily,
+    chapterHighlights.length,
+  ]);
+
+  /* ---------- 恢复进度 ---------- */
+
+  const restoredRef = useRef(false);
+  useLayoutEffect(() => {
+    if (restoredRef.current) return;
+
+    const savedPage = book.progress.pageIndex ?? 0;
+    if (savedPage <= 0) {
+      restoredRef.current = true;
+      return;
+    }
+
+    let attempts = 0;
+    const tryRestore = () => {
+      const scroll = scrollRef.current;
+      if (!scroll) return;
+      const w = scroll.clientWidth;
+      if (w > 0) {
+        scroll.scrollLeft = savedPage * w;
+        restoredRef.current = true;
+      } else if (attempts < 20) {
+        attempts++;
+        requestAnimationFrame(tryRestore);
+      }
+    };
+    requestAnimationFrame(tryRestore);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ---------- 切章 ---------- */
 
   const prevChapterRef = useRef(chapterIndex);
-  useEffect(() => {
+   useEffect(() => {
     if (prevChapterRef.current === chapterIndex) return;
     prevChapterRef.current = chapterIndex;
-    setPageIndex(0);
+    const scroll = scrollRef.current;
+    if (scroll) scroll.scrollLeft = 0;
     pageIndexRef.current = 0;
+    setPageIndex(0);
+    if (scrollEndTimerRef.current !== null) {
+      window.clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = null;
+    }
   }, [chapterIndex]);
 
-  /* ---------- 保存进度（翻页触发） ---------- */
+   /* ---------- 保存进度（翻页触发） ---------- */
 
   const savedOnceRef = useRef(false);
   useEffect(() => {
@@ -429,7 +441,7 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterIndex, pageIndex]);
 
-  /* ---------- 保存进度（卸载兜底） ---------- */
+  /* ---------- 保存进度（卸载时兜底） ---------- */
 
   useEffect(() => {
     return () => {
@@ -442,308 +454,153 @@ export default function ReadReader({
           updatedAt: Date.now(),
         },
       });
-      if (flipAnimRef.current !== null) {
-        cancelAnimationFrame(flipAnimRef.current);
+      if (scrollEndTimerRef.current !== null) {
+        window.clearTimeout(scrollEndTimerRef.current);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /* ---------- 滚动 ---------- */
 
-  /* ---------- 翻页动画 ---------- */
-
-  function cancelFlipAnim() {
-    if (flipAnimRef.current !== null) {
-      cancelAnimationFrame(flipAnimRef.current);
-      flipAnimRef.current = null;
+  function handleScroll() {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const w = scroll.clientWidth;
+    if (w <= 0) return;
+    const p = Math.round(scroll.scrollLeft / w);
+    if (p !== pageIndexRef.current) {
+      pageIndexRef.current = p;
+      setPageIndex(p);
     }
+
+
+    if (scrollEndTimerRef.current !== null) {
+      window.clearTimeout(scrollEndTimerRef.current);
+    }
+    scrollEndTimerRef.current = window.setTimeout(() => {
+      snapToNearestPage();
+    }, 180);
   }
 
-  function animateFlipTo(
-    target: number,
-    onDone: () => void
-  ) {
-    cancelFlipAnim();
-    const start = flipRef.current?.angle ?? 0;
-    const t0 = performance.now();
-    function step(now: number) {
-      const p = Math.min(1, (now - t0) / FLIP_DURATION);
-      const eased = 1 - Math.pow(1 - p, 3);
-      const a = start + (target - start) * eased;
-      setFlip((prev) =>
-        prev ? { ...prev, angle: a } : null
-      );
-      if (p < 1) {
-        flipAnimRef.current = requestAnimationFrame(step);
-      } else {
-        flipAnimRef.current = null;
-        onDone();
-      }
-    }
-    flipAnimRef.current = requestAnimationFrame(step);
-  }
+  function snapToNearestPage() {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const w = scroll.clientWidth;
+    if (w <= 0) return;
 
-  /** 触发下一页 */
-  function goNextPage() {
-    if (flipRef.current) return;
-    const idx = pageIndexRef.current;
-    const list = pagesRef.current;
-    if (idx >= list.length - 1) {
-      if (chapterIndex < chapters.length - 1) {
-        setChapterIndex(chapterIndex + 1);
-      }
-      return;
-    }
-    setFlip({ dir: "next", from: idx, angle: 0 });
-    animateFlipTo(-180, () => {
-      setPageIndex(idx + 1);
-      pageIndexRef.current = idx + 1;
-      setFlip(null);
+    const current = scroll.scrollLeft;
+    const page = Math.round(current / w);
+    const target = page * w;
+    const diff = Math.abs(current - target);
+
+    if (diff < 2) return;
+
+    scroll.scrollTo({
+      left: target,
+      behavior: "smooth",
     });
+
+    window.setTimeout(() => {
+    }, 420);
   }
 
-  /** 触发上一页 */
+  /* ---------- 翻页 ---------- */
+
   function goPrevPage() {
-    if (flipRef.current) return;
-    const idx = pageIndexRef.current;
-    if (idx <= 0) {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const w = scroll.clientWidth;
+    if (w <= 0) return;
+
+    if (scroll.scrollLeft <= 4) {
       if (chapterIndex > 0) {
         setChapterIndex(chapterIndex - 1);
       }
-      return;
+    } else {
+      scroll.scrollTo({
+        left: scroll.scrollLeft - w,
+        behavior: "auto",
+      });
     }
-    setFlip({ dir: "prev", from: idx - 1, angle: -180 });
-    animateFlipTo(0, () => {
-      setPageIndex(idx - 1);
-      pageIndexRef.current = idx - 1;
-      setFlip(null);
-    });
   }
 
-  /** 回弹到静止态 */
-  function springBack() {
-    const f = flipRef.current;
-    if (!f) return;
-    const target = f.dir === "next" ? 0 : -180;
-    animateFlipTo(target, () => {
-      setFlip(null);
-    });
+  function goNextPage() {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const w = scroll.clientWidth;
+    if (w <= 0) return;
+    const maxScroll = scroll.scrollWidth - w;
+
+    if (scroll.scrollLeft >= maxScroll - 4) {
+      if (chapterIndex < chapters.length - 1) {
+        setChapterIndex(chapterIndex + 1);
+      }
+    } else {
+      scroll.scrollTo({
+        left: scroll.scrollLeft + w,
+        behavior: "auto",
+      });
+    }
   }
 
-  /* ---------- 手势：原生 touch ---------- */
+  /* ---------- 点击分区 + 选区检测 ---------- */
 
-  const touchRef = useRef<{
+  const pointerRef = useRef<{
     x: number;
     y: number;
     t: number;
-    locked: "h" | "v" | null;
-    moved: boolean;
-    dir: "next" | "prev" | null;
-    startAngle: number;
+    id: number;
   } | null>(null);
 
-  const goPrevRef = useRef(goPrevPage);
-  const goNextRef = useRef(goNextPage);
-  const springBackRef = useRef(springBack);
-  const checkSelectionRef = useRef<() => void>(() => {});
-  goPrevRef.current = goPrevPage;
-  goNextRef.current = goNextPage;
-  springBackRef.current = springBack;
+  function handlePointerDown(e: React.PointerEvent) {
+    const t = e.target as HTMLElement;
+    if (t.closest("mark[data-hl-id]")) return;
 
-  useEffect(() => {
-    const stage = stageWrapRef.current;
-    if (!stage) return;
-    const W = () => stage.clientWidth || 1;
-
-    function onTouchStart(e: TouchEvent) {
-      if (e.touches.length !== 1) {
-        touchRef.current = null;
-        return;
-      }
-      const target = e.target as HTMLElement | null;
-      if (target && target.closest("mark[data-hl-id]")) {
-        touchRef.current = null;
-        return;
-      }
-      /* 翻页中不响应新手势 */
-      if (flipRef.current) {
-        touchRef.current = null;
-        return;
-      }
-      cancelFlipAnim();
-      const t = e.touches[0];
-      touchRef.current = {
-        x: t.clientX,
-        y: t.clientY,
-        t: Date.now(),
-        locked: null,
-        moved: false,
-        dir: null,
-        startAngle: 0,
-      };
-    }
-
-    function onTouchMove(e: TouchEvent) {
-      const st = touchRef.current;
-      if (!st) return;
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      const dx = t.clientX - st.x;
-      const dy = t.clientY - st.y;
-
-      if (st.locked === null) {
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-        st.locked =
-          Math.abs(dx) >= Math.abs(dy) ? "h" : "v";
-      }
-      if (st.locked === "v") return;
-
-      st.moved = true;
-      if (!st.dir) {
-        /* 首次方向判定 */
-        const idx = pageIndexRef.current;
-        const list = pagesRef.current;
-        if (dx < 0) {
-          /* 手指向左 → 下一页 */
-          if (idx >= list.length - 1 && chapterIndexRef.current >= chapters.length - 1)
-            return;
-          st.dir = "next";
-        } else {
-          /* 手指向右 → 上一页 */
-          if (idx <= 0 && chapterIndexRef.current <= 0) return;
-          st.dir = "prev";
-        }
-      }
-      const w = W();
-      if (st.dir === "next") {
-        const progress = Math.max(
-          0,
-          Math.min(1, -dx / w)
-        );
-        const angle = -progress * 180;
-        setFlip((prev) => {
-          if (prev && prev.dir === "next") {
-            return { ...prev, angle };
-          }
-          return {
-            dir: "next",
-            from: pageIndexRef.current,
-            angle,
-          };
-        });
-      } else {
-        const progress = Math.max(
-          0,
-          Math.min(1, dx / w)
-        );
-        const angle = -180 + progress * 180;
-        setFlip((prev) => {
-          if (prev && prev.dir === "prev") {
-            return { ...prev, angle };
-          }
-          return {
-            dir: "prev",
-            from: pageIndexRef.current - 1,
-            angle,
-          };
-        });
-      }
-    }
-
-    function onTouchEnd(e: TouchEvent) {
-      const st = touchRef.current;
-      touchRef.current = null;
-      if (!st) return;
-
-      const t = e.changedTouches[0];
-      const dx = t.clientX - st.x;
-      const dy = t.clientY - st.y;
-      const dt = Math.max(1, Date.now() - st.t);
-
-      /* 轻触：中间切 UI / 两侧翻页 */
-      if (
-        !st.moved &&
-        Math.abs(dx) < 10 &&
-        Math.abs(dy) < 10 &&
-        dt < 300
-      ) {
-        const w2 = window.innerWidth;
-        const x = t.clientX;
-        if (x < 40) return; /* iOS 边缘返回手势 */
-        if (x < w2 * 0.28) {
-          goPrevRef.current();
-        } else if (x > w2 * 0.72) {
-          goNextRef.current();
-        } else {
-          setChromeVisible((v) => !v);
-        }
-        return;
-      }
-
-      /* 滑动结束 → 判定翻页 or 回弹 */
-      if (st.moved && st.dir) {
-        const f = flipRef.current;
-        if (!f) return;
-        const w = W();
-        const progress =
-          f.dir === "next"
-            ? -f.angle / 180
-            : (f.angle + 180) / 180;
-        const v = Math.abs(dx) / dt;
-        const shouldFlip = progress > 0.3 || v > 0.5;
-        if (shouldFlip) {
-          const target = f.dir === "next" ? -180 : 0;
-          const fromPage = f.from;
-          animateFlipTo(target, () => {
-            const nextIdx =
-              f.dir === "next"
-                ? fromPage + 1
-                : fromPage;
-            setPageIndex(nextIdx);
-            pageIndexRef.current = nextIdx;
-            setFlip(null);
-          });
-        } else {
-          springBackRef.current();
-        }
-        return;
-      }
-
-      /* 兜底：长按选文本 */
-      window.setTimeout(
-        () => checkSelectionRef.current(),
-        30
-      );
-    }
-
-    stage.addEventListener("touchstart", onTouchStart, {
-      passive: true,
-    });
-    stage.addEventListener("touchmove", onTouchMove, {
-      passive: true,
-    });
-    stage.addEventListener("touchend", onTouchEnd, {
-      passive: true,
-    });
-    stage.addEventListener("touchcancel", onTouchEnd, {
-      passive: true,
-    });
-
-    return () => {
-      stage.removeEventListener(
-        "touchstart",
-        onTouchStart
-      );
-      stage.removeEventListener("touchmove", onTouchMove);
-      stage.removeEventListener("touchend", onTouchEnd);
-      stage.removeEventListener(
-        "touchcancel",
-        onTouchEnd
-      );
+    pointerRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      t: Date.now(),
+      id: e.pointerId,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, currentChapter]);
+  }
 
-  /* ---------- 选区检测 ---------- */
+  function handlePointerUp(e: React.PointerEvent) {
+    const t = e.target as HTMLElement;
+    if (t.closest("mark[data-hl-id]")) return;
+
+    const start = pointerRef.current;
+    pointerRef.current = null;
+    if (!start || start.id !== e.pointerId) return;
+
+    const dx = Math.abs(e.clientX - start.x);
+    const dy = Math.abs(e.clientY - start.y);
+    const dt = Date.now() - start.t;
+
+    if (dx > 12 || dy > 12 || dt > 900) {
+      window.setTimeout(checkSelection, 30);
+      return;
+    }
+
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) {
+      checkSelection();
+      return;
+    }
+
+    const w = window.innerWidth;
+    const x = e.clientX;
+
+    // iOS 左边缘返回手势区，不处理
+    if (x < 40) return;
+
+    if (x < w * 0.28) {
+      goPrevPage();
+    } else if (x > w * 0.72) {
+      goNextPage();
+    } else {
+      setChromeVisible((v) => !v);
+    }
+  }
 
   function checkSelection() {
     const sel = window.getSelection();
@@ -752,7 +609,7 @@ export default function ReadReader({
       return;
     }
 
-    const body = activeBodyRef.current;
+    const body = bodyRef.current;
     if (!body) return;
 
     const range = sel.getRangeAt(0);
@@ -761,27 +618,22 @@ export default function ReadReader({
       return;
     }
 
-    const cur = pages[pageIndex];
-    if (!cur) return;
-    const pageStart = cur.start;
-
-    const localStart = textOffsetIn(
+    const startOffset = textOffsetIn(
       body,
       range.startContainer,
       range.startOffset
     );
-    const localEnd = textOffsetIn(
+    const endOffset = textOffsetIn(
       body,
       range.endContainer,
       range.endOffset
     );
-    if (localStart < 0 || localEnd <= localStart) {
+
+    if (startOffset < 0 || endOffset <= startOffset) {
       setSelection(null);
       return;
     }
 
-    const startOffset = pageStart + localStart;
-    const endOffset = pageStart + localEnd;
     const selectedText = chapterText.slice(
       startOffset,
       endOffset
@@ -801,7 +653,6 @@ export default function ReadReader({
       text: selectedText,
     });
   }
-  checkSelectionRef.current = checkSelection;
 
   function closeSelectionMenu() {
     setSelection(null);
@@ -889,8 +740,21 @@ export default function ReadReader({
     startOffset: number
   ) {
     setChapterIndex(ci);
-    /* 页码暂归 0；分页完成后可再精确定位（保留原有简化行为） */
-    setPageIndex(0);
+    requestAnimationFrame(() => {
+      const scroll = scrollRef.current;
+      const body = bodyRef.current;
+      if (!scroll || !body) return;
+      const w = scroll.clientWidth;
+      if (w <= 0) return;
+      const mark = body.querySelector(
+        `mark[data-hl-id]`
+      ) as HTMLElement | null;
+      if (!mark) {
+        scroll.scrollLeft = 0;
+        return;
+      }
+      scroll.scrollLeft = 0;
+    });
   }
 
   /* ---------- 设置 ---------- */
@@ -908,7 +772,7 @@ export default function ReadReader({
 
   /* ---------- 一起读 ---------- */
 
-  function handleInvite(accepted: ReadingPartner[]) {
+   function handleInvite(accepted: ReadingPartner[]) {
     if (accepted.length === 0) {
       setToast("他们都没空，下次再试吧。");
       setShowInvite(false);
@@ -936,50 +800,26 @@ export default function ReadReader({
     setShowChat(false);
   }
 
-  /* ---------- 页内容渲染 ---------- */
+  /* ---------- 渲染正文（带高亮） ---------- */
 
-  function renderPage(
-    pageIdx: number,
-    isActivePage: boolean
-  ): ReactNode {
-    const range = pages[pageIdx];
-    if (!range) return null;
-    const slice = chapterText.slice(
-      range.start,
-      range.end
+  const renderedBody: ReactNode = useMemo(() => {
+    if (chapterHighlights.length === 0) {
+      return chapterText;
+    }
+    const sorted = [...chapterHighlights].sort(
+      (a, b) => a.startOffset - b.startOffset
     );
-    const isFirst = pageIdx === 0;
-    const isLast = pageIdx === pages.length - 1;
-
-    /* 页内高亮切片 */
-    const inPage = chapterHighlights
-      .filter(
-        (h) =>
-          h.endOffset > range.start &&
-          h.startOffset < range.end
-      )
-      .map((h) => ({
-        ...h,
-        startOffset: Math.max(
-          0,
-          h.startOffset - range.start
-        ),
-        endOffset: Math.min(
-          slice.length,
-          h.endOffset - range.start
-        ),
-      }))
-      .sort((a, b) => a.startOffset - b.startOffset);
-
-    const nodes: ReactNode[] = [];
+    const out: ReactNode[] = [];
     let cursor = 0;
     let key = 0;
-    for (const h of inPage) {
-      const s = Math.max(cursor, h.startOffset);
-      const e = Math.min(slice.length, h.endOffset);
-      if (e <= s) continue;
-      if (s > cursor) nodes.push(slice.slice(cursor, s));
-      nodes.push(
+    for (const h of sorted) {
+      const start = Math.max(cursor, h.startOffset);
+      const end = Math.min(chapterText.length, h.endOffset);
+      if (end <= start) continue;
+      if (start > cursor) {
+        out.push(chapterText.slice(cursor, start));
+      }
+      out.push(
         <mark
           key={`hl-${h.id}-${key++}`}
           className={
@@ -989,53 +829,21 @@ export default function ReadReader({
           }
           data-hl-id={h.id}
           data-hl-author={h.author}
-          onClick={(ev) => {
-            ev.stopPropagation();
+          onClick={(e) => {
+            e.stopPropagation();
             handleMarkClick(h.id);
           }}
         >
-          {slice.slice(s, e)}
+          {chapterText.slice(start, end)}
         </mark>
       );
-      cursor = e;
+      cursor = end;
     }
-    if (cursor < slice.length) {
-      nodes.push(slice.slice(cursor));
+    if (cursor < chapterText.length) {
+      out.push(chapterText.slice(cursor));
     }
-
-    const bodyStyle: React.CSSProperties = {
-      fontSize: `${settings.fontSize}px`,
-      lineHeight: settings.lineHeight,
-      fontFamily:
-        settings.fontFamily === "serif"
-          ? '"Songti SC", "Noto Serif SC", Georgia, serif'
-          : '-apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif',
-    };
-
-    return (
-      <div
-        className="read-page-inner"
-        style={bodyStyle}
-      >
-        {isFirst && currentChapter && (
-          <div className="read-reader-chapter-title">
-            {currentChapter.title}
-          </div>
-        )}
-        <div
-          className="read-reader-body"
-          ref={isActivePage ? activeBodyRef : undefined}
-        >
-          {nodes}
-        </div>
-        {isLast && (
-          <div className="read-reader-end">
-            — 本章完 —
-          </div>
-        )}
-      </div>
-    );
-  }
+    return out;
+  }, [chapterText, chapterHighlights]);
 
   /* ---------- 加载态 ---------- */
 
@@ -1067,6 +875,15 @@ export default function ReadReader({
     );
   }
 
+  const bodyStyle: React.CSSProperties = {
+    fontSize: `${settings.fontSize}px`,
+    lineHeight: settings.lineHeight,
+    fontFamily:
+      settings.fontFamily === "serif"
+        ? '"Songti SC", "Noto Serif SC", Georgia, serif'
+        : '-apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif',
+  };
+
   const totalChapters = chapters.length;
   const chapterProgress =
     pageCount > 0 ? pageIndex / pageCount : 0;
@@ -1082,16 +899,6 @@ export default function ReadReader({
       null
     : null;
 
-  /* 底层页：翻下一页时显示下一页，翻上一页时显示当前页，静止时显示当前页 */
-  let underIdx = pageIndex;
-  if (flip) {
-    if (flip.dir === "next") {
-      underIdx = Math.min(pageCount - 1, pageIndex + 1);
-    } else {
-      underIdx = pageIndex;
-    }
-  }
-
   return (
     <div
       className="read-reader"
@@ -1104,32 +911,31 @@ export default function ReadReader({
           paddingBottom: `${settings.paddingBottom}px`,
         }}
       >
-        <div
-          ref={stageWrapRef}
-          className="read-reader-stage-wrap"
-        >
-          <div className="read-stage">
-            {/* 底层页 */}
-            <div className="read-page read-page-under">
-              {renderPage(underIdx, !flip)}
-            </div>
 
-            {/* 翻转页 */}
-            {flip && (
-              <div
-                className="read-page read-page-flip"
-                style={{
-                  transform: `rotateY(${flip.angle}deg)`,
-                }}
-              >
-                {renderPage(
-                  flip.dir === "next"
-                    ? flip.from
-                    : flip.from,
-                  false
-                )}
-              </div>
-            )}
+        <div
+          ref={scrollRef}
+          className="read-reader-scroll-h"
+          onScroll={handleScroll}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+        >
+          <div
+            ref={pagesRef}
+            className="read-reader-pages"
+            style={bodyStyle}
+          >
+            <div className="read-reader-chapter-title">
+              {currentChapter.title}
+            </div>
+            <div
+              ref={bodyRef}
+              className="read-reader-body"
+            >
+              {renderedBody}
+            </div>
+            <div className="read-reader-end">
+              — 本章完 —
+            </div>
           </div>
         </div>
       </div>
@@ -1417,43 +1223,43 @@ export default function ReadReader({
 
             <div className="read-reader-settings-group">
               <div className="read-reader-settings-label">
-                <div className="read-reader-settings-group">
-                  <div className="read-reader-settings-label">
-                    上边距 {settings.paddingTop}px
-                  </div>
-                  <input
-                    type="range"
-                    min={20}
-                    max={120}
-                    step={2}
-                    value={settings.paddingTop}
-                    onChange={(e) =>
-                      updateSettings({
-                        paddingTop: Number(e.target.value),
-                      })
-                    }
-                    className="read-reader-slider"
-                  />
-                </div>
+                            <div className="read-reader-settings-group">
+              <div className="read-reader-settings-label">
+                上边距 {settings.paddingTop}px
+              </div>
+              <input
+                type="range"
+                min={20}
+                max={120}
+                step={2}
+                value={settings.paddingTop}
+                onChange={(e) =>
+                  updateSettings({
+                    paddingTop: Number(e.target.value),
+                  })
+                }
+                className="read-reader-slider"
+              />
+            </div>
 
-                <div className="read-reader-settings-group">
-                  <div className="read-reader-settings-label">
-                    下边距 {settings.paddingBottom}px
-                  </div>
-                  <input
-                    type="range"
-                    min={40}
-                    max={160}
-                    step={2}
-                    value={settings.paddingBottom}
-                    onChange={(e) =>
-                      updateSettings({
-                        paddingBottom: Number(e.target.value),
-                      })
-                    }
-                    className="read-reader-slider"
-                  />
-                </div>
+            <div className="read-reader-settings-group">
+              <div className="read-reader-settings-label">
+                下边距 {settings.paddingBottom}px
+              </div>
+              <input
+                type="range"
+                min={40}
+                max={160}
+                step={2}
+                value={settings.paddingBottom}
+                onChange={(e) =>
+                  updateSettings({
+                    paddingBottom: Number(e.target.value),
+                  })
+                }
+                className="read-reader-slider"
+              />
+            </div>
                 一起读 · 每章划线上限 {chapterLimit}
               </div>
               <input
@@ -1545,6 +1351,8 @@ export default function ReadReader({
     </div>
   );
 }
+
+
 
 /* ---------- 辅助：拿 node 在 root 内的文本 offset ---------- */
 

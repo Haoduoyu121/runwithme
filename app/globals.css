@@ -63293,109 +63293,88 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
   touch-action: auto !important;
 }
 /* ============================================================
-   Read 翻页接管（2026-09-22）
-   彻底禁止原生横向滚动，改由 JS 完全控制 scrollLeft
-   放在最后，覆盖前面所有 .read-reader-scroll-h 定义
+   跨设备同步卡片（2026-09-22）
    ============================================================ */
-.read-reader .read-reader-scroll-h {
-  overflow: hidden;
-  touch-action: pan-y;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: auto;
+.sync-card {
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-/* ============================================================
-   Read 多列排版修正（2026-09-22）
-   column-fill: auto 让内容按顺序填满每列，配合 column-count 锁定列数
-   ============================================================ */
-.read-reader .read-reader-pages {
-  column-fill: auto;
+html[data-runwithme-theme="dark"] .sync-card {
+  background: rgba(40, 36, 44, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
 }
-/* ============================================================
-   Read 翻页 transform 化（2026-09-22）
-   - 彻底放弃 scrollLeft，改用 transform 位移，消除亚像素吸附
-   ============================================================ */
-.read-reader .read-reader-scroll-h {
-  overflow: hidden;
-  touch-action: pan-y;
-  overscroll-behavior: contain;
-  position: relative;
+.sync-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
-
-.read-reader .read-reader-pages {
-  transition: transform 260ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  will-change: transform;
-  column-fill: auto;
+.sync-card-title {
+  font-size: 15px;
+  font-weight: 600;
 }
-/* ============================================================
-   Read 3D 翻页（2026-09-22）
-   舞台 + 底层页 + 翻转页
-   放在末尾，覆盖前面所有 .read-reader-scroll-h / .read-reader-pages 定义
-   ============================================================ */
-
-/* 舞台外层：只负责占位 */
-.read-reader .read-reader-stage-wrap {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+.sync-card-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c8c8c8;
 }
-
-/* 3D 舞台：给旋转提供透视 */
-.read-reader .read-stage {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  perspective: 2200px;
-  perspective-origin: 50% 50%;
-  transform-style: preserve-3d;
+.sync-card-dot.is-on {
+  background: #34c759;
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.18);
 }
-
-/* 通用页面 */
-.read-reader .read-page {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  background: transparent;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  transform-style: preserve-3d;
-}
-
-/* 底层页：不参与 3D */
-.read-reader .read-page-under {
-  z-index: 1;
-}
-
-/* 翻转页：绕左边缘旋转 + 阴影 */
-.read-reader .read-page-flip {
-  z-index: 2;
-  transform-origin: left center;
-  will-change: transform;
-  box-shadow:
-    -4px 0 24px rgba(0, 0, 0, 0.14),
-    0 0 40px rgba(0, 0, 0, 0.06);
-  /* 深色主题下的阴影更柔和 */
-}
-
-html[data-runwithme-theme="dark"] .read-reader .read-page-flip {
-  box-shadow:
-    -4px 0 24px rgba(0, 0, 0, 0.55),
-    0 0 40px rgba(0, 0, 0, 0.35);
-}
-
-/* 页面内容 */
-.read-reader .read-page-inner {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  padding: 0;
+.sync-card-desc {
   margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
+  font-size: 12.5px;
+  line-height: 1.5;
+  opacity: 0.7;
 }
-
-/* 确保页面内部 body 也是 pre-wrap（继承分页时的排版假设） */
-.read-reader .read-page-inner .read-reader-body {
-  white-space: pre-wrap;
-  word-break: break-word;
+.sync-card-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+html[data-runwithme-theme="dark"] .sync-card-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.sync-card-input:focus {
+  border-color: rgba(0, 122, 255, 0.6);
+}
+.sync-card-btn {
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+}
+.sync-card-btn.primary {
+  background: #007aff;
+  color: #fff;
+}
+.sync-card-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.sync-card-msg {
+  font-size: 12px;
+  opacity: 0.75;
+  line-height: 1.5;
 }

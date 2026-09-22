@@ -1,6 +1,6 @@
 const DB_NAME = "runwithme_image_db";
 const STORE_NAME = "image_files";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
