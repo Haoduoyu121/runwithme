@@ -128,7 +128,9 @@ export async function exportAllData(): Promise<ExportData> {
       continue;
     }
 
-    const records: Record<string, string> = {};
+    /* ★ 第一步：事务里只做同步操作，把所有记录读进内存
+       绝不能在这里 await / .then，否则事务会被 commit */
+    const raw: { key: string; value: unknown }[] = [];
 
     await new Promise<void>((resolve) => {
       const tx = db.transaction(store, "readonly");
@@ -138,40 +140,76 @@ export async function exportAllData(): Promise<ExportData> {
       cursorReq.onsuccess = () => {
         const cursor = cursorReq.result;
         if (!cursor) {
-          db.close();
           resolve();
           return;
         }
-
-        const key = String(cursor.key);
-        const value = cursor.value;
-
-        if (value instanceof Blob) {
-          blobToBase64(value)
-            .then((b64) => {
-              const mime =
-                value.type || "application/octet-stream";
-              records[key] = `${mime}|${b64}`;
-              cursor.continue();
-            })
-            .catch(() => {
-              cursor.continue();
-            });
-        } else if (typeof value === "string") {
-          records[key] = `text/plain|${btoa(
-            unescape(encodeURIComponent(value))
-          )}`;
-          cursor.continue();
-        } else {
-          cursor.continue();
-        }
+        raw.push({
+          key: String(cursor.key),
+          value: cursor.value,
+        });
+        cursor.continue(); /* 纯同步，事务安全 */
       };
 
       cursorReq.onerror = () => {
-        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        resolve();
+      };
+      tx.onabort = () => {
         resolve();
       };
     });
+
+    db.close();
+
+    /* ★ 第二步：事务已结束，安全地做异步编码 */
+    const records: Record<string, string> = {};
+
+    for (const { key, value } of raw) {
+      if (value instanceof Blob) {
+        try {
+          const b64 = await blobToBase64(value);
+          const mime =
+            value.type || "application/octet-stream";
+          records[key] = `${mime}|${b64}`;
+        } catch (e) {
+          console.warn(
+            "[dataExport] blob 编码失败，跳过:",
+            dbName,
+            key,
+            e
+          );
+        }
+      } else if (typeof value === "string") {
+        try {
+          records[key] = `text/plain|${btoa(
+            unescape(encodeURIComponent(value))
+          )}`;
+        } catch (e) {
+          console.warn(
+            "[dataExport] string 编码失败，跳过:",
+            dbName,
+            key,
+            e
+          );
+        }
+      } else if (value instanceof ArrayBuffer) {
+        try {
+          const blob = new Blob([value]);
+          const b64 = await blobToBase64(blob);
+          records[key] = `application/octet-stream|${b64}`;
+        } catch (e) {
+          console.warn(
+            "[dataExport] ArrayBuffer 编码失败，跳过:",
+            dbName,
+            key,
+            e
+          );
+        }
+      }
+      /* 其他类型（数字 / 对象等）忽略，原有逻辑也不处理 */
+    }
 
     if (Object.keys(records).length > 0) {
       idb[dbName] = { [store]: records };
