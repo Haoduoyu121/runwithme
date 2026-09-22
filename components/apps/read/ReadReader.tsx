@@ -741,7 +741,7 @@ export default function ReadReader({
       );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [text, currentChapter]);
 
   /* ---------- 选区检测 ---------- */
 
