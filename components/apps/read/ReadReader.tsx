@@ -331,7 +331,7 @@ export default function ReadReader({
 
     let raf = 0;
 
-    function layout() {
+        function layout() {
       if (!scroll || !pages) return;
       const w = scroll.getBoundingClientRect().width;
       if (w <= 0) {
@@ -350,7 +350,7 @@ export default function ReadReader({
       const sw1 = pages.scrollWidth;
       let count = Math.max(1, Math.ceil((sw1 - 0.5) / w));
 
-      /* 步骤 2：锁定列数 + 明确宽度，让每列宽 = w 精确 */
+      /* 步骤 2：锁定列数 + 明确宽度 */
       pages.style.columnWidth = "";
       pages.style.columnCount = String(count);
       pages.style.width = `${count * w}px`;
@@ -366,8 +366,9 @@ export default function ReadReader({
         guard++;
       }
 
-      /* 步骤 4：记录真实列宽 */
-      columnWidthRef.current = w;
+      /* 步骤 4：读真实浮点列宽，作为步长（关键修复） */
+      const realW = pages.getBoundingClientRect().width / count;
+      columnWidthRef.current = realW > 0 ? realW : w;
       setPageCount(count);
 
       /* 步骤 5：把当前页 clamp 到有效范围，并立即定位 */
@@ -380,10 +381,9 @@ export default function ReadReader({
         setPageIndex(clamped);
       }
       pages.style.transform = `translate3d(${
-        -clamped * w
+        -clamped * columnWidthRef.current
       }px, 0, 0)`;
 
-      /* 下一帧恢复过渡（避免上面这次瞬移被动画化） */
       requestAnimationFrame(() => {
         if (pagesRef.current) {
           pagesRef.current.style.transition = "";
