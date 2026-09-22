@@ -154,6 +154,12 @@ const apps = [
     icon: "❄",
     color: "cream",
   },
+  {
+    id: "ai" as AppId,
+    name: "Beyond",
+    icon: "✦",
+    color: "violet",
+  },
 ];
 
 const APP_IDS_FOR_LAYOUT: AppId[] = apps.map((a) => a.id);
@@ -1082,7 +1088,13 @@ export default function Home() {
                 wallpaper={homeWallpaper}
                 iconUrls={appIconUrls}
                 dockIconUrls={dockIconUrls}
-                onOpenApp={setCurrentApp}
+                onOpenApp={(id: AppId) => {
+  if (id === "ai") {
+    router.push("/ai");
+    return;
+  }
+  setCurrentApp(id);
+}}
                 onOpenSettings={() => {
                   router.push("/studio/settings");
                 }}

@@ -49,6 +49,12 @@ import {
   pickApiParams,
   type AiPreset,
 } from "@/lib/ai/presets";
+import PersonaPanel from "./PersonaPanel";
+import {
+  loadPersona,
+  buildPersonaBlock,
+  type UserPersona,
+} from "@/lib/ai/userProfile";
 import { ThinkingFilter, stripThinking } from "@/lib/ai/thinkingFilter";
 import { applyRegexScripts } from "@/lib/ai/regex";
 
@@ -88,10 +94,15 @@ const DEFAULT_SYS =
 function buildSystemPrompt(
   card: Card,
   preset: AiPreset | null,
-  wb: TriggeredByPos
+  wb: TriggeredByPos,
+  persona: UserPersona
 ): string {
-  const vars = { char: card.name, user: "你" };
+  const vars = { char: card.name, user: persona.name || "你" };
   const parts: string[] = [];
+
+  /* 用户信息（persona）注入到最前面 */
+  const personaBlock = buildPersonaBlock(persona);
+  if (personaBlock) parts.push(personaBlock);
 
   /* 预设主提示（按所有启用 prompt 顺序拼接） */
   const presetBlock = preset
@@ -208,6 +219,13 @@ export default function ChatView({ cardId }: { cardId: string }) {
   const [showPreset, setShowPreset] = useState(false);
   const [preset, setPreset] = useState<AiPreset | null>(null);
 
+    /* 用户信息 */
+  const [showPersona, setShowPersona] = useState(false);
+  const [persona, setPersona] = useState<UserPersona>({
+    name: "你",
+    description: "",
+  });
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
@@ -291,6 +309,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
         return;
       }
 
+      setPersona(loadPersona());
       await refreshWorldbook();
       if (cancelled) return;
 
@@ -580,7 +599,12 @@ export default function ChatView({ cardId }: { cardId: string }) {
     abortRef.current = false;
 
     const triggered = collectTriggered(worldbook, history);
-    const sysContent = buildSystemPrompt(c, preset, triggered);
+    const sysContent = buildSystemPrompt(
+      c,
+      preset,
+      triggered,
+      persona
+    );
 
     const sys: ChatMessage = {
       role: "system",
@@ -846,6 +870,12 @@ export default function ChatView({ cardId }: { cardId: string }) {
             </div>
           )}
           <div className="ai-chat-toolbar">
+            <button
+              className="ai-chat-clear"
+              onClick={() => setShowPersona(true)}
+            >
+              👤 {persona.name || "我"}
+            </button>
             <button
               className="ai-chat-clear"
               onClick={() => setShowPreset(true)}
@@ -1134,10 +1164,10 @@ export default function ChatView({ cardId }: { cardId: string }) {
         />
       )}
 
-      {showPreset && (
-        <PresetPanel
-          onClose={() => setShowPreset(false)}
-          onChanged={refreshPreset}
+      {showPersona && (
+        <PersonaPanel
+          onClose={() => setShowPersona(false)}
+          onSaved={() => setPersona(loadPersona())}
         />
       )}
 

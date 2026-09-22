@@ -63548,3 +63548,6 @@ html[data-runwithme-theme="dark"] .read-reader .read-page-flip-edge {
   width: 100%;
   overflow: hidden;
 }
+.app-icon-violet {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+}

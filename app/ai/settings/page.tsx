@@ -7,6 +7,11 @@ import {
   fetchModels,
   type AiApiConfig,
 } from "@/lib/ai/apiClient";
+import {
+  loadPersona,
+  savePersona,
+  type UserPersona,
+} from "@/lib/ai/userProfile";
 
 export default function AiSettingsPage() {
   const [cfg, setCfg] = useState<AiApiConfig>({
@@ -18,8 +23,15 @@ export default function AiSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
+  const [persona, setPersona] = useState<UserPersona>({
+    name: "你",
+    description: "",
+  });
+  const [personaMsg, setPersonaMsg] = useState("");
+
   useEffect(() => {
     setCfg(loadConfig());
+    setPersona(loadPersona());
   }, []);
 
   function save() {
@@ -49,8 +61,18 @@ export default function AiSettingsPage() {
     }
   }
 
+  function savePersonaClick() {
+    savePersona({
+      name: persona.name.trim() || "你",
+      description: persona.description,
+    });
+    setPersonaMsg("已保存");
+    setTimeout(() => setPersonaMsg(""), 2000);
+  }
+
   return (
     <div className="ai-settings-page">
+      {/* API */}
       <div className="ai-section">
         <div className="ai-section-title">API 配置</div>
 
@@ -93,9 +115,7 @@ export default function AiSettingsPage() {
           />
         </div>
 
-        <div
-          style={{ display: "flex", gap: 8, marginTop: 12 }}
-        >
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <button
             className="ai-btn"
             onClick={pullModels}
@@ -158,6 +178,71 @@ export default function AiSettingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Persona */}
+      <div className="ai-section">
+        <div className="ai-section-title">
+          用户信息（Persona）
+        </div>
+
+        <div className="ai-field">
+          <label className="ai-field-label">
+            名字（替换 {"{{user}}"}）
+          </label>
+          <input
+            className="ai-input"
+            placeholder="你"
+            value={persona.name}
+            onChange={(e) =>
+              setPersona({
+                ...persona,
+                name: e.target.value,
+              })
+            }
+          />
+        </div>
+
+        <div className="ai-field">
+          <label className="ai-field-label">
+            描述
+          </label>
+          <textarea
+            className="ai-input ai-wb-content"
+            rows={10}
+            placeholder={
+              "例如：\n男，28岁，插画师。性格温和，说话简短。"
+            }
+            value={persona.description}
+            onChange={(e) =>
+              setPersona({
+                ...persona,
+                description: e.target.value,
+              })
+            }
+          />
+        </div>
+
+        <button
+          className="ai-btn primary"
+          onClick={savePersonaClick}
+          style={{ width: "100%" }}
+        >
+          保存用户信息
+        </button>
+
+        {personaMsg && (
+          <div
+            style={{
+              marginTop: 10,
+              fontSize: 12.5,
+              opacity: 0.75,
+              textAlign: "center",
+            }}
+          >
+            {personaMsg}
           </div>
         )}
       </div>

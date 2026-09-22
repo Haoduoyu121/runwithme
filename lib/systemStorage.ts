@@ -21,7 +21,8 @@ export type AppId =
   | "random"
   | "search"
   | "read"
-  | "fridge";
+  | "fridge"
+  | "ai";
 
 export type AppIconState = "custom" | null;
 
@@ -122,6 +123,7 @@ const defaultSettings: SystemSettings = {
     search: null,
     read: null,
     fridge: null,
+    ai: null,
   },
   dockIcons: {
     "slot-1": null,
