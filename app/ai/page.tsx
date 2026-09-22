@@ -16,7 +16,6 @@ type CardRow = {
 export default function AiHomePage() {
   const [cards, setCards] = useState<CardRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -24,8 +23,8 @@ export default function AiHomePage() {
         const r = await fetch(`${API_BASE}/api/ai/cards`);
         const data = await r.json();
         setCards(data.cards || []);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+      } catch {
+        /* 忽略 */
       } finally {
         setLoading(false);
       }
@@ -39,62 +38,47 @@ export default function AiHomePage() {
         Stories outside the walls. Fill in your imagination.
       </p>
 
+      <div className="ai-section-title">试用</div>
+      <div className="ai-card-grid" style={{ marginBottom: 32 }}>
+        <Link href="/ai/chat/__demo__" className="ai-card">
+          <div
+            className="ai-card-avatar"
+            style={{
+              background:
+                "linear-gradient(135deg, #8b6b3d, #5b8ff9)",
+            }}
+          >
+            ✦
+          </div>
+          <div className="ai-card-name">试用角色</div>
+          <div className="ai-card-desc">跑通链路用</div>
+        </Link>
+      </div>
+
+      <div className="ai-section-title">角色卡</div>
       {loading && <div className="ai-empty">Loading…</div>}
-      {error && (
-        <div className="ai-empty" style={{ color: "#c00" }}>
-          {error}
-        </div>
-      )}
-      {!loading && !error && cards.length === 0 && (
+      {!loading && cards.length === 0 && (
         <div className="ai-empty">
-          还没有角色卡。下一步会做 PNG 导入。
+          还没有角色卡。下一步做 PNG 导入。
         </div>
       )}
       {cards.length > 0 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fill, minmax(160px, 1fr))",
-            gap: 16,
-          }}
-        >
+        <div className="ai-card-grid">
           {cards.map((c) => (
             <Link
               key={c.id}
               href={`/ai/chat/${c.id}`}
-              style={{
-                textDecoration: "none",
-                color: "inherit",
-                border: "1px solid var(--ai-border)",
-                borderRadius: "var(--ai-radius)",
-                padding: 14,
-                background: "var(--ai-surface)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-              }}
+              className="ai-card"
             >
               <div
+                className="ai-card-avatar"
                 style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: "50%",
                   background: c.avatar
                     ? `url(${c.avatar}) center/cover`
                     : "var(--ai-border)",
-                  alignSelf: "center",
                 }}
               />
-              <div
-                style={{
-                  textAlign: "center",
-                  fontWeight: 600,
-                  fontSize: 14,
-                }}
-              >
-                {c.name}
-              </div>
+              <div className="ai-card-name">{c.name}</div>
             </Link>
           ))}
         </div>
