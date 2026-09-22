@@ -63378,3 +63378,66 @@ html[data-runwithme-theme="dark"] .sync-card-input {
   opacity: 0.75;
   line-height: 1.5;
 }
+
+/* ============================================================
+   Read 3D 翻页（2026-09-22）
+   ============================================================ */
+.read-reader .read-reader-stage-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.read-reader .read-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 2200px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+}
+
+.read-reader .read-page {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: transparent;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.read-reader .read-page-under {
+  z-index: 1;
+}
+
+.read-reader .read-page-flip {
+  z-index: 2;
+  transform-origin: left center;
+  will-change: transform;
+  box-shadow:
+    -4px 0 24px rgba(0, 0, 0, 0.14),
+    0 0 40px rgba(0, 0, 0, 0.06);
+}
+
+html[data-runwithme-theme="dark"] .read-reader .read-page-flip {
+  box-shadow:
+    -4px 0 24px rgba(0, 0, 0, 0.55),
+    0 0 40px rgba(0, 0, 0, 0.35);
+}
+
+.read-reader .read-page-inner {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.read-reader .read-page-inner .read-reader-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

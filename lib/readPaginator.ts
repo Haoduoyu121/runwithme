@@ -1,3 +1,9 @@
+/**
+ * Read 分页器
+ * 把一章正文按视口尺寸切成 [{start, end}, ...] 页区间数组。
+ * 原理：离屏测量容器 + 二分查找，找到每页能装下的最大字符数。
+ */
+
 export type PageRange = {
   start: number;
   end: number;
@@ -10,7 +16,6 @@ export type PaginateOptions = {
   fontSize: number;
   lineHeight: number;
   fontFamily: string;
-  /** 章节标题，仅占第一页顶部空间；传空字符串表示无标题 */
   title: string;
 };
 
@@ -51,7 +56,6 @@ export function paginateChapter(
   document.body.appendChild(host);
 
   try {
-    // 测量标题高度（仅第一页扣减）
     let titleH = 0;
     if (title) {
       host.style.height = "auto";
@@ -70,7 +74,6 @@ export function paginateChapter(
         : height;
       host.style.height = `${availH}px`;
 
-      // 二分查找这一页能装多少字符
       let lo = cursor;
       let hi = N;
       while (lo < hi) {
@@ -83,13 +86,11 @@ export function paginateChapter(
         }
       }
 
-      // 至少前进一个字符，防止死循环
       if (lo <= cursor) lo = cursor + 1;
       pages.push({ start: cursor, end: lo });
       cursor = lo;
       firstPage = false;
 
-      // 保险：页数上限（避免极端情况卡死）
       if (pages.length > 5000) break;
     }
 
