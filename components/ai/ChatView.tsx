@@ -1,12 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import {
+  Send,
+  Sparkles,
+  MoreHorizontal,
+  RefreshCw,
+  Pencil,
+  Trash2,
+  X,
+  Check,
+} from "lucide-react";
 import {
   loadConfig,
   streamChat,
   type ChatMessage,
 } from "@/lib/ai/apiClient";
+import {
+  loadChat,
+  saveChat,
+  deleteChat,
+  type StoredMessage,
+} from "@/lib/ai/chatStore";
 
 type Card = {
   id: string;
@@ -43,62 +58,124 @@ function buildSystemPrompt(card: Card): string {
 
 export default function ChatView({ cardId }: { cardId: string }) {
   const [card, setCard] = useState<Card | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<StoredMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [err, setErr] = useState("");
+  const [loaded, setLoaded] = useState(false);
+
+  const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(
+    null
+  );
+  const [editingIdx, setEditingIdx] = useState<number | null>(
+    null
+  );
+  const [editDraft, setEditDraft] = useState("");
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef(false);
+  const saveTimerRef = useRef<number | null>(null);
 
-  /* 加载角色卡 */
+  /* ---------- 加载卡片 + 历史 ---------- */
+
   useEffect(() => {
-    if (cardId === "__demo__") {
-      setCard(DEMO_CARD);
-      setMessages([
-        { role: "assistant", content: DEMO_CARD.first_mes },
-      ]);
-      return;
-    }
-    /* 真实卡片（下一批接） */
-    setCard(null);
-    setErr("真实角色卡下一批接入。先用「试用角色」。");
+    let cancelled = false;
+    setLoaded(false);
+    setMessages([]);
+    setErr("");
+
+    (async () => {
+      /* 卡片 */
+      let c: Card | null = null;
+      if (cardId === "__demo__") {
+        c = DEMO_CARD;
+      }
+      if (cancelled) return;
+      setCard(c);
+
+      /* 历史 */
+      if (!c) return;
+      const stored = await loadChat(cardId);
+      if (cancelled) return;
+      if (stored.length > 0) {
+        setMessages(stored);
+      } else {
+        setMessages([
+          { role: "assistant", content: c.first_mes },
+        ]);
+      }
+      setLoaded(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [cardId]);
 
-  /* 自动滚到底 */
+  /* ---------- 保存（防抖，streaming 中不存） ---------- */
+
+  useEffect(() => {
+    if (!loaded) return;
+    if (streaming) return;
+    if (messages.length === 0) return;
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = window.setTimeout(() => {
+      void saveChat(cardId, messages);
+    }, 400);
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [messages, streaming, loaded, cardId]);
+
+  /* ---------- 自动滚底 ---------- */
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages, streaming]);
 
-  async function send() {
-    if (!card || !input.trim() || streaming) return;
+  /* ---------- 关闭弹出的菜单（点别处） ---------- */
+
+  useEffect(() => {
+    function onClick() {
+      setOpenMenuIdx(null);
+    }
+    if (openMenuIdx !== null) {
+      window.addEventListener("click", onClick);
+      return () => window.removeEventListener("click", onClick);
+    }
+  }, [openMenuIdx]);
+
+  /* ---------- 发送 ---------- */
+
+  async function runStream(
+    history: StoredMessage[],
+    cardOverride?: Card
+  ) {
+    const c = cardOverride || card;
+    if (!c) return;
     const cfg = loadConfig();
     if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
       setErr("请先到 /ai/settings 配置 API");
       return;
     }
     setErr("");
-    const userMsg: ChatMessage = {
-      role: "user",
-      content: input.trim(),
-    };
-    const next = [...messages, userMsg];
-    setMessages(next);
-    setInput("");
     setStreaming(true);
+    abortRef.current = false;
 
-    /* 拼请求：system + 历史 + 新一轮 */
     const sys: ChatMessage = {
       role: "system",
-      content: buildSystemPrompt(card),
+      content: buildSystemPrompt(c),
     };
-    const payload = [sys, ...next];
+    const payload = [sys, ...history];
 
-    /* 先占位一条空 assistant */
-    setMessages([...next, { role: "assistant", content: "" }]);
-    abortRef.current = false;
+    /* 占位 */
+    setMessages([...history, { role: "assistant", content: "" }]);
 
     try {
       let acc = "";
@@ -114,23 +191,101 @@ export default function ChatView({ cardId }: { cardId: string }) {
           return copy;
         });
       }
+      /* 空回复兜底 */
+      if (!acc) {
+        setMessages(history);
+        setErr("AI 返回了空内容，请重试。");
+      }
     } catch (e) {
       setErr(
         "请求失败：" +
           (e instanceof Error ? e.message : String(e))
       );
-      /* 删掉空占位 */
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === "assistant" && !last.content) {
-          return prev.slice(0, -1);
-        }
-        return prev;
-      });
+      setMessages(history);
     } finally {
       setStreaming(false);
     }
   }
+
+  async function send() {
+    if (!card || !input.trim() || streaming) return;
+    const userMsg: StoredMessage = {
+      role: "user",
+      content: input.trim(),
+    };
+    const next = [...messages, userMsg];
+    setInput("");
+    setOpenMenuIdx(null);
+    await runStream(next);
+  }
+
+  async function regenerate() {
+    if (!card || streaming) return;
+    /* 找最后一条 assistant */
+    let lastA = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") {
+        lastA = i;
+        break;
+      }
+    }
+    if (lastA < 0) return;
+    const trimmed = messages.slice(0, lastA);
+    setOpenMenuIdx(null);
+    await runStream(trimmed);
+  }
+
+  function startEdit(i: number) {
+    setEditingIdx(i);
+    setEditDraft(messages[i].content);
+    setOpenMenuIdx(null);
+  }
+
+  function commitEdit() {
+    if (editingIdx === null) return;
+    const trimmed = editDraft.trim();
+    if (!trimmed) {
+      setEditingIdx(null);
+      return;
+    }
+    setMessages((prev) => {
+      const copy = [...prev];
+      copy[editingIdx] = {
+        ...copy[editingIdx],
+        content: trimmed,
+      };
+      return copy;
+    });
+    setEditingIdx(null);
+  }
+
+  function deleteMsg(i: number) {
+    if (
+      !window.confirm(
+        "删除这条消息？"
+      )
+    )
+      return;
+    setMessages((prev) => prev.filter((_, idx) => idx !== i));
+    setOpenMenuIdx(null);
+  }
+
+  async function clearAll() {
+    if (
+      !window.confirm(
+        "清空这个角色的所有对话？\n\n此操作不可撤销。"
+      )
+    )
+      return;
+    await deleteChat(cardId);
+    if (card) {
+      setMessages([
+        { role: "assistant", content: card.first_mes },
+      ]);
+    }
+  }
+
+  /* ---------- 渲染 ---------- */
 
   if (!card) {
     return (
@@ -140,6 +295,13 @@ export default function ChatView({ cardId }: { cardId: string }) {
     );
   }
 
+  const isLastAssistant = (i: number) => {
+    for (let j = messages.length - 1; j >= 0; j--) {
+      if (messages[j].role === "assistant") return j === i;
+    }
+    return false;
+  };
+
   return (
     <div className="ai-chat-view">
       <div className="ai-chat-messages" ref={scrollRef}>
@@ -148,27 +310,156 @@ export default function ChatView({ cardId }: { cardId: string }) {
           <div className="ai-chat-card-scenario">
             {card.scenario}
           </div>
+          <button
+            className="ai-chat-clear"
+            onClick={clearAll}
+            disabled={streaming}
+          >
+            清空对话
+          </button>
         </div>
 
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={
-              m.role === "user"
-                ? "ai-msg ai-msg-user"
-                : "ai-msg ai-msg-assistant"
-            }
-          >
-            <div className="ai-msg-content">
-              {m.content || (
-                <span className="ai-msg-typing">
-                  <Sparkles size={13} strokeWidth={2} />{" "}
-                  正在思考…
-                </span>
-              )}
+        {messages.map((m, i) => {
+          if (m.role === "system") return null;
+          const isUser = m.role === "user";
+          const isEditing = editingIdx === i;
+
+          return (
+            <div
+              key={i}
+              className={
+                isUser
+                  ? "ai-msg ai-msg-user"
+                  : "ai-msg ai-msg-assistant"
+              }
+            >
+              <div className="ai-msg-content">
+                {isEditing ? (
+                  <div className="ai-msg-edit">
+                    <textarea
+                      className="ai-input ai-msg-edit-textarea"
+                      value={editDraft}
+                      onChange={(e) =>
+                        setEditDraft(e.target.value)
+                      }
+                      rows={4}
+                      autoFocus
+                    />
+                    <div className="ai-msg-edit-actions">
+                      <button
+                        className="ai-btn"
+                        style={{
+                          height: 32,
+                          padding: "0 12px",
+                          fontSize: 12,
+                        }}
+                        onClick={() => setEditingIdx(null)}
+                      >
+                        <X
+                          size={12}
+                          strokeWidth={2.4}
+                          style={{
+                            verticalAlign: "-2px",
+                            marginRight: 4,
+                          }}
+                        />
+                        取消
+                      </button>
+                      <button
+                        className="ai-btn primary"
+                        style={{
+                          height: 32,
+                          padding: "0 12px",
+                          fontSize: 12,
+                        }}
+                        onClick={commitEdit}
+                      >
+                        <Check
+                          size={12}
+                          strokeWidth={2.4}
+                          style={{
+                            verticalAlign: "-2px",
+                            marginRight: 4,
+                          }}
+                        />
+                        保存
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="ai-msg-text">
+                      {m.content || (
+                        <span className="ai-msg-typing">
+                          <Sparkles
+                            size={13}
+                            strokeWidth={2}
+                          />{" "}
+                          正在思考…
+                        </span>
+                      )}
+                    </div>
+
+                    {!streaming && m.content && (
+                      <button
+                        className="ai-msg-menu-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuIdx(
+                            openMenuIdx === i ? null : i
+                          );
+                        }}
+                        aria-label="操作"
+                      >
+                        <MoreHorizontal
+                          size={14}
+                          strokeWidth={2.2}
+                        />
+                      </button>
+                    )}
+
+                    {openMenuIdx === i && (
+                      <div
+                        className="ai-msg-menu"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {!isUser && isLastAssistant(i) && (
+                          <button
+                            className="ai-msg-menu-item"
+                            onClick={regenerate}
+                          >
+                            <RefreshCw
+                              size={12}
+                              strokeWidth={2.2}
+                            />
+                            重新生成
+                          </button>
+                        )}
+                        <button
+                          className="ai-msg-menu-item"
+                          onClick={() => startEdit(i)}
+                        >
+                          <Pencil size={12} strokeWidth={2.2} />
+                          编辑
+                        </button>
+                        <button
+                          className="ai-msg-menu-item ai-msg-menu-danger"
+                          onClick={() => deleteMsg(i)}
+                        >
+                          <Trash2
+                            size={12}
+                            strokeWidth={2.2}
+                          />
+                          删除
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {err && <div className="ai-chat-error">{err}</div>}
       </div>

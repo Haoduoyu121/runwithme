@@ -480,3 +480,113 @@
   justify-content: center;
   flex-shrink: 0;
 }
+
+/* ---------- 消息操作 ---------- */
+.ai-chat-clear {
+  margin-top: 10px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--ai-border);
+  background: transparent;
+  color: var(--ai-text-dim, inherit);
+  opacity: 0.7;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.ai-chat-clear:hover {
+  opacity: 1;
+}
+
+.ai-msg-content {
+  position: relative;
+}
+
+.ai-msg-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-msg-menu-btn {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.35;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.ai-msg-menu-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.ai-msg-menu {
+  position: absolute;
+  right: 4px;
+  bottom: 30px;
+  background: var(--ai-surface);
+  border: 1px solid var(--ai-border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  padding: 4px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 130px;
+}
+
+.ai-msg-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: inherit;
+  text-align: left;
+}
+
+.ai-msg-menu-item:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.ai-msg-menu-danger {
+  color: #d44;
+}
+
+.ai-msg-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.ai-msg-edit-textarea {
+  height: auto;
+  padding: 8px 10px;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.ai-msg-edit-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
