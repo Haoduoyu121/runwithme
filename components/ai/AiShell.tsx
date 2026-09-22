@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   Settings as SettingsIcon,
   Palette,
+  Home,
 } from "lucide-react";
 import AiThemeSwitcher from "./AiThemeSwitcher";
 import {
@@ -52,7 +53,13 @@ export default function AiShell({
     >
       <header className="ai-topbar">
         {isHome ? (
-          <div style={{ width: 36 }} />
+          <Link
+            href="/"
+            className="ai-icon-btn"
+            aria-label="返回主页"
+          >
+            <Home size={18} strokeWidth={2.2} />
+          </Link>
         ) : (
           <Link
             href="/ai"
