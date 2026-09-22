@@ -147,7 +147,6 @@ export default function ReadReader({
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const scrollEndTimerRef = useRef<number | null>(null);
-  const snappingRef = useRef(false);
   const pagesRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
@@ -420,7 +419,6 @@ export default function ReadReader({
       window.clearTimeout(scrollEndTimerRef.current);
       scrollEndTimerRef.current = null;
     }
-    snappingRef.current = false;
   }, [chapterIndex]);
 
    /* ---------- 保存进度（翻页触发） ---------- */
@@ -475,7 +473,6 @@ export default function ReadReader({
       setPageIndex(p);
     }
 
-    if (snappingRef.current) return;
 
     if (scrollEndTimerRef.current !== null) {
       window.clearTimeout(scrollEndTimerRef.current);
@@ -498,14 +495,12 @@ export default function ReadReader({
 
     if (diff < 2) return;
 
-    snappingRef.current = true;
     scroll.scrollTo({
       left: target,
       behavior: "smooth",
     });
 
     window.setTimeout(() => {
-      snappingRef.current = false;
     }, 420);
   }
 

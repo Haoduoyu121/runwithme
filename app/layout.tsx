@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+import { SyncProvider } from "@/lib/SyncProvider";
 import { SystemProvider } from "@/lib/SystemContext";
 import { CallProvider } from "@/lib/CallContext";
 import { MusicProvider } from "@/lib/MusicContext";
@@ -67,41 +68,43 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-     <body>
-      <SystemProvider>
-        <NotificationProvider>
-          <KeepAliveProvider>
-            <WatchInviteScheduler>
-              <CollectionProvider>
-              <CallProvider>
-                <MusicProvider>
-                  <ChatProvider>
-                    <MusicInviteProvider>
-                      <LetterProvider>
-                        <ICityProvider>
-                          <PomodoroProvider>
-                            {children}
-                            <CallUI />
-                            <FontScaleApplier />
-                            <MusicInviteOverlay />
-                            <FocusOverlay />
-                            <NotificationOverlay />
-                              <ReadInviteScheduler />
-                             <KeyboardInsetListener />
-                             <PWAUpdatePrompt />
-                          </PomodoroProvider>
-                        </ICityProvider>
-                      </LetterProvider>
-                    </MusicInviteProvider>
-                  </ChatProvider>
-                </MusicProvider>
-              </CallProvider>
-              </CollectionProvider>
-            </WatchInviteScheduler>
-          </KeepAliveProvider>
-        </NotificationProvider>
-      </SystemProvider>
-</body>
+      <body>
+        <SyncProvider>
+          <SystemProvider>
+            <NotificationProvider>
+              <KeepAliveProvider>
+                <WatchInviteScheduler>
+                  <CollectionProvider>
+                    <CallProvider>
+                      <MusicProvider>
+                        <ChatProvider>
+                          <MusicInviteProvider>
+                            <LetterProvider>
+                              <ICityProvider>
+                                <PomodoroProvider>
+                                  {children}
+                                  <CallUI />
+                                  <FontScaleApplier />
+                                  <MusicInviteOverlay />
+                                  <FocusOverlay />
+                                  <NotificationOverlay />
+                                  <ReadInviteScheduler />
+                                  <KeyboardInsetListener />
+                                  <PWAUpdatePrompt />
+                                </PomodoroProvider>
+                              </ICityProvider>
+                            </LetterProvider>
+                          </MusicInviteProvider>
+                        </ChatProvider>
+                      </MusicProvider>
+                    </CallProvider>
+                  </CollectionProvider>
+                </WatchInviteScheduler>
+              </KeepAliveProvider>
+            </NotificationProvider>
+          </SystemProvider>
+        </SyncProvider>
+      </body>
     </html>
   );
 }
