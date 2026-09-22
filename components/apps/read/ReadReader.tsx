@@ -323,54 +323,74 @@ export default function ReadReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, currentChapter, session, book.id]);
 
-  /* ---------- 设置列宽 ---------- */
+   /* ---------- 列宽 + 页数（合并计算，锁定列数消除亚像素错位） ---------- */
 
   useLayoutEffect(() => {
     const scroll = scrollRef.current;
     const pages = pagesRef.current;
     if (!scroll || !pages) return;
 
-    function apply() {
-      if (!scroll || !pages) return;
-      const w = scroll.clientWidth;
-      if (w <= 0) return;
-      pages.style.columnWidth = `${w}px`;
-      pages.style.columnGap = "0px";
-    }
-
-    apply();
-    const ro = new ResizeObserver(apply);
-    ro.observe(scroll);
-    return () => ro.disconnect();
-  }, [
-    chapterText,
-    settings.fontSize,
-    settings.lineHeight,
-    settings.fontFamily,
-    chapterHighlights.length,
-  ]);
-
-  /* ---------- 测量页数 ---------- */
-
-  useLayoutEffect(() => {
-    const scroll = scrollRef.current;
-    if (!scroll) return;
-
     let raf = 0;
-    const measure = () => {
-      if (!scroll) return;
-      const w = scroll.clientWidth;
+
+    function layout() {
+      if (!scroll || !pages) return;
+      const w = Math.floor(scroll.clientWidth);
       if (w <= 0) {
-        raf = requestAnimationFrame(measure);
+        raf = requestAnimationFrame(layout);
         return;
       }
-      const sw = scroll.scrollWidth;
-      const n = Math.max(1, Math.round(sw / w));
-      setPageCount(n);
-    };
-    raf = requestAnimationFrame(measure);
 
-    return () => cancelAnimationFrame(raf);
+      // 步骤 1：释放锁定，让浏览器按 columnWidth 自然多列排版
+      pages.style.width = "";
+      pages.style.columnCount = "";
+      pages.style.columnWidth = `${w}px`;
+      pages.style.columnGap = "0px";
+      pages.style.columnFill = "auto";
+
+      // 步骤 2：读一次 scrollWidth（触发重排）
+      const sw1 = pages.scrollWidth;
+      let count = Math.max(1, Math.ceil((sw1 - 0.5) / w));
+
+      // 步骤 3：锁定 column-count + 明确 width
+      //   每列宽 = width / count = w（消除亚像素累积误差）
+      pages.style.columnWidth = "";
+      pages.style.columnCount = String(count);
+      pages.style.width = `${count * w}px`;
+
+      // 步骤 4：若仍溢出（内容塞不下 count 列），加列重试
+      let sw2 = pages.scrollWidth;
+      let guard = 0;
+      while (sw2 > count * w + 1 && guard < 200) {
+        count++;
+        pages.style.columnCount = String(count);
+        pages.style.width = `${count * w}px`;
+        sw2 = pages.scrollWidth;
+        guard++;
+      }
+
+      setPageCount(count);
+
+      // 步骤 5：对齐 scrollLeft 到整页
+      const cur = Math.round(scroll.scrollLeft / w);
+      const clamped = Math.max(0, Math.min(count - 1, cur));
+      const target = clamped * w;
+      if (Math.abs(scroll.scrollLeft - target) > 1) {
+        scroll.scrollLeft = target;
+      }
+    }
+
+    layout();
+
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(layout);
+    });
+    ro.observe(scroll);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, [
     chapterText,
     settings.fontSize,

@@ -63303,3 +63303,10 @@ html[data-runwithme-style="mono"][data-runwithme-theme="dark"] .studio-search-wr
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: auto;
 }
+/* ============================================================
+   Read 多列排版修正（2026-09-22）
+   column-fill: auto 让内容按顺序填满每列，配合 column-count 锁定列数
+   ============================================================ */
+.read-reader .read-reader-pages {
+  column-fill: auto;
+}
