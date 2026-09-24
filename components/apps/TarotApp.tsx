@@ -388,11 +388,7 @@ function PickView({
   const [phase, setPhase] = useState<"shuffle" | "picking">("shuffle");
   const [picked, setPicked] = useState<DrawnCard[]>([]);
 
-  /* 整副牌随机排序（洗牌结果），只算一次 */
-  const deck = useMemo(
-    () => shuffle(DEFAULT_TAROT_DECK),
-    []
-  );
+  const deck = useMemo(() => shuffle(DEFAULT_TAROT_DECK), []);
 
   useEffect(() => {
     const t = window.setTimeout(() => setPhase("picking"), 1500);
@@ -405,8 +401,8 @@ function PickView({
   );
 
   function togglePick(c: TarotCard) {
+    /* 已选 → 取消 */
     if (pickedIds.has(c.id)) {
-      /* 取消选择 */
       setPicked((prev) =>
         prev.filter((p) => p.cardId !== c.id)
       );
@@ -419,12 +415,11 @@ function PickView({
     ];
     setPicked(next);
     if (next.length >= count) {
-      /* 选满自动进入 */
-      window.setTimeout(() => onDone(next), 420);
+      window.setTimeout(() => onDone(next), 520);
     }
   }
 
-  function randomFill() {
+  function randomDraw() {
     const need = count - picked.length;
     if (need <= 0) return;
     const remaining = deck.filter(
@@ -436,7 +431,7 @@ function PickView({
     }));
     const next = [...picked, ...extra].slice(0, count);
     setPicked(next);
-    window.setTimeout(() => onDone(next), 420);
+    window.setTimeout(() => onDone(next), 520);
   }
 
   if (phase === "shuffle") {
@@ -460,31 +455,41 @@ function PickView({
   }
 
   const remain = count - picked.length;
+  const orderOf = (id: string) =>
+    picked.findIndex((p) => p.cardId === id) + 1;
 
   return (
     <div className="tarot-pick">
       <div className="tarot-pick-bar">
         <div className="tarot-pick-bar-left">
-          已选 <strong>{picked.length}</strong> / {count}
+          已抽 <strong>{picked.length}</strong> / {count}
+          {remain > 0 && (
+            <span className="tarot-pick-bar-sub">
+              还需 {remain} 张
+            </span>
+          )}
         </div>
         <button
           className="tarot-pick-random"
-          onClick={randomFill}
+          onClick={randomDraw}
           disabled={remain <= 0}
         >
-          随机补 {remain} 张
+          系统随机抽{remain > 0 ? ` ${remain} 张` : ""}
         </button>
       </div>
 
       <div className="tarot-pick-hint">
-        {remain > 0
-          ? "从牌堆中挑选，凭感觉"
-          : "已选满，正在展开…"}
+        {picked.length === 0
+          ? "往下滑 · 看到想抽的牌 · 点它"
+          : remain > 0
+            ? "继续往下滑，或点右上角系统随机"
+            : "正在展开…"}
       </div>
 
-      <div className="tarot-pick-grid">
+      <div className="tarot-pick-stack">
         {deck.map((c) => {
           const on = pickedIds.has(c.id);
+          const order = on ? orderOf(c.id) : 0;
           const disabled = !on && picked.length >= count;
           return (
             <button
@@ -495,9 +500,15 @@ function PickView({
                 (disabled ? " is-disabled" : "")
               }
               onClick={() => togglePick(c)}
-              aria-label={c.nameCn}
+              disabled={disabled}
+              aria-label="抽牌"
             >
-              <span className="tarot-pick-glyph">✦</span>
+              <span className="tarot-pick-card-back">
+                <span className="tarot-pick-card-glyph">✦</span>
+              </span>
+              {on && (
+                <span className="tarot-pick-badge">{order}</span>
+              )}
             </button>
           );
         })}
