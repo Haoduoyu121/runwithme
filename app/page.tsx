@@ -253,6 +253,8 @@ function HomeScreen({
   onOpenHomeStudio,
   onOpenCalendar,
   onOpenCards,
+  onIconError,
+  onDockIconError,
 }: {
   wallpaper: string;
   iconUrls: Partial<Record<AppId, string>>;
@@ -262,6 +264,8 @@ function HomeScreen({
   onOpenHomeStudio: () => void;
   onOpenCalendar: () => void;
   onOpenCards: () => void;
+  onIconError?: (id: AppId) => void;
+  onDockIconError?: (slot: DockSlotId) => void;
 }) {
   const [pages, setPages] = useState<HomePages>([]);
   const [currentPage, setCurrentPage] = useState(0);
@@ -555,6 +559,7 @@ function HomeScreen({
           items={items}
           apps={apps}
           iconUrls={iconUrls}
+          onIconError={onIconError}
           editing={editing}
           currentPage={currentPage}
           pageCount={pages.length}
@@ -694,7 +699,13 @@ function HomeScreen({
               aria-label={cfg.label}
             >
               {customUrl ? (
-                <img src={customUrl} alt={cfg.label} />
+                <img
+                  src={customUrl}
+                  alt={cfg.label}
+                  onError={() =>
+                    onDockIconError?.(cfg.slot)
+                  }
+                />
               ) : (
                 cfg.fallback
               )}
@@ -1098,6 +1109,70 @@ export default function Home() {
   };
 
   const handleBackHome = () => setCurrentApp(null);
+    /* ★ 图标 URL 失效（iOS 清理 Blob）时重建 */
+  const iconErrorGuardRef = useRef<Map<string, number>>(
+    new Map()
+  );
+
+  async function reloadAppIcon(id: AppId) {
+    try {
+      const file = await getAppIconFile(`app-icon-${id}`);
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      setAppIconUrls((prev) => {
+        const old = prev[id];
+        if (old && old !== url) {
+          try {
+            URL.revokeObjectURL(old);
+          } catch {
+            /* ignore */
+          }
+        }
+        return { ...prev, [id]: url };
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function reloadDockIcon(slot: DockSlotId) {
+    try {
+      const file = await getAppIconFile(`dock-icon-${slot}`);
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      setDockIconUrls((prev) => {
+        const old = prev[slot];
+        if (old && old !== url) {
+          try {
+            URL.revokeObjectURL(old);
+          } catch {
+            /* ignore */
+          }
+        }
+        return { ...prev, [slot]: url };
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function handleAppIconError(id: AppId) {
+    const now = Date.now();
+    const key = `app-${id}`;
+    const last = iconErrorGuardRef.current.get(key) || 0;
+    if (now - last < 5000) return;
+    iconErrorGuardRef.current.set(key, now);
+    void reloadAppIcon(id);
+  }
+
+  function handleDockIconError(slot: DockSlotId) {
+    const now = Date.now();
+    const key = `dock-${slot}`;
+    const last = iconErrorGuardRef.current.get(key) || 0;
+    if (now - last < 5000) return;
+    iconErrorGuardRef.current.set(key, now);
+    void reloadDockIcon(slot);
+  }
 
       function handleOpenApp(id: AppId) {
     /* ★ 用 ref 判断，不依赖可能卡住的 state */
@@ -1153,6 +1228,8 @@ export default function Home() {
                 wallpaper={homeWallpaper}
                 iconUrls={appIconUrls}
                 dockIconUrls={dockIconUrls}
+                onDockIconError={handleDockIconError}
+                onIconError={handleAppIconError}
                 onOpenApp={(id: AppId) => {
                   if (id === "ai") {
                     router.push("/ai");

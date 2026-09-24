@@ -42,6 +42,8 @@ type HomeGridProps = {
   ) => void;
   onRequestPageChange: (dir: "left" | "right") => void;
   onDeleteWidget: (itemId: string) => void;
+  /* ★ 图标加载失败时通知父组件重建 URL */
+  onIconError?: (id: AppId) => void;
 };
 
 type Dragging = {
@@ -70,14 +72,13 @@ export default function HomeGrid({
   onCrossPageDrop,
   onRequestPageChange,
   onDeleteWidget,
+  onIconError,
 }: HomeGridProps) {
-  const [dragging, setDragging] = useState<Dragging | null>(
-    null
-  );
+  const [dragging, setDragging] = useState<Dragging | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(
     null
   );
-    const [unreadCounts, setUnreadCounts] = useState<
+  const [unreadCounts, setUnreadCounts] = useState<
     Partial<Record<AppId, number>>
   >({});
 
@@ -87,9 +88,7 @@ export default function HomeGrid({
   >({});
 
   const edgeTimerRef = useRef<number | null>(null);
-  const edgeDirRef = useRef<"left" | "right" | null>(
-    null
-  );
+  const edgeDirRef = useRef<"left" | "right" | null>(null);
 
   function handlePointerDown(
     item: HomeItem,
@@ -168,7 +167,6 @@ export default function HomeGrid({
     }
 
     function handleUp(e: PointerEvent) {
-      /* iOS 系统可能触发 pointercancel 打断拖拽 —— 此时用拖动层的位置兜底 */
       const isCancel = e.type === "pointercancel";
 
       const targetId = isCancel
@@ -253,7 +251,7 @@ export default function HomeGrid({
         const c = getAppUnreadCount(app.id);
         if (c > 0) next[app.id] = c;
       }
-      /* 浅比较：内容没变就不 setState，避免 HomeGrid 无意义重渲染 */
+      /* 浅比较：内容没变就不 setState */
       setUnreadCounts((prev) => {
         const pk = Object.keys(prev);
         const nk = Object.keys(next);
@@ -354,6 +352,7 @@ export default function HomeGrid({
           onPointerDown={(e) => handlePointerDown(item, e)}
           onOpenApp={onOpenApp}
           onDeleteWidget={() => onDeleteWidget(item.id)}
+          onIconError={onIconError}
           registerRef={(el) => {
             itemRefs.current[item.id] = el;
           }}
@@ -405,6 +404,7 @@ function GridItem({
   onPointerDown,
   onOpenApp,
   onDeleteWidget,
+  onIconError,
   registerRef,
 }: {
   item: HomeItem;
@@ -419,6 +419,7 @@ function GridItem({
   ) => void;
   onOpenApp: (id: AppId) => void;
   onDeleteWidget: () => void;
+  onIconError?: (id: AppId) => void;
   registerRef: (el: HTMLDivElement | null) => void;
 }) {
   const isWidget = item.content.kind === "widget";
@@ -452,6 +453,7 @@ function GridItem({
           apps={apps}
           iconUrls={iconUrls}
           unreadCounts={unreadCounts}
+          onIconError={onIconError}
         />
       )}
 
@@ -481,11 +483,13 @@ function AppIconInner({
   apps,
   iconUrls,
   unreadCounts,
+  onIconError,
 }: {
   item: HomeItem;
   apps: AppMeta[];
   iconUrls: Partial<Record<AppId, string>>;
   unreadCounts?: Partial<Record<AppId, number>>;
+  onIconError?: (id: AppId) => void;
 }) {
   if (item.content.kind !== "app") return null;
 
@@ -510,6 +514,7 @@ function AppIconInner({
               src={url}
               alt={app.name}
               draggable={false}
+              onError={() => onIconError?.(appId)}
             />
           ) : (
             <span>{app.icon}</span>
