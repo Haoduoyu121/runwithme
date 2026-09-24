@@ -168,11 +168,16 @@ export default function HomeGrid({
     }
 
     function handleUp(e: PointerEvent) {
-      const targetId = findItemAtPoint(
-        e.clientX,
-        e.clientY,
-        dragItemId
-      );
+      /* iOS 系统可能触发 pointercancel 打断拖拽 —— 此时用拖动层的位置兜底 */
+      const isCancel = e.type === "pointercancel";
+
+      const targetId = isCancel
+        ? findItemAtPoint(
+            dragging ? dragging.x : e.clientX,
+            dragging ? dragging.y : e.clientY,
+            dragItemId
+          )
+        : findItemAtPoint(e.clientX, e.clientY, dragItemId);
 
       const fromIdx = items.findIndex(
         (it) => it.id === dragItemId

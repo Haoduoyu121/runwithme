@@ -903,12 +903,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!currentApp) return;
-    setMountedApps((prev) =>
-      prev.includes(currentApp)
-        ? prev
-        : [...prev, currentApp]
-    );
+    if (currentApp === null) {
+      /* 回主屏 → 卸载所有 App，释放内存 */
+      setMountedApps([]);
+    } else {
+      /* 只保留当前 App，切换时旧的直接卸载 */
+      setMountedApps([currentApp]);
+    }
   }, [currentApp]);
 
   /* 进入 App 时清未读 */
