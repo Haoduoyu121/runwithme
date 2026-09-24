@@ -20,6 +20,7 @@ import SearchApp from "@/components/apps/SearchApp";
 import ReadApp from "@/components/apps/ReadApp";
 import FridgeApp from "@/components/apps/FridgeApp";
 import TarotApp from "@/components/apps/TarotApp";
+import GameHubApp from "@/components/apps/GameHubApp";
 import { runWorldCompensation } from "@/lib/worldClock";
 import { markAppAllRead } from "@/lib/unreadRegistry";
 
@@ -49,6 +50,10 @@ import { getAppIconFile } from "@/lib/appIconFiles";
 import { useNotifications } from "@/lib/NotificationContext";
 
 import HomeGrid from "@/components/home/HomeGrid";
+import AppOpenOverlay, {
+  type OpenTransition,
+} from "@/components/system/AppOpenOverlay";
+import { getAppAccent } from "@/lib/appAccent";
 import AddWidgetModal from "@/components/home/AddWidgetModal";
 import WorldCard from "@/components/home/WorldCard";
 import CollectionApp from "@/components/apps/CollectionApp";
@@ -166,6 +171,12 @@ const apps = [
     name: "Tarot",
     icon: "☽",
     color: "violet",
+  },
+  {
+    id: "games" as AppId,
+    name: "Arcade",
+    icon: "◉",
+    color: "cream",
   },
 ];
 
@@ -745,6 +756,7 @@ function AppWindow({
       )}
        {app === "fridge" && <FridgeApp onBack={onBack} />}
        {app === "tarot" && <TarotApp onBack={onBack} />}
+      {app === "games" && <GameHubApp onBack={onBack} />}
     </div>
   );
 }
@@ -763,6 +775,9 @@ export default function Home() {
 
   const [currentApp, setCurrentApp] =
     useState<AppId | null>(null);
+
+  const [openTransition, setOpenTransition] =
+    useState<OpenTransition | null>(null);
 
   const [mountedApps, setMountedApps] = useState<AppId[]>(
     []
@@ -1081,6 +1096,39 @@ export default function Home() {
 
   const handleBackHome = () => setCurrentApp(null);
 
+    function handleOpenApp(id: AppId) {
+    if (openTransition) return;
+
+    const el = document.querySelector(
+      `[data-app-icon="${id}"]`
+    ) as HTMLElement | null;
+
+    if (!el) {
+      setCurrentApp(id);
+      return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    const radius = parseFloat(
+      window.getComputedStyle(el).borderRadius || "22"
+    );
+
+    setOpenTransition({
+      appId: id,
+      rect: {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      },
+      color: getAppAccent(id),
+      radius: Number.isFinite(radius) ? radius : 22,
+    });
+
+    /* 约 60% 的时候应用挂载到覆盖层下方 */
+    window.setTimeout(() => setCurrentApp(id), 260);
+  }
+
   return (
     <div className="site">
       <div className="runwithme-app">
@@ -1097,12 +1145,12 @@ export default function Home() {
                 iconUrls={appIconUrls}
                 dockIconUrls={dockIconUrls}
                 onOpenApp={(id: AppId) => {
-  if (id === "ai") {
-    router.push("/ai");
-    return;
-  }
-  setCurrentApp(id);
-}}
+                  if (id === "ai") {
+                    router.push("/ai");
+                    return;
+                  }
+                  handleOpenApp(id);
+                }}
                 onOpenSettings={() => {
                   router.push("/studio/settings");
                 }}
@@ -1138,6 +1186,12 @@ export default function Home() {
               </div>
             ))}
           </>
+        )}
+                {openTransition && (
+          <AppOpenOverlay
+            transition={openTransition}
+            onFinish={() => setOpenTransition(null)}
+          />
         )}
       </div>
     </div>

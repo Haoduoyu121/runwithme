@@ -487,6 +487,7 @@ function AppIconInner({
           className={`app-icon app-${app.color}${
             url ? " app-icon-custom" : ""
           }`}
+          data-app-icon={appId}
         >
           {url ? (
             <img

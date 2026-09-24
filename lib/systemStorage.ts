@@ -23,8 +23,8 @@ export type AppId =
   | "read"
   | "fridge"
   | "ai"
-  | "tarot";
-
+  | "tarot"
+  | "games";
 export type AppIconState = "custom" | null;
 
 /* ---------- Dock ---------- */
@@ -126,6 +126,7 @@ const defaultSettings: SystemSettings = {
     fridge: null,
     ai: null,
     tarot: null,
+    games: null,
   },
   dockIcons: {
     "slot-1": null,
