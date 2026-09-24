@@ -3,20 +3,16 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
-  useRef,
   useState,
 } from "react";
 import {
-  ArrowLeft,
   History,
-  Plus,
   Shuffle,
   Sparkles,
   Trash2,
-  X,
   ChevronLeft,
   Moon,
+  BookOpen,
 } from "lucide-react";
 import {
   DEFAULT_TAROT_DECK,
@@ -29,6 +25,7 @@ import {
 import {
   listRecords,
   addRecord,
+  updateRecord,
   deleteRecord,
   drawRandom,
   randomReversed,
@@ -36,14 +33,30 @@ import {
   type DrawnCard,
   type TarotMode,
 } from "@/lib/tarotStorage";
+import AiReadingPanel from "./tarot/AiReadingPanel";
+import type { ReadingCardRef } from "@/lib/tarotReading";
 
 type Props = { onBack: () => void };
 
 type View =
   | { kind: "home" }
   | { kind: "setup"; mode: TarotMode }
-  | { kind: "shuffle"; mode: TarotMode; asker: "" | "levi" | "erwin"; question: string; cards: DrawnCard[] }
-  | { kind: "reveal"; mode: TarotMode; asker: "" | "levi" | "erwin"; question: string; cards: DrawnCard[] }
+  | {
+      kind: "shuffle";
+      mode: TarotMode;
+      asker: "" | "levi" | "erwin";
+      question: string;
+      cards: DrawnCard[];
+    }
+  | {
+      kind: "reveal";
+      mode: TarotMode;
+      asker: "" | "levi" | "erwin";
+      question: string;
+      cards: DrawnCard[];
+      recordId: string;
+      aiReading?: string;
+    }
   | { kind: "history" }
   | { kind: "record"; id: string };
 
@@ -65,6 +78,7 @@ export default function TarotApp({ onBack }: Props) {
   const [view, setView] = useState<View>({ kind: "home" });
   const [records, setRecords] = useState<TarotRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [showAi, setShowAi] = useState(false);
 
   const refresh = useCallback(async () => {
     const list = await listRecords();
@@ -75,6 +89,29 @@ export default function TarotApp({ onBack }: Props) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  /* 给 AI 解读用的牌引用 */
+  function cardsToRefs(
+    cards: DrawnCard[],
+    mode: TarotMode
+  ): ReadingCardRef[] {
+    return cards.map((dc, i) => {
+      const c = getCardById(dc.cardId);
+      return {
+        nameCn: c?.nameCn || "",
+        name: c?.name || "",
+        reversed: dc.reversed,
+        upright: c?.upright || "",
+        reversedText: c?.reversed || "",
+        position:
+          mode === "three"
+            ? THREE_POS[i]
+            : mode === "today"
+              ? "今日"
+              : `牌 ${i + 1}`,
+      };
+    });
+  }
 
   return (
     <div className="tarot-app">
@@ -119,33 +156,40 @@ export default function TarotApp({ onBack }: Props) {
           <SetupView
             mode={view.mode}
             onStart={(asker, question, cards) =>
-              setView({ kind: "shuffle", mode: view.mode, asker, question, cards })
+              setView({
+                kind: "shuffle",
+                mode: view.mode,
+                asker,
+                question,
+                cards,
+              })
             }
           />
         )}
 
         {view.kind === "shuffle" && (
-  <ShuffleView
-    cards={view.cards}
-    onDone={async (finalCards) => {
-      await addRecord({
-        deckId: DEFAULT_DECK_ID,
-        mode: view.mode,
-        asker: view.asker,
-        question: view.question,
-        cards: finalCards,
-      });
-      await refresh();
-      setView({
-        kind: "reveal",
-        mode: view.mode,
-        asker: view.asker,
-        question: view.question,
-        cards: finalCards,
-      });
-    }}
-  />
-)}
+          <ShuffleView
+            cards={view.cards}
+            onDone={async (finalCards) => {
+              const rec = await addRecord({
+                deckId: DEFAULT_DECK_ID,
+                mode: view.mode,
+                asker: view.asker,
+                question: view.question,
+                cards: finalCards,
+              });
+              await refresh();
+              setView({
+                kind: "reveal",
+                mode: view.mode,
+                asker: view.asker,
+                question: view.question,
+                cards: finalCards,
+                recordId: rec.id,
+              });
+            }}
+          />
+        )}
 
         {view.kind === "reveal" && (
           <RevealView
@@ -153,6 +197,8 @@ export default function TarotApp({ onBack }: Props) {
             asker={view.asker}
             question={view.question}
             cards={view.cards}
+            aiReading={view.aiReading}
+            onRequestAi={() => setShowAi(true)}
           />
         )}
 
@@ -175,6 +221,22 @@ export default function TarotApp({ onBack }: Props) {
           />
         )}
       </main>
+
+      {showAi && view.kind === "reveal" && (
+        <AiReadingPanel
+          question={view.question}
+          cards={cardsToRefs(view.cards, view.mode)}
+          initialReading={view.aiReading}
+          onClose={() => setShowAi(false)}
+          onReading={async (text) => {
+            await updateRecord(view.recordId, {
+              aiReading: text,
+            });
+            await refresh();
+            setView({ ...view, aiReading: text });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -223,7 +285,7 @@ function HomeView({ onPick }: { onPick: (m: TarotMode) => void }) {
 }
 
 /* =========================================================
-   Setup - 选谁 + 输入问题
+   Setup
    ========================================================= */
 
 function SetupView({
@@ -316,7 +378,7 @@ function SetupView({
 }
 
 /* =========================================================
-   Shuffle 动画
+   Shuffle
    ========================================================= */
 
 function ShuffleView({
@@ -330,9 +392,7 @@ function ShuffleView({
 
   useEffect(() => {
     const t1 = window.setTimeout(() => setPhase(1), 1400);
-    const t2 = window.setTimeout(() => {
-      onDone(cards);
-    }, 2200);
+    const t2 = window.setTimeout(() => onDone(cards), 2200);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
@@ -361,8 +421,9 @@ function ShuffleView({
     </div>
   );
 }
+
 /* =========================================================
-   Reveal - 翻牌 + 展示
+   Reveal
    ========================================================= */
 
 function RevealView({
@@ -370,11 +431,15 @@ function RevealView({
   asker,
   question,
   cards,
+  aiReading,
+  onRequestAi,
 }: {
   mode: TarotMode;
   asker: "" | "levi" | "erwin";
   question: string;
   cards: DrawnCard[];
+  aiReading?: string;
+  onRequestAi: () => void;
 }) {
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const allRevealed = revealed.size >= cards.length;
@@ -403,9 +468,7 @@ function RevealView({
         </div>
       )}
       {askerLabel && (
-        <div className="tarot-reveal-asker">
-          {askerLabel} 与你共卜
-        </div>
+        <div className="tarot-reveal-asker">{askerLabel} 与你共卜</div>
       )}
 
       <div className="tarot-card-row">
@@ -437,46 +500,76 @@ function RevealView({
       </div>
 
       {!allRevealed && (
-        <button className="tarot-primary tarot-reveal-all" onClick={revealAll}>
+        <button
+          className="tarot-primary tarot-reveal-all"
+          onClick={revealAll}
+        >
           <Sparkles size={16} strokeWidth={2.2} />
           全部翻开
         </button>
       )}
 
       {allRevealed && (
-        <div className="tarot-readings">
-          {cards.map((dc, i) => {
-            const card = getCardById(dc.cardId);
-            if (!card) return null;
-            const posLabel =
-              mode === "three"
-                ? THREE_POS[i] ?? `牌 ${i + 1}`
-                : mode === "today"
-                  ? "今日"
-                  : `牌 ${i + 1}`;
-            return (
-              <div key={i} className="tarot-reading-item">
-                <div className="tarot-reading-head">
-                  <span className="tarot-reading-pos">{posLabel}</span>
-                  <span className="tarot-reading-name">
-                    {card.nameCn}
-                    <span
-                      className={
-                        "tarot-pos-tag" +
-                        (dc.reversed ? " is-rev" : "")
-                      }
-                    >
-                      {dc.reversed ? "逆位" : "正位"}
+        <>
+          <div className="tarot-readings">
+            {cards.map((dc, i) => {
+              const card = getCardById(dc.cardId);
+              if (!card) return null;
+              const posLabel =
+                mode === "three"
+                  ? THREE_POS[i] ?? `牌 ${i + 1}`
+                  : mode === "today"
+                    ? "今日"
+                    : `牌 ${i + 1}`;
+              return (
+                <div key={i} className="tarot-reading-item">
+                  <div className="tarot-reading-head">
+                    <span className="tarot-reading-pos">{posLabel}</span>
+                    <span className="tarot-reading-name">
+                      {card.nameCn}
+                      <span
+                        className={
+                          "tarot-pos-tag" +
+                          (dc.reversed ? " is-rev" : "")
+                        }
+                      >
+                        {dc.reversed ? "逆位" : "正位"}
+                      </span>
                     </span>
-                  </span>
+                  </div>
+                  <div className="tarot-reading-text">
+                    {dc.reversed ? card.reversed : card.upright}
+                  </div>
                 </div>
-                <div className="tarot-reading-text">
-                  {dc.reversed ? card.reversed : card.upright}
-                </div>
+              );
+            })}
+          </div>
+
+          {/* AI 解读区 */}
+          {aiReading ? (
+            <div className="tarot-ai-block">
+              <div className="tarot-ai-block-head">
+                <BookOpen size={14} strokeWidth={2.2} />
+                <span>AI 解读</span>
               </div>
-            );
-          })}
-        </div>
+              <div className="tarot-ai-block-text">{aiReading}</div>
+              <button
+                className="tarot-ai-reopen"
+                onClick={onRequestAi}
+              >
+                重新解读
+              </button>
+            </div>
+          ) : (
+            <button
+              className="tarot-primary tarot-ai-btn"
+              onClick={onRequestAi}
+            >
+              <Sparkles size={16} strokeWidth={2.2} />
+              让 AI 解读
+            </button>
+          )}
+        </>
       )}
     </div>
   );
@@ -529,9 +622,7 @@ function HistoryView({
   loaded: boolean;
   onOpen: (id: string) => void;
 }) {
-  if (!loaded) {
-    return <div className="tarot-empty">加载中…</div>;
-  }
+  if (!loaded) return <div className="tarot-empty">加载中…</div>;
   if (records.length === 0) {
     return (
       <div className="tarot-empty">
@@ -551,9 +642,7 @@ function HistoryView({
           onClick={() => onOpen(r.id)}
         >
           <div className="tarot-history-top">
-            <span className="tarot-history-mode">
-              {MODE_LABEL[r.mode]}
-            </span>
+            <span className="tarot-history-mode">{MODE_LABEL[r.mode]}</span>
             <span className="tarot-history-time">
               {new Date(r.ts).toLocaleString("zh-CN", {
                 month: "2-digit",
@@ -580,6 +669,9 @@ function HistoryView({
               );
             })}
           </div>
+          {r.aiReading && (
+            <div className="tarot-history-ai-tag">✦ 有 AI 解读</div>
+          )}
         </button>
       ))}
     </div>
@@ -597,9 +689,7 @@ function RecordDetailView({
   record: TarotRecord | null;
   onDelete: (id: string) => void;
 }) {
-  if (!record) {
-    return <div className="tarot-empty">记录不存在</div>;
-  }
+  if (!record) return <div className="tarot-empty">记录不存在</div>;
 
   const askerLabel =
     record.asker === "" ? null : record.asker === "levi" ? "Levi" : "Erwin";
@@ -609,9 +699,7 @@ function RecordDetailView({
       <div className="tarot-record-meta">
         <span>{MODE_LABEL[record.mode]}</span>
         <span>·</span>
-        <span>
-          {new Date(record.ts).toLocaleString("zh-CN")}
-        </span>
+        <span>{new Date(record.ts).toLocaleString("zh-CN")}</span>
       </div>
       {record.question && (
         <div className="tarot-record-q">「{record.question}」</div>
@@ -648,6 +736,18 @@ function RecordDetailView({
           );
         })}
       </div>
+
+      {record.aiReading && (
+        <div className="tarot-ai-block">
+          <div className="tarot-ai-block-head">
+            <BookOpen size={14} strokeWidth={2.2} />
+            <span>AI 解读</span>
+          </div>
+          <div className="tarot-ai-block-text">
+            {record.aiReading}
+          </div>
+        </div>
+      )}
 
       <button
         className="tarot-danger"
