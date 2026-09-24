@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import {
@@ -29,6 +30,7 @@ import {
   deleteRecord,
   drawRandom,
   randomReversed,
+  shuffle,
   type TarotRecord,
   type DrawnCard,
   type TarotMode,
@@ -42,11 +44,11 @@ type View =
   | { kind: "home" }
   | { kind: "setup"; mode: TarotMode }
   | {
-      kind: "shuffle";
+      kind: "pick";
       mode: TarotMode;
       asker: "" | "levi" | "erwin";
       question: string;
-      cards: DrawnCard[];
+      count: number;
     }
   | {
       kind: "reveal";
@@ -129,7 +131,7 @@ export default function TarotApp({ onBack }: Props) {
         <div className="tarot-title">
           {view.kind === "home" && "占卜之书"}
           {view.kind === "setup" && MODE_LABEL[view.mode]}
-          {view.kind === "shuffle" && "洗牌…"}
+          {view.kind === "pick" && "选牌"}
           {view.kind === "reveal" && MODE_LABEL[view.mode]}
           {view.kind === "history" && "记录"}
           {view.kind === "record" && "记录"}
@@ -155,21 +157,21 @@ export default function TarotApp({ onBack }: Props) {
         {view.kind === "setup" && (
           <SetupView
             mode={view.mode}
-            onStart={(asker, question, cards) =>
+            onStart={(asker, question, count) =>
               setView({
-                kind: "shuffle",
+                kind: "pick",
                 mode: view.mode,
                 asker,
                 question,
-                cards,
+                count,
               })
             }
           />
         )}
 
-        {view.kind === "shuffle" && (
-          <ShuffleView
-            cards={view.cards}
+        {view.kind === "pick" && (
+          <PickView
+            count={view.count}
             onDone={async (finalCards) => {
               const rec = await addRecord({
                 deckId: DEFAULT_DECK_ID,
@@ -296,7 +298,7 @@ function SetupView({
   onStart: (
     asker: "" | "levi" | "erwin",
     question: string,
-    cards: DrawnCard[]
+    count: number
   ) => void;
 }) {
   const [asker, setAsker] = useState<"" | "levi" | "erwin">("");
@@ -304,12 +306,7 @@ function SetupView({
   const [count, setCount] = useState(MODE_COUNT[mode]);
 
   function start() {
-    const picked = drawRandom(DEFAULT_TAROT_DECK, count);
-    const cards: DrawnCard[] = picked.map((c) => ({
-      cardId: c.id,
-      reversed: randomReversed(),
-    }));
-    onStart(asker, question.trim(), cards);
+    onStart(asker, question.trim(), count);
   }
 
   return (
@@ -378,45 +375,132 @@ function SetupView({
 }
 
 /* =========================================================
-   Shuffle
+   Pick - 洗牌动画 → 展开全部 78 张 → 用户选牌
    ========================================================= */
 
-function ShuffleView({
-  cards,
+function PickView({
+  count,
   onDone,
 }: {
-  cards: DrawnCard[];
+  count: number;
   onDone: (cards: DrawnCard[]) => void;
 }) {
-  const [phase, setPhase] = useState<0 | 1>(0);
+  const [phase, setPhase] = useState<"shuffle" | "picking">("shuffle");
+  const [picked, setPicked] = useState<DrawnCard[]>([]);
+
+  /* 整副牌随机排序（洗牌结果），只算一次 */
+  const deck = useMemo(
+    () => shuffle(DEFAULT_TAROT_DECK),
+    []
+  );
 
   useEffect(() => {
-    const t1 = window.setTimeout(() => setPhase(1), 1400);
-    const t2 = window.setTimeout(() => onDone(cards), 2200);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
-  }, [cards, onDone]);
+    const t = window.setTimeout(() => setPhase("picking"), 1500);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  const pickedIds = useMemo(
+    () => new Set(picked.map((p) => p.cardId)),
+    [picked]
+  );
+
+  function togglePick(c: TarotCard) {
+    if (pickedIds.has(c.id)) {
+      /* 取消选择 */
+      setPicked((prev) =>
+        prev.filter((p) => p.cardId !== c.id)
+      );
+      return;
+    }
+    if (picked.length >= count) return;
+    const next = [
+      ...picked,
+      { cardId: c.id, reversed: randomReversed() },
+    ];
+    setPicked(next);
+    if (next.length >= count) {
+      /* 选满自动进入 */
+      window.setTimeout(() => onDone(next), 420);
+    }
+  }
+
+  function randomFill() {
+    const need = count - picked.length;
+    if (need <= 0) return;
+    const remaining = deck.filter(
+      (c) => !pickedIds.has(c.id)
+    );
+    const extra = drawRandom(remaining, need).map((c) => ({
+      cardId: c.id,
+      reversed: randomReversed(),
+    }));
+    const next = [...picked, ...extra].slice(0, count);
+    setPicked(next);
+    window.setTimeout(() => onDone(next), 420);
+  }
+
+  if (phase === "shuffle") {
+    return (
+      <div className="tarot-shuffle">
+        <div className="tarot-shuffle-deck">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div
+              key={i}
+              className="tarot-shuffle-card is-flying"
+              style={{
+                ["--i" as string]: i,
+                ["--dir" as string]: i % 2 === 0 ? 1 : -1,
+              }}
+            />
+          ))}
+        </div>
+        <div className="tarot-shuffle-text">洗牌中…</div>
+      </div>
+    );
+  }
+
+  const remain = count - picked.length;
 
   return (
-    <div className="tarot-shuffle">
-      <div className="tarot-shuffle-deck">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <div
-            key={i}
-            className={
-              "tarot-shuffle-card" + (phase === 1 ? " is-flying" : "")
-            }
-            style={{
-              ["--i" as string]: i,
-              ["--dir" as string]: i % 2 === 0 ? 1 : -1,
-            }}
-          />
-        ))}
+    <div className="tarot-pick">
+      <div className="tarot-pick-bar">
+        <div className="tarot-pick-bar-left">
+          已选 <strong>{picked.length}</strong> / {count}
+        </div>
+        <button
+          className="tarot-pick-random"
+          onClick={randomFill}
+          disabled={remain <= 0}
+        >
+          随机补 {remain} 张
+        </button>
       </div>
-      <div className="tarot-shuffle-text">
-        {phase === 0 ? "洗牌中…" : "牌面已展开"}
+
+      <div className="tarot-pick-hint">
+        {remain > 0
+          ? "从牌堆中挑选，凭感觉"
+          : "已选满，正在展开…"}
+      </div>
+
+      <div className="tarot-pick-grid">
+        {deck.map((c) => {
+          const on = pickedIds.has(c.id);
+          const disabled = !on && picked.length >= count;
+          return (
+            <button
+              key={c.id}
+              className={
+                "tarot-pick-card" +
+                (on ? " is-on" : "") +
+                (disabled ? " is-disabled" : "")
+              }
+              onClick={() => togglePick(c)}
+              aria-label={c.nameCn}
+            >
+              <span className="tarot-pick-glyph">✦</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
