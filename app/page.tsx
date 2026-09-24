@@ -19,6 +19,7 @@ import RandomApp from "@/components/apps/RandomApp";
 import SearchApp from "@/components/apps/SearchApp";
 import ReadApp from "@/components/apps/ReadApp";
 import FridgeApp from "@/components/apps/FridgeApp";
+import TarotApp from "@/components/apps/TarotApp";
 import { runWorldCompensation } from "@/lib/worldClock";
 import { markAppAllRead } from "@/lib/unreadRegistry";
 
@@ -158,6 +159,12 @@ const apps = [
     id: "ai" as AppId,
     name: "Beyond",
     icon: "✦",
+    color: "violet",
+  },
+  {
+    id: "tarot" as AppId,
+    name: "Tarot",
+    icon: "☽",
     color: "violet",
   },
 ];
@@ -737,6 +744,7 @@ function AppWindow({
         />
       )}
        {app === "fridge" && <FridgeApp onBack={onBack} />}
+       {app === "tarot" && <TarotApp onBack={onBack} />}
     </div>
   );
 }
