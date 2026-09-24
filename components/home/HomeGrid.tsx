@@ -253,7 +253,18 @@ export default function HomeGrid({
         const c = getAppUnreadCount(app.id);
         if (c > 0) next[app.id] = c;
       }
-      setUnreadCounts(next);
+      /* 浅比较：内容没变就不 setState，避免 HomeGrid 无意义重渲染 */
+      setUnreadCounts((prev) => {
+        const pk = Object.keys(prev);
+        const nk = Object.keys(next);
+        if (pk.length !== nk.length) return next;
+        for (const k of nk) {
+          if (prev[k as AppId] !== next[k as AppId]) {
+            return next;
+          }
+        }
+        return prev;
+      });
     }
 
     refresh();

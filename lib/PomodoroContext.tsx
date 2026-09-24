@@ -171,6 +171,9 @@ export function PomodoroProvider({
   useEffect(() => {
     if (!running) return;
 
+    /* 用 lastLeft 记录"已经 setState 过的秒数"，值没变就不 setState */
+    let lastLeft = -1;
+
     const tick = () => {
       if (endTimeRef.current === null) return;
 
@@ -181,7 +184,10 @@ export function PomodoroProvider({
         )
       );
 
-      setRemaining(left);
+      if (left !== lastLeft) {
+        lastLeft = left;
+        setRemaining(left);
+      }
 
       if (left <= 0) {
         handleComplete();
@@ -189,8 +195,21 @@ export function PomodoroProvider({
     };
 
     tick();
-    const t = window.setInterval(tick, 250);
-    return () => window.clearInterval(t);
+    /* 250ms → 1000ms：秒级精度不需要 4 次/秒 */
+    const t = window.setInterval(tick, 1000);
+
+    /* 页面隐藏时不 tick，节流 */
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [running, handleComplete]);
 
   /* ---------- 控制 ---------- */
