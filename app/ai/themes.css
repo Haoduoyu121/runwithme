@@ -1158,3 +1158,198 @@
   width: 32px;
   height: 32px;
 }
+
+/* ============================================================
+   Chat 增强（2026-09-24）
+   角色卡菜单 + 多选 + 打字框 + 暂停
+   ============================================================ */
+
+/* ---------- 角色卡编辑菜单 ---------- */
+.ai-card-wrap {
+  position: relative;
+}
+
+.ai-card-menu-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: color-mix(in srgb, var(--ai-surface) 85%, transparent);
+  color: var(--ai-text);
+  opacity: 0.7;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: opacity 0.15s, background 0.15s;
+  backdrop-filter: blur(6px);
+}
+
+.ai-card-menu-btn:hover {
+  opacity: 1;
+  background: var(--ai-accent);
+  color: #fff;
+}
+
+.ai-card-menu {
+  position: absolute;
+  top: 34px;
+  right: 6px;
+  z-index: 3;
+  background: var(--ai-surface);
+  border: 1px solid var(--ai-border);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  padding: 4px;
+  min-width: 100px;
+}
+
+.ai-card-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 14px;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+.ai-card-menu-item:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+/* ---------- 消息行 + 多选 ---------- */
+.ai-msg-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.ai-msg-row.is-user {
+  justify-content: flex-end;
+}
+
+.ai-msg-row.is-assistant {
+  justify-content: flex-start;
+}
+
+.ai-msg-check {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ai-border);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ai-msg-check.is-on {
+  background: var(--ai-accent);
+  border-color: var(--ai-accent);
+}
+
+/* ---------- 多选底部栏 ---------- */
+.ai-select-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  border-top: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  flex-shrink: 0;
+}
+
+.ai-select-info {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.ai-select-btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--ai-radius);
+  border: 1px solid var(--ai-border);
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-select-btn:hover {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.ai-select-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ai-select-btn.danger {
+  color: #d44;
+  border-color: color-mix(in srgb, #d44 40%, transparent);
+}
+
+/* ---------- 打字框 textarea ---------- */
+.ai-chat-textarea {
+  flex: 1;
+  min-height: 42px;
+  max-height: 200px;
+  height: auto !important;
+  padding: 10px 14px !important;
+  line-height: 1.5;
+  resize: none;
+  font-family: inherit;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* ---------- 继续生成按钮 ---------- */
+.ai-chat-continue-row {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.ai-chat-continue-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--ai-accent);
+  background: color-mix(in srgb, var(--ai-accent) 12%, transparent);
+  color: var(--ai-accent);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ai-chat-continue-btn:hover {
+  background: color-mix(in srgb, var(--ai-accent) 22%, transparent);
+}

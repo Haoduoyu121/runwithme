@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Send,
   Sparkles,
@@ -11,6 +16,9 @@ import {
   X,
   Check,
   BookmarkPlus,
+  Pause,
+  Play,
+  CheckSquare,
 } from "lucide-react";
 import {
   loadConfig,
@@ -32,6 +40,7 @@ import {
 import { useCollection } from "@/lib/CollectionContext";
 import WorldbookPanel from "./WorldbookPanel";
 import PresetPanel from "./PresetPanel";
+import PersonaPanel from "./PersonaPanel";
 import {
   loadWorldbooks,
   flattenBooks,
@@ -49,14 +58,13 @@ import {
   pickApiParams,
   type AiPreset,
 } from "@/lib/ai/presets";
-import PersonaPanel from "./PersonaPanel";
+import { ThinkingFilter, stripThinking } from "@/lib/ai/thinkingFilter";
+import { applyRegexScripts } from "@/lib/ai/regex";
 import {
   loadPersona,
   buildPersonaBlock,
   type UserPersona,
 } from "@/lib/ai/userProfile";
-import { ThinkingFilter, stripThinking } from "@/lib/ai/thinkingFilter";
-import { applyRegexScripts } from "@/lib/ai/regex";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "https://api.yulewin.cn";
@@ -100,11 +108,9 @@ function buildSystemPrompt(
   const vars = { char: card.name, user: persona.name || "你" };
   const parts: string[] = [];
 
-  /* 用户信息（persona）注入到最前面 */
   const personaBlock = buildPersonaBlock(persona);
   if (personaBlock) parts.push(personaBlock);
 
-  /* 预设主提示（按所有启用 prompt 顺序拼接） */
   const presetBlock = preset
     ? buildPresetSystemPrompt(preset, vars)
     : "";
@@ -112,14 +118,12 @@ function buildSystemPrompt(
   else if (card.system_prompt) parts.push(card.system_prompt);
   else parts.push(DEFAULT_SYS);
 
-  /* 位置 0：角色描述前 */
   const wbBeforeChar = formatEntries(wb.beforeChar);
   if (wbBeforeChar) parts.push(wbBeforeChar);
 
   if (card.description)
     parts.push(`[角色描述]\n${card.description}`);
 
-  /* 位置 1：角色描述后 */
   const wbAfterChar = formatEntries(wb.afterChar);
   if (wbAfterChar) parts.push(wbAfterChar);
 
@@ -127,25 +131,21 @@ function buildSystemPrompt(
     parts.push(`[性格]\n${card.personality}`);
   if (card.scenario) parts.push(`[场景]\n${card.scenario}`);
 
-  /* 位置 2：作者注前 */
   const wbBeforeAn = formatEntries(wb.beforeAn);
   if (wbBeforeAn) parts.push(wbBeforeAn);
 
   if (preset?.post_history)
     parts.push(applyTemplate(preset.post_history, vars));
 
-  /* 位置 3：作者注后 */
   const wbAfterAn = formatEntries(wb.afterAn);
   if (wbAfterAn) parts.push(wbAfterAn);
 
-  /* 位置 5：示例对话前 */
   const wbBeforeEm = formatEntries(wb.beforeEm);
   if (wbBeforeEm) parts.push(wbBeforeEm);
 
   if (card.mes_example)
     parts.push(`[示例对话]\n${card.mes_example}`);
 
-  /* 位置 6：示例对话后 */
   const wbAfterEm = formatEntries(wb.afterEm);
   if (wbAfterEm) parts.push(wbAfterEm);
 
@@ -177,6 +177,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
   const [messages, setMessages] = useState<StoredMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [err, setErr] = useState("");
   const [loaded, setLoaded] = useState(false);
 
@@ -187,6 +188,12 @@ export default function ChatView({ cardId }: { cardId: string }) {
     null
   );
   const [editDraft, setEditDraft] = useState("");
+
+  /* 多选 */
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(
+    new Set()
+  );
 
   const [selection, setSelection] = useState<{
     msgIndex: number;
@@ -210,16 +217,13 @@ export default function ChatView({ cardId }: { cardId: string }) {
 
   const [toast, setToast] = useState<string | null>(null);
 
-  /* 世界书：全局 + 卡片（多本） */
   const [showWorldbook, setShowWorldbook] = useState(false);
   const [globalBooks, setGlobalBooks] = useState<Worldbook[]>([]);
   const [cardBooks, setCardBooks] = useState<Worldbook[]>([]);
 
-  /* 预设 */
   const [showPreset, setShowPreset] = useState(false);
   const [preset, setPreset] = useState<AiPreset | null>(null);
 
-    /* 用户信息 */
   const [showPersona, setShowPersona] = useState(false);
   const [persona, setPersona] = useState<UserPersona>({
     name: "你",
@@ -227,7 +231,11 @@ export default function ChatView({ cardId }: { cardId: string }) {
   });
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(
+    null
+  );
   const abortRef = useRef(false);
+  const pauseRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
 
   const { add: addToCollection } = useCollection();
@@ -268,6 +276,8 @@ export default function ChatView({ cardId }: { cardId: string }) {
     setLoaded(false);
     setMessages([]);
     setErr("");
+    setSelectMode(false);
+    setSelected(new Set());
 
     (async () => {
       let c: Card | null = null;
@@ -368,6 +378,16 @@ export default function ChatView({ cardId }: { cardId: string }) {
     }
   }, [openMenuIdx]);
 
+  /* ---------- 打字框自动高度 ---------- */
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height =
+      Math.min(el.scrollHeight, 200) + "px";
+  }, [input]);
+
   /* ---------- 选区检测 ---------- */
 
   useEffect(() => {
@@ -381,9 +401,11 @@ export default function ChatView({ cardId }: { cardId: string }) {
       document.removeEventListener("touchend", check);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
+  }, [messages, selectMode]);
 
   function checkSelection() {
+    if (selectMode) return;
+
     const ae = document.activeElement as HTMLElement | null;
     if (
       ae &&
@@ -581,7 +603,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
     setActiveHl(null);
   }
 
-  /* ---------- 流式 ---------- */
+  /* ---------- 流式核心 ---------- */
 
   async function runStream(
     history: StoredMessage[],
@@ -596,7 +618,9 @@ export default function ChatView({ cardId }: { cardId: string }) {
     }
     setErr("");
     setStreaming(true);
+    setPaused(false);
     abortRef.current = false;
+    pauseRef.current = false;
 
     const triggered = collectTriggered(worldbook, history);
     const sysContent = buildSystemPrompt(
@@ -605,7 +629,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
       triggered,
       persona
     );
-
     const sys: ChatMessage = {
       role: "system",
       content: sysContent,
@@ -616,7 +639,6 @@ export default function ChatView({ cardId }: { cardId: string }) {
       content: m.content,
     }));
 
-    /* 位置 4（@深度）：合成一条 system 插到 history 里 */
     const atDepthText = formatEntries(triggered.atDepth);
     if (atDepthText) {
       const minDepth = Math.min(
@@ -633,10 +655,10 @@ export default function ChatView({ cardId }: { cardId: string }) {
     }
 
     const payload: ChatMessage[] = [sys, ...historyMsgs];
-
     const params = pickApiParams(preset);
 
     const placeholder = createMessage("assistant", "");
+    const placeholderId = placeholder.id;
     setMessages([...history, placeholder]);
 
     try {
@@ -649,7 +671,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
         payload,
         params
       )) {
-        if (abortRef.current) break;
+        if (pauseRef.current || abortRef.current) break;
         raw += chunk;
         const visible = filter.feed(chunk);
         if (visible) {
@@ -657,8 +679,151 @@ export default function ChatView({ cardId }: { cardId: string }) {
           const d = display;
           setMessages((prev) => {
             const copy = [...prev];
-            copy[copy.length - 1] = {
-              ...copy[copy.length - 1],
+            const last = copy[copy.length - 1];
+            if (last && last.id === placeholderId) {
+              copy[copy.length - 1] = { ...last, content: d };
+            }
+            return copy;
+          });
+        }
+      }
+
+      const tail = filter.flush();
+      display += tail;
+
+      let final = display;
+      if (preset?.regexScripts && preset.regexScripts.length > 0) {
+        final = applyRegexScripts(
+          final,
+          preset.regexScripts,
+          2
+        );
+      }
+      final = stripThinking(final).trim();
+
+      if (!final) {
+        setMessages(history);
+        if (pauseRef.current) {
+          setPaused(false);
+        } else {
+          setErr("AI 返回了空内容，请重试。");
+        }
+      } else {
+        setMessages((prev) => {
+          const copy = [...prev];
+          const last = copy[copy.length - 1];
+          if (last && last.id === placeholderId) {
+            copy[copy.length - 1] = { ...last, content: final };
+          }
+          return copy;
+        });
+        if (pauseRef.current) {
+          setPaused(true);
+        }
+      }
+    } catch (e) {
+      if (pauseRef.current) {
+        /* 暂停引发的 abort，忽略 */
+      } else {
+        setErr(
+          "请求失败：" +
+            (e instanceof Error ? e.message : String(e))
+        );
+        setMessages(history);
+      }
+    } finally {
+      setStreaming(false);
+      pauseRef.current = false;
+    }
+  }
+
+  /* ---------- 暂停 / 继续 ---------- */
+
+  function handlePause() {
+    if (!streaming) return;
+    pauseRef.current = true;
+    abortRef.current = true;
+  }
+
+  async function handleContinue() {
+    if (streaming || !card) return;
+    if (messages.length === 0) return;
+    const lastIdx = messages.length - 1;
+    const last = messages[lastIdx];
+    if (last.role !== "assistant") return;
+
+    const cfg = loadConfig();
+    if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
+      setErr("请先到 /ai/settings 配置 API");
+      return;
+    }
+
+    setPaused(false);
+    setStreaming(true);
+    abortRef.current = false;
+    pauseRef.current = false;
+
+    /* 把最后一条不完整 assistant 作为历史 */
+    const history = messages.slice(0, lastIdx);
+    const existing = last.content;
+
+    const triggered = collectTriggered(worldbook, history);
+    const sysContent = buildSystemPrompt(
+      card,
+      preset,
+      triggered,
+      persona
+    );
+    const sys: ChatMessage = {
+      role: "system",
+      content: sysContent,
+    };
+    const historyMsgs: ChatMessage[] = [
+      ...history.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+      { role: "assistant" as const, content: existing },
+    ];
+
+    const atDepthText = formatEntries(triggered.atDepth);
+    if (atDepthText) {
+      const minDepth = Math.min(
+        ...triggered.atDepth.map((e) => e.depth)
+      );
+      const insertAt = Math.max(
+        0,
+        historyMsgs.length - 1 - minDepth
+      );
+      historyMsgs.splice(insertAt, 0, {
+        role: "system",
+        content: atDepthText,
+      });
+    }
+
+    const payload: ChatMessage[] = [sys, ...historyMsgs];
+    const params = pickApiParams(preset);
+
+    try {
+      let raw = "";
+      let display = existing;
+      const filter = new ThinkingFilter();
+
+      for await (const chunk of streamChat(
+        cfg,
+        payload,
+        params
+      )) {
+        if (pauseRef.current || abortRef.current) break;
+        raw += chunk;
+        const visible = filter.feed(chunk);
+        if (visible) {
+          display += visible;
+          const d = display;
+          setMessages((prev) => {
+            const copy = [...prev];
+            copy[lastIdx] = {
+              ...copy[lastIdx],
               content: d,
             };
             return copy;
@@ -666,42 +831,43 @@ export default function ChatView({ cardId }: { cardId: string }) {
         }
       }
 
-      /* 流结束：flush + ST 正则 */
       const tail = filter.flush();
       display += tail;
 
-      /* 应用预设正则（placement=2，AI 输出） */
       let final = display;
       if (preset?.regexScripts && preset.regexScripts.length > 0) {
-        final = applyRegexScripts(final, preset.regexScripts, 2);
+        final = applyRegexScripts(
+          final,
+          preset.regexScripts,
+          2
+        );
       }
-
-      /* 兜底：再来一次完整思维链清理 */
       final = stripThinking(final).trim();
 
-      if (!final) {
-        setMessages(history);
-        setErr("AI 返回了空内容，请重试。");
-      } else {
-        setMessages((prev) => {
-          const copy = [...prev];
-          copy[copy.length - 1] = {
-            ...copy[copy.length - 1],
-            content: final,
-          };
-          return copy;
-        });
-      }
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[lastIdx] = {
+          ...copy[lastIdx],
+          content: final,
+        };
+        return copy;
+      });
+
+      if (pauseRef.current) setPaused(true);
     } catch (e) {
-      setErr(
-        "请求失败：" +
-          (e instanceof Error ? e.message : String(e))
-      );
-      setMessages(history);
+      if (!pauseRef.current) {
+        setErr(
+          "继续生成失败：" +
+            (e instanceof Error ? e.message : String(e))
+        );
+      }
     } finally {
       setStreaming(false);
+      pauseRef.current = false;
     }
   }
+
+  /* ---------- 发送 ---------- */
 
   async function send() {
     if (!card || !input.trim() || streaming) return;
@@ -712,17 +878,18 @@ export default function ChatView({ cardId }: { cardId: string }) {
     await runStream(next);
   }
 
-  async function regenerate() {
-    if (!card || streaming) return;
-    let lastA = -1;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") {
-        lastA = i;
-        break;
-      }
+  function handleKeyDown(
+    e: React.KeyboardEvent<HTMLTextAreaElement>
+  ) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void send();
     }
-    if (lastA < 0) return;
-    const trimmed = messages.slice(0, lastA);
+  }
+
+  async function regenerate(idx: number) {
+    if (!card || streaming) return;
+    const trimmed = messages.slice(0, idx);
     setOpenMenuIdx(null);
     await runStream(trimmed);
   }
@@ -745,6 +912,7 @@ export default function ChatView({ cardId }: { cardId: string }) {
       copy[editingIdx] = {
         ...copy[editingIdx],
         content: trimmed,
+        /* 内容改了，高亮偏移失效，清空 */
         highlights: [],
       };
       return copy;
@@ -776,6 +944,50 @@ export default function ChatView({ cardId }: { cardId: string }) {
       );
     }
   }
+
+  /* ---------- 多选 ---------- */
+
+  function enterSelectMode() {
+    setSelectMode(true);
+    setSelected(new Set());
+    setOpenMenuIdx(null);
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelected(new Set());
+  }
+
+  function toggleSelect(i: number) {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(i)) n.delete(i);
+      else n.add(i);
+      return n;
+    });
+  }
+
+  function selectAll() {
+    setSelected(
+      new Set(
+        messages
+          .map((m, i) => (m.role === "system" ? -1 : i))
+          .filter((i) => i >= 0)
+      )
+    );
+  }
+
+  function deleteSelected() {
+    const n = selected.size;
+    if (n === 0) return;
+    if (!window.confirm(`删除选中的 ${n} 条消息？`)) return;
+    setMessages((prev) =>
+      prev.filter((_, idx) => !selected.has(idx))
+    );
+    exitSelectMode();
+  }
+
+  /* ---------- 渲染内容 ---------- */
 
   function renderContent(m: StoredMessage): React.ReactNode {
     if (!m.content) {
@@ -844,12 +1056,12 @@ export default function ChatView({ cardId }: { cardId: string }) {
     );
   }
 
-  const isLastAssistant = (i: number) => {
+  const lastAssistantIdx = (() => {
     for (let j = messages.length - 1; j >= 0; j--) {
-      if (messages[j].role === "assistant") return j === i;
+      if (messages[j].role === "assistant") return j;
     }
-    return false;
-  };
+    return -1;
+  })();
 
   return (
     <div className="ai-chat-view">
@@ -890,13 +1102,31 @@ export default function ChatView({ cardId }: { cardId: string }) {
               {globalBooks.length + cardBooks.length} 本 /{" "}
               {worldbook.length} 条）
             </button>
-            <button
-              className="ai-chat-clear"
-              onClick={clearAll}
-              disabled={streaming}
-            >
-              清空对话
-            </button>
+            {!selectMode && messages.length > 0 && (
+              <button
+                className="ai-chat-clear"
+                onClick={enterSelectMode}
+              >
+                <CheckSquare
+                  size={11}
+                  strokeWidth={2.4}
+                  style={{
+                    verticalAlign: "-1px",
+                    marginRight: 3,
+                  }}
+                />
+                选择
+              </button>
+            )}
+            {!selectMode && (
+              <button
+                className="ai-chat-clear"
+                onClick={clearAll}
+                disabled={streaming}
+              >
+                清空对话
+              </button>
+            )}
           </div>
         </div>
 
@@ -904,168 +1134,255 @@ export default function ChatView({ cardId }: { cardId: string }) {
           if (m.role === "system") return null;
           const isUser = m.role === "user";
           const isEditing = editingIdx === i;
+          const isSelected = selected.has(i);
 
           return (
             <div
               key={m.id}
               className={
-                isUser
-                  ? "ai-msg ai-msg-user"
-                  : "ai-msg ai-msg-assistant"
+                "ai-msg-row" +
+                (isUser ? " is-user" : " is-assistant")
               }
             >
-              <div className="ai-msg-content">
-                {isEditing ? (
-                  <div className="ai-msg-edit">
-                    <textarea
-                      className="ai-input ai-msg-edit-textarea"
-                      value={editDraft}
-                      onChange={(e) =>
-                        setEditDraft(e.target.value)
-                      }
-                      rows={4}
-                      autoFocus
-                    />
-                    <div className="ai-msg-edit-actions">
-                      <button
-                        className="ai-btn"
-                        style={{
-                          height: 32,
-                          padding: "0 12px",
-                          fontSize: 12,
-                        }}
-                        onClick={() => setEditingIdx(null)}
-                      >
-                        <X
-                          size={12}
-                          strokeWidth={2.4}
-                          style={{
-                            verticalAlign: "-2px",
-                            marginRight: 4,
-                          }}
-                        />
-                        取消
-                      </button>
-                      <button
-                        className="ai-btn primary"
-                        style={{
-                          height: 32,
-                          padding: "0 12px",
-                          fontSize: 12,
-                        }}
-                        onClick={commitEdit}
-                      >
-                        <Check
-                          size={12}
-                          strokeWidth={2.4}
-                          style={{
-                            verticalAlign: "-2px",
-                            marginRight: 4,
-                          }}
-                        />
-                        保存
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div
-                      className="ai-msg-text"
-                      data-msg-id={m.id}
-                    >
-                      {renderContent(m)}
-                    </div>
+              {selectMode && (
+                <button
+                  className={
+                    "ai-msg-check" +
+                    (isSelected ? " is-on" : "")
+                  }
+                  onClick={() => toggleSelect(i)}
+                  aria-label="选择"
+                >
+                  {isSelected && (
+                    <Check size={12} strokeWidth={3} />
+                  )}
+                </button>
+              )}
 
-                    {!streaming && m.content && (
-                      <button
-                        className="ai-msg-menu-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenMenuIdx(
-                            openMenuIdx === i ? null : i
-                          );
-                        }}
-                        aria-label="操作"
-                      >
-                        <MoreHorizontal
-                          size={14}
-                          strokeWidth={2.2}
-                        />
-                      </button>
-                    )}
-
-                    {openMenuIdx === i && (
+              <div
+                className={
+                  "ai-msg" +
+                  (isUser
+                    ? " ai-msg-user"
+                    : " ai-msg-assistant")
+                }
+                onClick={
+                  selectMode ? () => toggleSelect(i) : undefined
+                }
+              >
+                <div className="ai-msg-content">
+                  {isEditing ? (
+                    <div className="ai-msg-edit">
+                      <textarea
+                        className="ai-input ai-msg-edit-textarea"
+                        value={editDraft}
+                        onChange={(e) =>
+                          setEditDraft(e.target.value)
+                        }
+                        rows={4}
+                        autoFocus
+                      />
+                      <div className="ai-msg-edit-actions">
+                        <button
+                          className="ai-btn"
+                          style={{
+                            height: 32,
+                            padding: "0 12px",
+                            fontSize: 12,
+                          }}
+                          onClick={() => setEditingIdx(null)}
+                        >
+                          <X
+                            size={12}
+                            strokeWidth={2.4}
+                            style={{
+                              verticalAlign: "-2px",
+                              marginRight: 4,
+                            }}
+                          />
+                          取消
+                        </button>
+                        <button
+                          className="ai-btn primary"
+                          style={{
+                            height: 32,
+                            padding: "0 12px",
+                            fontSize: 12,
+                          }}
+                          onClick={commitEdit}
+                        >
+                          <Check
+                            size={12}
+                            strokeWidth={2.4}
+                            style={{
+                              verticalAlign: "-2px",
+                              marginRight: 4,
+                            }}
+                          />
+                          保存
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                       <div
-                        className="ai-msg-menu"
-                        onClick={(e) => e.stopPropagation()}
+                        className="ai-msg-text"
+                        data-msg-id={m.id}
                       >
-                        {!isUser && isLastAssistant(i) && (
+                        {renderContent(m)}
+                      </div>
+
+                      {!streaming &&
+                        !selectMode &&
+                        m.content && (
+                          <button
+                            className="ai-msg-menu-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuIdx(
+                                openMenuIdx === i
+                                  ? null
+                                  : i
+                              );
+                            }}
+                            aria-label="操作"
+                          >
+                            <MoreHorizontal
+                              size={14}
+                              strokeWidth={2.2}
+                            />
+                          </button>
+                        )}
+
+                      {openMenuIdx === i && (
+                        <div
+                          className="ai-msg-menu"
+                          onClick={(e) =>
+                            e.stopPropagation()
+                          }
+                        >
+                          {!isUser && (
+                            <button
+                              className="ai-msg-menu-item"
+                              onClick={() => regenerate(i)}
+                            >
+                              <RefreshCw
+                                size={12}
+                                strokeWidth={2.2}
+                              />
+                              从这里重新生成
+                            </button>
+                          )}
                           <button
                             className="ai-msg-menu-item"
-                            onClick={regenerate}
+                            onClick={() => startEdit(i)}
                           >
-                            <RefreshCw
+                            <Pencil
                               size={12}
                               strokeWidth={2.2}
                             />
-                            重新生成
+                            编辑
                           </button>
-                        )}
-                        <button
-                          className="ai-msg-menu-item"
-                          onClick={() => startEdit(i)}
-                        >
-                          <Pencil
-                            size={12}
-                            strokeWidth={2.2}
-                          />
-                          编辑
-                        </button>
-                        <button
-                          className="ai-msg-menu-item ai-msg-menu-danger"
-                          onClick={() => deleteMsg(i)}
-                        >
-                          <Trash2
-                            size={12}
-                            strokeWidth={2.2}
-                          />
-                          删除
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
+                          <button
+                            className="ai-msg-menu-item ai-msg-menu-danger"
+                            onClick={() => deleteMsg(i)}
+                          >
+                            <Trash2
+                              size={12}
+                              strokeWidth={2.2}
+                            />
+                            删除
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
 
+        {/* 暂停后显示"继续生成"按钮 */}
+        {!streaming &&
+          paused &&
+          lastAssistantIdx === messages.length - 1 && (
+            <div className="ai-chat-continue-row">
+              <button
+                className="ai-chat-continue-btn"
+                onClick={() => void handleContinue()}
+              >
+                <Play size={14} strokeWidth={2.4} />
+                继续生成
+              </button>
+            </div>
+          )}
+
         {err && <div className="ai-chat-error">{err}</div>}
       </div>
 
-      <div className="ai-chat-input-bar">
-        <input
-          className="ai-input"
-          placeholder="说点什么…"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void send();
-            }
-          }}
-          disabled={streaming}
-        />
-        <button
-          className="ai-btn primary ai-chat-send"
-          onClick={() => void send()}
-          disabled={streaming || !input.trim()}
-          aria-label="发送"
-        >
-          <Send size={16} strokeWidth={2.2} />
-        </button>
-      </div>
+      {/* 多选底部工具栏 */}
+      {selectMode && (
+        <div className="ai-select-bar">
+          <button
+            className="ai-select-btn"
+            onClick={exitSelectMode}
+          >
+            取消
+          </button>
+          <span className="ai-select-info">
+            已选 {selected.size} 条
+          </span>
+          <button
+            className="ai-select-btn"
+            onClick={selectAll}
+          >
+            全选
+          </button>
+          <button
+            className="ai-select-btn danger"
+            onClick={deleteSelected}
+            disabled={selected.size === 0}
+          >
+            <Trash2 size={13} strokeWidth={2.4} />
+            删除
+          </button>
+        </div>
+      )}
+
+      {/* 打字框 */}
+      {!selectMode && (
+        <div className="ai-chat-input-bar">
+          <textarea
+            ref={textareaRef}
+            className="ai-input ai-chat-textarea"
+            placeholder="说点什么…（Shift + Enter 换行）"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            rows={1}
+          />
+          {streaming ? (
+            <button
+              className="ai-btn primary ai-chat-send"
+              onClick={handlePause}
+              aria-label="暂停"
+              title="暂停生成"
+            >
+              <Pause size={16} strokeWidth={2.4} />
+            </button>
+          ) : (
+            <button
+              className="ai-btn primary ai-chat-send"
+              onClick={() => void send()}
+              disabled={!input.trim()}
+              aria-label="发送"
+            >
+              <Send size={16} strokeWidth={2.2} />
+            </button>
+          )}
+        </div>
+      )}
 
       {selection && (
         <HighlightActionMenu
@@ -1161,6 +1478,13 @@ export default function ChatView({ cardId }: { cardId: string }) {
             setShowWorldbook(false);
             await refreshWorldbook();
           }}
+        />
+      )}
+
+      {showPreset && (
+        <PresetPanel
+          onClose={() => setShowPreset(false)}
+          onChanged={refreshPreset}
         />
       )}
 
