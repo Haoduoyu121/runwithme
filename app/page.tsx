@@ -780,6 +780,12 @@ export default function Home() {
   const router = useRouter();
   const { registerLauncher } = useNotifications();
 
+  /* ★ 所有 useRef 必须放最顶层，在任何提前 return 之前 */
+  const iconErrorGuardRef = useRef<Map<string, number>>(
+    new Map()
+  );
+  const transitionInFlightRef = useRef(false);
+
   const [unlocked, setUnlocked] = useState<boolean | null>(
     null
   );
@@ -789,8 +795,6 @@ export default function Home() {
 
   const [openTransition, setOpenTransition] =
     useState<OpenTransition | null>(null);
-
-  const transitionInFlightRef = useRef(false);
 
   const [mountedApps, setMountedApps] = useState<AppId[]>(
     []
@@ -1109,10 +1113,6 @@ export default function Home() {
   };
 
   const handleBackHome = () => setCurrentApp(null);
-    /* ★ 图标 URL 失效（iOS 清理 Blob）时重建 */
-  const iconErrorGuardRef = useRef<Map<string, number>>(
-    new Map()
-  );
 
   async function reloadAppIcon(id: AppId) {
     try {
