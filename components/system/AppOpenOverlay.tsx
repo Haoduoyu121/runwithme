@@ -3,7 +3,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 export type OpenTransition = {
-  /** 用于在 DOM 里找到原图标 */
   appId: string;
   rect: {
     left: number;
@@ -18,6 +17,7 @@ export type OpenTransition = {
 const DURATION = 400;
 const FADE_DELAY = 200;
 const FADE_MS = 200;
+const WATCHDOG_MS = 700;
 
 export default function AppOpenOverlay({
   transition,
@@ -26,22 +26,24 @@ export default function AppOpenOverlay({
   transition: OpenTransition;
   onFinish: () => void;
 }) {
-  const cloneRef = useRef<HTMLElement | null>(null);
+  /* ★ 用 ref 存 onFinish，避免父组件重渲染时 timer 被重置 */
+  const onFinishRef = useRef(onFinish);
+  useEffect(() => {
+    onFinishRef.current = onFinish;
+  }, [onFinish]);
 
   useLayoutEffect(() => {
     const original = document.querySelector(
       `[data-app-icon="${transition.appId}"]`
     ) as HTMLElement | null;
     if (!original) {
-      /* 找不到原图标（比如自定义图标未加载），直接跳过 */
-      onFinish();
+      onFinishRef.current();
       return;
     }
 
     const rect = original.getBoundingClientRect();
     const clone = original.cloneNode(true) as HTMLElement;
 
-    /* 冻结 clone，让它固定原位置，不受父级影响 */
     clone.style.position = "fixed";
     clone.style.left = `${rect.left}px`;
     clone.style.top = `${rect.top}px`;
@@ -58,7 +60,6 @@ export default function AppOpenOverlay({
     clone.style.borderRadius = `${transition.radius}px`;
     clone.style.backfaceVisibility = "hidden";
     clone.style.webkitBackfaceVisibility = "hidden";
-    /* 让子元素也继承 backface 隐藏，防止翻转变形 */
     clone.querySelectorAll("*").forEach((n) => {
       const el = n as HTMLElement;
       el.style.backfaceVisibility = "hidden";
@@ -66,9 +67,7 @@ export default function AppOpenOverlay({
     });
 
     document.body.appendChild(clone);
-    cloneRef.current = clone;
 
-    /* 目标：移到屏幕中心 + 放大到铺满 */
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
     const scale =
@@ -77,7 +76,6 @@ export default function AppOpenOverlay({
     const dx = cx - (rect.left + rect.width / 2);
     const dy = cy - (rect.top + rect.height / 2);
 
-    /* 下一帧启动动画（关键：先渲染初始状态再改，否则 transition 不触发） */
     const r = requestAnimationFrame(() => {
       clone.style.transition = [
         `transform ${DURATION}ms cubic-bezier(0.22, 1, 0.36, 1)`,
@@ -92,16 +90,16 @@ export default function AppOpenOverlay({
     return () => {
       cancelAnimationFrame(r);
       clone.remove();
-      cloneRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transition.appId]);
 
+  /* ★ 只跑一次：用 ref 里的 onFinish，不依赖 onFinish 引用 */
   useEffect(() => {
-    const t = window.setTimeout(onFinish, DURATION + 40);
+    const t = window.setTimeout(() => {
+      onFinishRef.current();
+    }, WATCHDOG_MS);
     return () => window.clearTimeout(t);
-  }, [onFinish]);
+  }, []);
 
-  /* 不需要渲染任何东西 —— 动画都在 clone 上 */
   return null;
 }

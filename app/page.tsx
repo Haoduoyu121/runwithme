@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import ChatApp from "@/components/apps/ChatApp";
@@ -779,6 +779,8 @@ export default function Home() {
   const [openTransition, setOpenTransition] =
     useState<OpenTransition | null>(null);
 
+  const transitionInFlightRef = useRef(false);
+
   const [mountedApps, setMountedApps] = useState<AppId[]>(
     []
   );
@@ -1097,8 +1099,9 @@ export default function Home() {
 
   const handleBackHome = () => setCurrentApp(null);
 
-    function handleOpenApp(id: AppId) {
-    if (openTransition) return;
+      function handleOpenApp(id: AppId) {
+    /* ★ 用 ref 判断，不依赖可能卡住的 state */
+    if (transitionInFlightRef.current) return;
 
     const el = document.querySelector(
       `[data-app-icon="${id}"]`
@@ -1114,6 +1117,7 @@ export default function Home() {
       window.getComputedStyle(el).borderRadius || "22"
     );
 
+    transitionInFlightRef.current = true;
     setOpenTransition({
       appId: id,
       rect: {
@@ -1126,8 +1130,12 @@ export default function Home() {
       radius: Number.isFinite(radius) ? radius : 22,
     });
 
-    /* 约 60% 的时候应用挂载到覆盖层下方 */
     window.setTimeout(() => setCurrentApp(id), 260);
+  }
+
+  function handleOverlayFinish() {
+    transitionInFlightRef.current = false;
+    setOpenTransition(null);
   }
 
   return (
@@ -1191,7 +1199,7 @@ export default function Home() {
                 {openTransition && (
           <AppOpenOverlay
             transition={openTransition}
-            onFinish={() => setOpenTransition(null)}
+            onFinish={handleOverlayFinish}
           />
         )}
       </div>
