@@ -567,8 +567,6 @@ export function ChatProvider({
   }, [createReplyFromPicked]);
 
   const generateAutoReply = useCallback(async () => {
-    if (activeCall) return;
-
     const latestCards = loadCards(defaultCards);
 
     const enabledCards = latestCards.filter(
@@ -581,7 +579,8 @@ export function ChatProvider({
     try {
       await sleep(randomInteger(1000, 4000));
 
-      if (Math.random() < 0.15) {
+      /* 通话中不再触发电来，但消息照常回复 */
+      if (!activeCall && Math.random() < 0.15) {
         triggerIncomingCall();
         return;
       }

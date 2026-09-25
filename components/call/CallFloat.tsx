@@ -20,6 +20,7 @@ type CallFloatProps = {
   call: ActiveCall;
   seconds: number;
   dialSeconds: number;
+  isReplying?: boolean;
   onExpand: () => void;
   onHangup: () => void;
 };
@@ -58,6 +59,7 @@ export default function CallFloat({
   call,
   seconds,
   dialSeconds,
+  isReplying = false,
   onExpand,
   onHangup,
 }: CallFloatProps) {
@@ -292,7 +294,21 @@ export default function CallFloat({
           {displayName}
         </div>
 
-        <div className="call-float-timer">{timerText}</div>
+        {isReplying ? (
+          <div
+            className="call-float-timer"
+            style={{
+              color: "#4ade80",
+              fontWeight: 500,
+            }}
+          >
+            对方正在回复…
+          </div>
+        ) : (
+          <div className="call-float-timer">
+            {timerText}
+          </div>
+        )}
       </div>
 
       <button

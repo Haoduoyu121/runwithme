@@ -1609,12 +1609,12 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 {chatName}
               </div>
               <div className="telegram-status">
-                {activeCall
-                  ? activeCall.phase === "minimized"
-                    ? "通话中（悬浮中）"
-                    : "通话中…"
-                  : generatingCount > 0
-                    ? "正在输入…"
+                {generatingCount > 0
+                  ? "正在输入…"
+                  : activeCall
+                    ? activeCall.phase === "minimized"
+                      ? "通话中（悬浮中）"
+                      : "通话中…"
                     : "online"}
               </div>
             </div>
@@ -1642,7 +1642,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
         <div className="chat-date">TODAY</div>
         {messages.map(renderMessage)}
 
-        {generatingCount > 0 && !activeCall && (
+        {generatingCount > 0 && (
           <div className="typing-row">
             <div className="typing-avatar">•••</div>
             <div className="typing-bubble">

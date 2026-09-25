@@ -9,6 +9,7 @@ type CallOverlayProps = {
   call: ActiveCall;
   seconds: number;
   dialSeconds: number;
+  isReplying?: boolean;
   onAccept: () => void;
   onDecline: () => void;
   onHangup: () => void;
@@ -19,6 +20,7 @@ export default function CallOverlay({
   call,
   seconds,
   dialSeconds,
+  isReplying = false,
   onAccept,
   onDecline,
   onHangup,
@@ -81,6 +83,19 @@ export default function CallOverlay({
         <div className="call-name">{displayName}</div>
 
         <div className="call-status">{statusText}</div>
+
+        {isReplying && (
+          <div
+            className="call-status"
+            style={{
+              marginTop: 6,
+              opacity: 0.7,
+              color: "#4ade80",
+            }}
+          >
+            对方正在回复…
+          </div>
+        )}
       </div>
 
       <div className="call-actions">
