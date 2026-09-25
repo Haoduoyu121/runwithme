@@ -1,5 +1,5 @@
 const DB_NAME = "runwithme_tarot_db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "records";
 
 export type DrawnCard = {
@@ -160,7 +160,7 @@ export function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** 从 78 张里随机抽 n 张 */
+/** �?78 张里随机�?n �?*/
 export function drawRandom<T extends { id: string }>(
   deck: T[],
   n: number
@@ -169,7 +169,7 @@ export function drawRandom<T extends { id: string }>(
   return shuffle(deck).slice(0, n);
 }
 
-/** 正逆位随机（各 50%） */
+/** 正逆位随机（各 50%�?*/
 export function randomReversed(): boolean {
   return Math.random() < 0.5;
 }

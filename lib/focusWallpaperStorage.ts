@@ -1,17 +1,17 @@
 /* =========================================================
    RunWithme · Focus Wallpaper (IndexedDB)
-   全屏专注模式的壁纸文件存储
+   全屏专注模式的壁纸文件存�?
    ========================================================= */
 
 const DB_NAME = "runwithme_focus_wallpaper";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "files";
 const KEY = "focus-wallpaper";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
-      reject(new Error("IndexedDB 不可用"));
+      reject(new Error("IndexedDB 不可�?));
       return;
     }
     const req = indexedDB.open(DB_NAME, DB_VERSION);

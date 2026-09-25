@@ -1,6 +1,6 @@
 const DB_NAME = "runwithme_music_db";
 const STORE_NAME = "audio_files";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openMusicDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

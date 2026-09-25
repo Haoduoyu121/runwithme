@@ -1,13 +1,13 @@
 /**
- * Read 书籍正文存储（IndexedDB）
+ * Read 书籍正文存储（IndexedDB�?
  *
- * 单独一个 DB，不跟 music / chat 混。
- * TXT 可能是几 MB 的字符串，localStorage 放不下，所以放 IndexedDB。
+ * 单独一�?DB，不�?music / chat 混�?
+ * TXT 可能是几 MB 的字符串，localStorage 放不下，所以放 IndexedDB�?
  */
 
 const DB_NAME = "runwithme_read_db";
 const STORE_NAME = "books";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 type BookRecord = {
   text: string;

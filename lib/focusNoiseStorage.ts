@@ -3,14 +3,14 @@
    ========================================================= */
 
 const DB_NAME = "runwithme_focus_noise";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "files";
 const KEY = "focus-noise";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
-      reject(new Error("IndexedDB 不可用"));
+      reject(new Error("IndexedDB 不可�?));
       return;
     }
     const req = indexedDB.open(DB_NAME, DB_VERSION);

@@ -1,6 +1,6 @@
 const DB_NAME = "runwithme_wallpaper_db";
 const STORE_NAME = "wallpaper_files";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
