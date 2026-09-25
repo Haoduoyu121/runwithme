@@ -4,13 +4,13 @@
    ========================================================= */
 
 const DB_NAME = "runwithme_voice_files";
-const DB_VERSION = 2;
+const DB_VERSION = 1;
 const STORE = "files";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
-      reject(new Error("IndexedDB 不可�?));
+      reject(new Error("IndexedDB 不可用"));
       return;
     }
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -54,7 +54,7 @@ export async function saveVoiceFile(
       if (settled) return;
       settled = true;
       try { db.close(); } catch {}
-      reject(new Error("IndexedDB 事务被中�?));
+      reject(new Error("IndexedDB 事务被中止"));
     };
   });
 }

@@ -1,19 +1,19 @@
 const DB_NAME = "runwithme_voice_db_v2";
 const STORE_NAME = "voice_files";
-const DB_VERSION = 2;
+const DB_VERSION = 1;
 
 type VoiceRecord = {
   buffer: ArrayBuffer;
   mime: string;
 };
 
-/* 从字节头�?mime，万无一�?*/
+/* 从字节头猜 mime，万无一失 */
 function guessMime(buffer: ArrayBuffer): string {
   const b = new Uint8Array(
     buffer.slice(0, Math.min(16, buffer.byteLength))
   );
 
-  /* MP3: ID3 �?frame sync */
+  /* MP3: ID3 或 frame sync */
   if (
     (b[0] === 0x49 &&
       b[1] === 0x44 &&
@@ -23,7 +23,7 @@ function guessMime(buffer: ArrayBuffer): string {
     return "audio/mpeg";
   }
 
-  /* M4A / MP4: �?4 字节起是 "ftyp" */
+  /* M4A / MP4: 第 4 字节起是 "ftyp" */
   if (
     b[4] === 0x66 &&
     b[5] === 0x74 &&
@@ -138,13 +138,13 @@ export async function getVoiceFile(
       ) {
         const buf: ArrayBuffer = result.buffer;
 
-        /* �?关键：即使存�?mime 是错的，也从字节头重猜一�?*/
+        /* ★ 关键：即使存的 mime 是错的，也从字节头重猜一次 */
         const guessed = guessMime(buf);
         const stored = result.mime as
           | string
           | undefined;
 
-        /* 如果存的 mime 是空�?"audio/mpeg" 但实际是 mp4，用猜的 */
+        /* 如果存的 mime 是空或 "audio/mpeg" 但实际是 mp4，用猜的 */
         const mime =
           !stored ||
           (stored === "audio/mpeg" &&
@@ -156,7 +156,7 @@ export async function getVoiceFile(
         return;
       }
 
-      /* 兼容旧的�?ArrayBuffer */
+      /* 兼容旧的纯 ArrayBuffer */
       if (result instanceof ArrayBuffer) {
         const buf: ArrayBuffer = result;
         resolve(

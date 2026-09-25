@@ -1,6 +1,6 @@
 const DB_NAME = "runwithme_icity_db";
 const STORE_NAME = "icity_files";
-const DB_VERSION = 2;
+const DB_VERSION = 1;
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -89,7 +89,7 @@ export async function deleteICityFile(
   });
 }
 
-/* key 生成�?*/
+/* key 生成器 */
 export function avatarKey(author: string): string {
   return `avatar-${author}`;
 }

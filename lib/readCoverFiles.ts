@@ -1,6 +1,6 @@
 const DB_NAME = "runwithme_read_covers_db";
 const STORE_NAME = "covers";
-const DB_VERSION = 2;
+const DB_VERSION = 1;
 
 type CoverRecord = {
   buffer: ArrayBuffer;
