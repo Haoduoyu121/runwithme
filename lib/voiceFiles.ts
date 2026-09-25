@@ -1,6 +1,6 @@
 const DB_NAME = "runwithme_voice_db_v2";
 const STORE_NAME = "voice_files";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 type VoiceRecord = {
   buffer: ArrayBuffer;

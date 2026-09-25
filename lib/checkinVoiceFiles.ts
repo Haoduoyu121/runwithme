@@ -4,7 +4,7 @@
    ========================================================= */
 
 const DB_NAME = "runwithme_voice_files";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "files";
 
 function openDB(): Promise<IDBDatabase> {

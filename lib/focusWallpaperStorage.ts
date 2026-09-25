@@ -4,7 +4,7 @@
    ========================================================= */
 
 const DB_NAME = "runwithme_focus_wallpaper";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "files";
 const KEY = "focus-wallpaper";
 

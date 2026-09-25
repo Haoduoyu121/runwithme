@@ -7,7 +7,7 @@
 
 const DB_NAME = "runwithme_read_db";
 const STORE_NAME = "books";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 type BookRecord = {
   text: string;

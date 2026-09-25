@@ -1,5 +1,5 @@
 const DB_NAME = "runwithme_tarot_db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "records";
 
 export type DrawnCard = {
