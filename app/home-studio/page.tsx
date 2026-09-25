@@ -190,7 +190,7 @@ export default function HomeStudioPage() {
 
     return () => {
       cancelled = true;
-      created.forEach((url) => URL.revokeObjectURL(url));
+      /* data URL 不需要 revoke */
     };
   }, [
     settings.lockScreenWallpaper,
@@ -218,15 +218,39 @@ export default function HomeStudioPage() {
     const key =
       target === "lock" ? CUSTOM_LOCK_KEY : CUSTOM_HOME_KEY;
 
-    await saveWallpaperFile(key, file);
+    try {
+      await saveWallpaperFile(key, file);
+    } catch (e) {
+      alert(
+        "保存壁纸失败：" +
+          (e instanceof Error ? e.message : String(e))
+      );
+      return;
+    }
 
-    const url = URL.createObjectURL(file);
+    /* 用 FileReader 转 data URL —— 不会被 iOS 自动清理 */
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () =>
+        resolve(
+          typeof reader.result === "string"
+            ? reader.result
+            : ""
+        );
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+    });
+
+    if (!dataUrl) {
+      alert("读取文件失败");
+      return;
+    }
 
     if (target === "lock") {
-      setLockPreview(url);
+      setLockPreview(dataUrl);
       updateSettings({ lockScreenWallpaper: key });
     } else {
-      setHomePreview(url);
+      setHomePreview(dataUrl);
       updateSettings({ homeWallpaper: key });
     }
   }
@@ -738,5 +762,16 @@ async function loadWallpaperPreview(
 
   if (!file) return null;
 
-  return URL.createObjectURL(file);
+  /* 同样用 data URL，避免 iOS 清理 */
+  return new Promise<string | null>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve(
+        typeof reader.result === "string"
+          ? reader.result
+          : null
+      );
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
 }
