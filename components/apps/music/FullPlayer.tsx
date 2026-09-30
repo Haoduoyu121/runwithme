@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   ChevronDown,
+  Disc3,
+  FileText,
   List as ListIcon,
   ListOrdered,
   MessageCircle,
@@ -21,6 +25,7 @@ import {
 
 import type { ListenPartner } from "@/lib/listenTogetherStorage";
 import TogetherAvatars from "./TogetherAvatars";
+import LyricsPanel from "./LyricsPanel";
 
 type Props = {
   partner: ListenPartner;
@@ -36,6 +41,8 @@ type Props = {
   onOpenPicker: () => void;
   onPickCover: () => void;
 };
+
+type ViewMode = "cover" | "lyrics";
 
 export default function FullPlayer({
   partner,
@@ -63,6 +70,16 @@ export default function FullPlayer({
     cyclePlayMode,
   } = useMusic();
 
+  const [view, setView] = useState<ViewMode>("cover");
+  const [toast, setToast] = useState("");
+
+  function showToast(text: string) {
+    setToast(text);
+    window.setTimeout(() => {
+      setToast((cur) => (cur === text ? "" : cur));
+    }, 2600);
+  }
+
   const progress =
     duration > 0
       ? Math.min(100, (currentTime / duration) * 100)
@@ -84,6 +101,10 @@ export default function FullPlayer({
     }
   }
 
+  function toggleView() {
+    setView((v) => (v === "cover" ? "lyrics" : "cover"));
+  }
+
   return (
     <div className="music-fullplayer">
       <header className="music-fullplayer-header">
@@ -93,6 +114,21 @@ export default function FullPlayer({
           aria-label="收起"
         >
           <ChevronDown size={26} strokeWidth={2.4} />
+        </button>
+
+        <button
+          className="music-fullplayer-view-toggle"
+          onClick={toggleView}
+          aria-label={
+            view === "cover" ? "显示歌词" : "显示封面"
+          }
+          type="button"
+        >
+          {view === "cover" ? (
+            <FileText size={22} strokeWidth={2} />
+          ) : (
+            <Disc3 size={22} strokeWidth={2} />
+          )}
         </button>
       </header>
 
@@ -107,48 +143,60 @@ export default function FullPlayer({
         />
       </div>
 
-      <button
-        type="button"
-        className={`music-fullplayer-disc${
-          isPlaying ? " is-playing" : ""
-        }`}
-        onClick={onPickCover}
-        aria-label="上传专辑封面"
-      >
-        <div
-          className={`music-fullplayer-disc-cover${
-            coverUrl ? " has-image" : ""
-          }`}
-        >
-          {coverUrl ? (
-            <img src={coverUrl} alt="专辑封面" />
-          ) : (
-            <MusicIcon size={64} strokeWidth={1.2} />
-          )}
-        </div>
-      </button>
+      {view === "cover" ? (
+        <>
+          <button
+            type="button"
+            className={`music-fullplayer-disc${
+              isPlaying ? " is-playing" : ""
+            }`}
+            onClick={onPickCover}
+            aria-label="上传专辑封面"
+          >
+            <div
+              className={`music-fullplayer-disc-cover${
+                coverUrl ? " has-image" : ""
+              }`}
+            >
+              {coverUrl ? (
+                <img src={coverUrl} alt="专辑封面" />
+              ) : (
+                <MusicIcon
+                  size={64}
+                  strokeWidth={1.2}
+                />
+              )}
+            </div>
+          </button>
 
-      <section className="music-fullplayer-info">
-        {currentTrack ? (
-          <>
-            <div className="music-fullplayer-title">
-              {currentTrack.title}
-            </div>
-            <div className="music-fullplayer-artist">
-              {currentTrack.artist || "RunWithme"}
-            </div>
-          </>
-        ) : (
-          <div className="music-fullplayer-empty">
-            还没有音乐
-          </div>
-        )}
-        {error && (
-          <div className="music-fullplayer-error">
-            {error}
-          </div>
-        )}
-      </section>
+          <section className="music-fullplayer-info">
+            {currentTrack ? (
+              <>
+                <div className="music-fullplayer-title">
+                  {currentTrack.title}
+                </div>
+                <div className="music-fullplayer-artist">
+                  {currentTrack.artist || "RunWithme"}
+                </div>
+              </>
+            ) : (
+              <div className="music-fullplayer-empty">
+                还没有音乐
+              </div>
+            )}
+            {error && (
+              <div className="music-fullplayer-error">
+                {error}
+              </div>
+            )}
+          </section>
+        </>
+      ) : (
+        <LyricsPanel
+          partner={partner}
+          onNotify={showToast}
+        />
+      )}
 
       <section className="music-fullplayer-progress">
         <input
@@ -265,6 +313,12 @@ export default function FullPlayer({
         >
           <MessageCircle size={20} strokeWidth={2} />
         </button>
+      )}
+
+      {toast && (
+        <div className="music-fullplayer-toast">
+          {toast}
+        </div>
       )}
     </div>
   );

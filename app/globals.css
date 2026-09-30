@@ -66673,3 +66673,292 @@ html[data-runwithme-theme="dark"] .read-reader .read-page-flip-edge {
   user-select: none;
   -webkit-touch-callout: none;
 }
+/* =========================================================
+   歌词功能（第一批）
+   ========================================================= */
+
+/* ---- FullPlayer header 的视图切换按钮 ---- */
+.music-fullplayer-header {
+  position: relative;
+}
+.music-fullplayer-view-toggle {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.15s ease;
+}
+.music-fullplayer-view-toggle:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---- FullPlayer 轻提示 ---- */
+.music-fullplayer-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 200px;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  background: rgba(20, 20, 24, 0.88);
+  color: #fff;
+  border-radius: 22px;
+  font-size: 14px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: musicToastIn 0.24s ease;
+  z-index: 20;
+  pointer-events: none;
+  max-width: 80%;
+  text-align: center;
+}
+@keyframes musicToastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---- 歌词面板 ---- */
+.lyrics-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  padding: 0 20px;
+  position: relative;
+}
+.lyrics-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  padding: 40px 0 60px;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 12%,
+    #000 88%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 12%,
+    #000 88%,
+    transparent 100%
+  );
+  scrollbar-width: none;
+}
+.lyrics-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.lyrics-line {
+  display: block;
+  width: 100%;
+  padding: 10px 4px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 17px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.22s ease, transform 0.22s ease,
+    font-size 0.22s ease;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.lyrics-line.is-active {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  transform: scale(1.02);
+  transform-origin: left center;
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.25);
+}
+
+.lyrics-plain {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 16px;
+  line-height: 1.7;
+}
+.lyrics-plain-line {
+  white-space: pre-wrap;
+}
+
+.lyrics-empty,
+.lyrics-empty-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 60px 20px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+.lyrics-empty-title {
+  font-size: 15px;
+  letter-spacing: 0.3px;
+}
+.lyrics-manual-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.lyrics-manual-btn:active {
+  transform: scale(0.97);
+}
+
+/* ---- 底部操作按钮 ---- */
+.lyrics-actions {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.lyrics-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: background 0.15s ease;
+}
+.lyrics-action-btn:active {
+  background: rgba(255, 255, 255, 0.14);
+  transform: scale(0.97);
+}
+
+/* ---- 手动粘贴 Sheet ---- */
+.lyrics-manual-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+}
+.lyrics-manual-sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 80vh;
+  background: rgba(28, 28, 32, 0.98);
+  border-radius: 22px 22px 0 0;
+  padding: 18px 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: lyricsSheetIn 0.26s ease;
+}
+@keyframes lyricsSheetIn {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.lyrics-manual-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+.lyrics-manual-header button {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+}
+.lyrics-manual-textarea {
+  flex: 1;
+  min-height: 220px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.lyrics-manual-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.32);
+}
+.lyrics-manual-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.lyrics-manual-btn-primary,
+.lyrics-manual-btn-secondary {
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lyrics-manual-btn-primary {
+  background: #fff;
+  color: #111;
+}
+.lyrics-manual-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.lyrics-manual-btn-primary:active,
+.lyrics-manual-btn-secondary:active {
+  transform: scale(0.97);
+}

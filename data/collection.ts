@@ -16,7 +16,8 @@ export type CollectionSource =
   | "schedule"
   | "music"
   | "daily-sentence"
-  | "read";
+  | "read"
+  | "lyric";
 
 export type CollectionSender = string;
 
@@ -68,6 +69,7 @@ export const SOURCE_LABELS: Record<CollectionSource, string> = {
   music: "Music",
   "daily-sentence": "每日一句",
   "read": "Read",
+  "lyric": "歌词",
 };
 
 export const SOURCE_ICONS: Record<CollectionSource, string> = {
@@ -82,6 +84,7 @@ export const SOURCE_ICONS: Record<CollectionSource, string> = {
   music: "♪",
   "daily-sentence": "❝",
   "read": "▤",
+  "lyric": "❞",
 };
 
 export const OWNER_LABELS: Record<CollectionOwner, string> = {
@@ -92,12 +95,9 @@ export const OWNER_LABELS: Record<CollectionOwner, string> = {
 
 /* ---------- 系统自动收藏的概率 ---------- */
 
-/* 每次 user 发一句话 / 发动态 / 写信 / 回答问题时，
-   系统判定是否收藏的概率区间。最终概率 = 随机落在 [MIN, MAX) */
 export const AUTO_COLLECT_MIN = 0.01; /* 1% */
 export const AUTO_COLLECT_MAX = 0.05; /* 5% */
 
-/* 系统决定收藏后，要不要再写一条备注的概率（Step 4 用） */
 export const AUTO_NOTE_CHANCE = 0.55;
 
 /* ---------- 默认标签 ---------- */
