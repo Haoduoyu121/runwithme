@@ -305,16 +305,6 @@ export default function FullPlayer({
         </button>
       </section>
 
-      {isTogether && (
-        <button
-          className="music-fullplayer-chat-fab"
-          onClick={onOpenChat}
-          aria-label="一起听聊天"
-        >
-          <MessageCircle size={20} strokeWidth={2} />
-        </button>
-      )}
-
       {toast && (
         <div className="music-fullplayer-toast">
           {toast}
