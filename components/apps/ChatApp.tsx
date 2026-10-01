@@ -57,6 +57,7 @@ import { useCollection } from "@/lib/CollectionContext";
 import { getChatFile } from "@/lib/chatFiles";
 
 import ChatSettingsPanel from "@/components/apps/chat/ChatSettingsPanel";
+import AvatarRequestSheet from "@/components/apps/chat/AvatarRequestSheet";
 
 import type { CharacterNames } from "@/lib/systemStorage";
 
@@ -879,6 +880,8 @@ function ChatThreadView({
     generateResponse,
     scheduleAutoReplyAfterUserMessage,
     forwardMessages,
+    requestAvatarChange,
+    activeThreadId,
   } = useChat();
 
   const {
@@ -975,6 +978,10 @@ function ChatThreadView({
 
   /* ★ 转发 */
   const [showForwardPicker, setShowForwardPicker] =
+    useState(false);
+
+  /* ★ 换头像请求 */
+  const [showAvatarRequest, setShowAvatarRequest] =
     useState(false);
   const [expandedForwardIds, setExpandedForwardIds] =
     useState<Set<string>>(new Set());
@@ -2193,6 +2200,18 @@ function ChatThreadView({
                 </span>
                 <small>拍一拍</small>
               </button>
+
+              <button
+                onClick={() => {
+                  setShowPlusMenu(false);
+                  setShowAvatarRequest(true);
+                }}
+              >
+                <span>
+                  <UserIcon size={20} strokeWidth={1.9} />
+                </span>
+                <small>换头像</small>
+              </button>
             </div>
           )}
 
@@ -2563,6 +2582,22 @@ function ChatThreadView({
             </button>
           </div>
         </div>
+      )}
+
+      {showAvatarRequest && (
+        <AvatarRequestSheet
+          lockedOwner={
+            activeThreadId === "levi"
+              ? "Levi"
+              : activeThreadId === "erwin"
+                ? "Erwin"
+                : null
+          }
+          onClose={() => setShowAvatarRequest(false)}
+          onConfirm={(requests) =>
+            requestAvatarChange(requests)
+          }
+        />
       )}
 
       {showSettings && (

@@ -42,7 +42,7 @@ import {
   postImageKey,
 } from "@/lib/icityFiles";
 
-import { maybeSwitchAvatar } from "@/lib/avatarSwitcher";
+import { maybeSwitchICityAvatar } from "@/lib/avatarSwitcher";
 
 import {
   createPostId,
@@ -718,7 +718,7 @@ export function ICityProvider({
     const character = pickRandomCharacter();
 
     /* ★ 角色发帖时掷骰子换 iCity 头像 */
-    void maybeSwitchAvatar("icity", character);
+    void maybeSwitchICityAvatar(character);
 
     if (Math.random() < 0.1) {
       const photoCards = loadPhotoTextCards();
@@ -852,7 +852,7 @@ export function ICityProvider({
           if (!stillExists) return;
 
           /* ★ 角色评论时掷骰子换 iCity 头像 */
-          void maybeSwitchAvatar("icity", character);
+          void maybeSwitchICityAvatar(character);
 
           const newComment: ICityComment = {
             id: createCommentId(),

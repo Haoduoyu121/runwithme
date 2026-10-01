@@ -25,7 +25,7 @@ export type AppId =
   | "ai"
   | "tarot"
   | "games"
-  | "potato"; 
+  | "potato";
 export type AppIconState = "custom" | null;
 
 /* ---------- Dock ---------- */
@@ -47,19 +47,33 @@ export type ChatReplySettings = {
   userReplyDelayMax: number;
   autoReplyMin: number;
   autoReplyMax: number;
-  singleAutoReplyMin?: number;   
-  singleAutoReplyMax?: number;  
+  singleAutoReplyMin?: number;
+  singleAutoReplyMax?: number;
   quoteChance: number;
 };
 
 /* ---------- 头像自动切换 ---------- */
 
 export type AvatarSwitchSettings = {
-  enabled: boolean;
-  /** Chat 头像切换概率（0~1），每次用户发消息时掷骰子 */
-  chatChanceLevi: number;
-  chatChanceErwin: number;
-  /** iCity 头像切换概率（0~1），角色发帖 / 评论时掷骰子 */
+  /* —— 用户请求角色换头像 —— */
+  requestEnabled: boolean;
+  /** 答应概率 0~1 */
+  requestChance: number;
+  /** 考虑延迟（秒） */
+  requestDelayMin: number;
+  requestDelayMax: number;
+
+  /* —— 后台主动换 —— */
+  backgroundEnabled: boolean;
+  /** 后台间隔（分钟） */
+  backgroundIntervalMin: number;
+  backgroundIntervalMax: number;
+  /** 每次掷骰子概率 0~1 */
+  backgroundChance: number;
+  backgroundLevi: boolean;
+  backgroundErwin: boolean;
+
+  /* —— iCity 头像（角色发帖时触发） —— */
   icityChanceLevi: number;
   icityChanceErwin: number;
 };
@@ -104,7 +118,6 @@ export type SystemSettings = {
 
   chatReply: ChatReplySettings;
 
-  /* ★ 头像自动切换 */
   avatarSwitch: AvatarSwitchSettings;
 
   chatCustomCSS: string;
@@ -187,19 +200,45 @@ const defaultSettings: SystemSettings = {
     userReplyDelayMax: 8,
     autoReplyMin: 3,
     autoReplyMax: 30,
-    singleAutoReplyMin: 5,   
+    singleAutoReplyMin: 5,
     singleAutoReplyMax: 30,
     quoteChance: 0.25,
   },
   avatarSwitch: {
-    enabled: true,
-    chatChanceLevi: 0.01,
-    chatChanceErwin: 0.01,
+    requestEnabled: true,
+    requestChance: 0.7,
+    requestDelayMin: 10,
+    requestDelayMax: 60,
+
+    backgroundEnabled: true,
+    backgroundIntervalMin: 30,
+    backgroundIntervalMax: 180,
+    backgroundChance: 0.3,
+    backgroundLevi: true,
+    backgroundErwin: true,
+
     icityChanceLevi: 0.02,
     icityChanceErwin: 0.02,
   },
   chatCustomCSS: "",
 };
+
+function clamp01(v: unknown, fallback: number): number {
+  return typeof v === "number"
+    ? Math.min(1, Math.max(0, v))
+    : fallback;
+}
+
+function clampNum(
+  v: unknown,
+  min: number,
+  max: number,
+  fallback: number
+): number {
+  return typeof v === "number" && Number.isFinite(v)
+    ? Math.min(max, Math.max(min, v))
+    : fallback;
+}
 
 export function loadSystemSettings(): SystemSettings {
   if (typeof window === "undefined") {
@@ -285,33 +324,67 @@ export function loadSystemSettings(): SystemSettings {
         ...defaultSettings.chatReply,
         ...(parsed.chatReply ?? {}),
       },
-      /* ★ 头像自动切换归一化 */
       avatarSwitch: (() => {
         const a = parsed.avatarSwitch ?? {};
-        const clamp = (v: unknown, fallback: number) =>
-          typeof v === "number"
-            ? Math.min(1, Math.max(0, v))
-            : fallback;
+        const d = defaultSettings.avatarSwitch;
         return {
-          enabled:
-            typeof a.enabled === "boolean"
-              ? a.enabled
-              : defaultSettings.avatarSwitch.enabled,
-          chatChanceLevi: clamp(
-            a.chatChanceLevi,
-            defaultSettings.avatarSwitch.chatChanceLevi
+          requestEnabled:
+            typeof a.requestEnabled === "boolean"
+              ? a.requestEnabled
+              : d.requestEnabled,
+          requestChance: clamp01(
+            a.requestChance,
+            d.requestChance
           ),
-          chatChanceErwin: clamp(
-            a.chatChanceErwin,
-            defaultSettings.avatarSwitch.chatChanceErwin
+          requestDelayMin: clampNum(
+            a.requestDelayMin,
+            1,
+            600,
+            d.requestDelayMin
           ),
-          icityChanceLevi: clamp(
+          requestDelayMax: clampNum(
+            a.requestDelayMax,
+            1,
+            600,
+            d.requestDelayMax
+          ),
+
+          backgroundEnabled:
+            typeof a.backgroundEnabled === "boolean"
+              ? a.backgroundEnabled
+              : d.backgroundEnabled,
+          backgroundIntervalMin: clampNum(
+            a.backgroundIntervalMin,
+            1,
+            1440,
+            d.backgroundIntervalMin
+          ),
+          backgroundIntervalMax: clampNum(
+            a.backgroundIntervalMax,
+            1,
+            1440,
+            d.backgroundIntervalMax
+          ),
+          backgroundChance: clamp01(
+            a.backgroundChance,
+            d.backgroundChance
+          ),
+          backgroundLevi:
+            typeof a.backgroundLevi === "boolean"
+              ? a.backgroundLevi
+              : d.backgroundLevi,
+          backgroundErwin:
+            typeof a.backgroundErwin === "boolean"
+              ? a.backgroundErwin
+              : d.backgroundErwin,
+
+          icityChanceLevi: clamp01(
             a.icityChanceLevi,
-            defaultSettings.avatarSwitch.icityChanceLevi
+            d.icityChanceLevi
           ),
-          icityChanceErwin: clamp(
+          icityChanceErwin: clamp01(
             a.icityChanceErwin,
-            defaultSettings.avatarSwitch.icityChanceErwin
+            d.icityChanceErwin
           ),
         };
       })(),
@@ -374,7 +447,6 @@ export function updateSystemSettings(
       ...current.chatReply,
       ...(updates.chatReply ?? {}),
     },
-    /* ★ 头像自动切换浅合并 */
     avatarSwitch: {
       ...current.avatarSwitch,
       ...(updates.avatarSwitch ?? {}),

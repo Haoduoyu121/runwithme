@@ -68526,3 +68526,217 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   color: #fff;
   box-shadow: none;
 }
+/* =========================================================
+   头像切换请求 sheet
+   ========================================================= */
+.avatar-req-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 300;
+}
+.avatar-req-sheet {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 22px 22px 0 0;
+  padding: 20px 18px
+    calc(20px + env(safe-area-inset-bottom, 0));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: avatarReqIn 0.26s ease;
+}
+.chat-dark .avatar-req-sheet {
+  background: rgba(28, 28, 32, 0.98);
+}
+@keyframes avatarReqIn {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.avatar-req-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #111;
+  font-size: 16px;
+  font-weight: 600;
+}
+.chat-dark .avatar-req-header {
+  color: #fff;
+}
+.avatar-req-header button {
+  background: transparent;
+  border: none;
+  color: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+}
+.chat-dark .avatar-req-header button {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.avatar-req-owners {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.avatar-req-owners button {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+  color: #111;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+.chat-dark .avatar-req-owners button {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+.avatar-req-owners button:active {
+  transform: scale(0.98);
+}
+
+.avatar-req-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.avatar-req-source-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  background: rgba(167, 139, 250, 0.08);
+  color: #6d5bd0;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.chat-dark .avatar-req-source-btn {
+  border-color: rgba(167, 139, 250, 0.35);
+  background: rgba(167, 139, 250, 0.14);
+  color: #c4b5fd;
+}
+.avatar-req-source-btn:active {
+  transform: scale(0.98);
+}
+
+.avatar-req-lib {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.avatar-req-lib-empty {
+  text-align: center;
+  padding: 30px 0;
+  color: #8e8e93;
+  font-size: 14px;
+}
+.avatar-req-lib-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.avatar-req-lib-item {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  border: none;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+}
+.chat-dark .avatar-req-lib-item {
+  background: rgba(255, 255, 255, 0.08);
+}
+.avatar-req-lib-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.avatar-req-lib-item:active {
+  transform: scale(0.95);
+}
+.avatar-req-lib-back {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chat-dark .avatar-req-lib-back {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.avatar-req-hint {
+  font-size: 12px;
+  color: #8e8e93;
+  text-align: center;
+  padding: 4px 0;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   Potato chip 按钮（参与角色）
+   ========================================================= */
+.potato-chip {
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.04);
+  color: #6b6b70;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chat-dark .potato-chip {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+}
+.potato-chip.is-on {
+  border-color: rgba(167, 139, 250, 0.5);
+  background: rgba(167, 139, 250, 0.18);
+  color: #6d5bd0;
+}
+.chat-dark .potato-chip.is-on {
+  color: #c4b5fd;
+}
+.potato-chip:active {
+  transform: scale(0.97);
+}
+
+/* 系统消息里的"换了新头像"通知，稍微加个样式 */
+.chat-system-message {
+  /* 已存在，不用改。若没有，保留默认即可 */
+}

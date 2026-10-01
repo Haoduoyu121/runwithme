@@ -31,7 +31,12 @@ import { createReplyMessage } from "@/lib/chatReply";
 import { pickCardWithRules } from "@/lib/cardPicker";
 import { loadSentenceSettings } from "@/lib/sentenceStorage";
 import { generateSentence } from "@/lib/sentenceGenerator";
-import { maybeSwitchAvatar } from "@/lib/avatarSwitcher";
+import {
+  maybeSwitchICityAvatar,
+  writeAvatar,
+  pickRandomAndWrite,
+} from "@/lib/avatarSwitcher";
+import type { AvatarLibraryOwner } from "@/data/avatarLibrary";
 
 import { getImageFile } from "@/lib/imageFiles";
 import { getStickerFile } from "@/lib/stickerFiles";
@@ -113,10 +118,6 @@ function pickTextCardSnapshotFor(
   };
 }
 
-/**
- * 抽卡：群聊全卡池；单聊只出目标角色的卡。
- * 通过重试最多 30 次来实现角色筛选（不改 cardPicker 内部逻辑）。
- */
 function pickCardForThread(
   cards: ReturnType<typeof loadCards>,
   threadId: ThreadId
@@ -136,14 +137,18 @@ function pickCardForThread(
 
 type AddMessageOptions = { threadId?: ThreadId };
 
+/* ★ 换头像请求输入 */
+export type AvatarChangeRequest = {
+  owner: AvatarLibraryOwner;
+  blob: Blob;
+};
+
 type ChatContextValue = {
-  /* 当前 thread 的消息（外部调用者视角不变） */
   messages: ChatMessage[];
 
   generatingCount: number;
   autoReplyEnabled: boolean;
 
-  /* ★ 新增 */
   activeThreadId: ThreadId;
   setActiveThreadId: (id: ThreadId) => void;
   threadLastMessages: Record<
@@ -169,12 +174,19 @@ type ChatContextValue = {
     items: ForwardItem[],
     fromThreadId: ThreadId
   ) => void;
+
+  /* ★ 用户请求角色换头像 */
+  requestAvatarChange: (
+    requests: AvatarChangeRequest[]
+  ) => void;
 };
 
 const ChatContext =
   createContext<ChatContextValue | null>(null);
 
-/* ---------- 单个 thread 的后台自动回复计时器 ---------- */
+/* =========================================================
+   后台定时器 hook
+   ========================================================= */
 
 function useAutoReplyTimer(
   threadId: ThreadId,
@@ -237,7 +249,6 @@ export function ChatProvider({
 
   const { settings } = useSystem();
 
-  /* ★ 三个 thread 的消息表 */
   const [threads, setThreads] = useState<
     Record<ThreadId, ChatMessage[]>
   >(() => ({
@@ -252,6 +263,12 @@ export function ChatProvider({
     ),
   }));
 
+  /* ★ threadsRef：给定时器 / 回调读取最新值 */
+  const threadsRef = useRef(threads);
+  useEffect(() => {
+    threadsRef.current = threads;
+  }, [threads]);
+
   const [activeThreadId, setActiveThreadIdState] =
     useState<ThreadId>("group");
   const [generatingCount, setGeneratingCount] =
@@ -264,7 +281,6 @@ export function ChatProvider({
     activeThreadIdRef.current = activeThreadId;
   }, [activeThreadId]);
 
-  /* 当前 thread 的消息（对外暴露的 messages） */
   const messages = threads[activeThreadId];
 
   const restoredImageUrlsRef = useRef<
@@ -277,9 +293,6 @@ export function ChatProvider({
     Record<string, string>
   >({});
 
-  const lastUserMessageRef =
-    useRef<ChatMessage | null>(null);
-
   const userLastActiveAtRef = useRef(0);
 
   const pendingQuoteEventsRef = useRef<WorldEvent[]>([]);
@@ -289,7 +302,7 @@ export function ChatProvider({
     settingsRef.current = settings;
   }, [settings]);
 
-  /* ---------- 持久化（每 thread 一个 debounce） ---------- */
+  /* ---------- 持久化 ---------- */
 
   const threadsInitRef = useRef(false);
   useEffect(() => {
@@ -304,24 +317,6 @@ export function ChatProvider({
     }, 400);
     return () => window.clearTimeout(t);
   }, [threads]);
-
-  /* ---------- 更新 lastUserMessageRef（当前 thread） ---------- */
-
-  useEffect(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (
-        m.sender === "You" &&
-        !m.deleted &&
-        !m.recalled &&
-        m.text
-      ) {
-        lastUserMessageRef.current = m;
-        return;
-      }
-    }
-    lastUserMessageRef.current = null;
-  }, [messages]);
 
   /* ---------- 清理 objectURL ---------- */
   useEffect(() => {
@@ -338,15 +333,14 @@ export function ChatProvider({
     };
   }, []);
 
-  /* ---------- 媒体恢复（扫描所有 thread） ---------- */
+  /* ---------- 媒体恢复 ---------- */
 
   useEffect(() => {
     let cancelled = false;
 
     async function restore() {
-      /* 对每个 thread 单独扫描 */
       for (const tid of THREAD_IDS) {
-        const list = threads[tid];
+        const list = threadsRef.current[tid];
         for (const message of list) {
           if (!message.mediaId) continue;
           if (
@@ -370,7 +364,9 @@ export function ChatProvider({
               file = await getVoiceFile(message.mediaId);
             }
             if (message.type === "gallery") {
-              file = await getGalleryFile(message.mediaId);
+              file = await getGalleryFile(
+                message.mediaId
+              );
             }
             if (!file) continue;
 
@@ -439,17 +435,6 @@ export function ChatProvider({
 
       if (msg.sender === "You") {
         userLastActiveAtRef.current = Date.now();
-
-        /* ★ 用户发消息 → 掷骰子换当前 thread 角色头像 */
-        if (tid === "levi") {
-          void maybeSwitchAvatar("chat", "Levi");
-        } else if (tid === "erwin") {
-          void maybeSwitchAvatar("chat", "Erwin");
-        } else if (tid === "group") {
-          void maybeSwitchAvatar("chat", "Levi");
-          void maybeSwitchAvatar("chat", "Erwin");
-        }
-
         return;
       }
 
@@ -498,7 +483,7 @@ export function ChatProvider({
     []
   );
 
-  /* ---------- 通话结束 → 固定加到群聊 ---------- */
+  /* ---------- 通话结束 → 加到群聊 ---------- */
 
   useEffect(() => {
     const unsubscribe = registerCallEndListener(
@@ -529,7 +514,7 @@ export function ChatProvider({
     return unsubscribe;
   }, [registerCallEndListener, addMessage]);
 
-  /* ---------- 世界事件消费 → 固定加到群聊 ---------- */
+  /* ---------- 世界事件消费 ---------- */
 
   const consumeEvent = useCallback(
     (ev: WorldEvent) => {
@@ -593,7 +578,7 @@ export function ChatProvider({
     };
   }, [consumeEvent]);
 
-  /* ---------- 生成单条回复（带 threadId） ---------- */
+  /* ---------- 生成单条回复 ---------- */
 
   const createReplyFromPicked = useCallback(
     async (
@@ -637,7 +622,6 @@ export function ChatProvider({
       if (card.type === "text") {
         let t = card.text;
 
-        /* ★ 自由造句判定 */
         const sentenceCfg = loadSentenceSettings();
         if (
           sentenceCfg.enabled &&
@@ -666,7 +650,6 @@ export function ChatProvider({
       );
 
       if (result.message) {
-        /* ★ 标记造句 */
         if (isSentence) {
           result.message.sentence = true;
         }
@@ -675,7 +658,21 @@ export function ChatProvider({
           settingsRef.current.chatReply?.quoteChance ??
           0.25;
 
-        const lastUser = lastUserMessageRef.current;
+        /* ★ 修复：从该 thread 里找最后一条用户消息 */
+        const list = threadsRef.current[threadId];
+        let lastUser: ChatMessage | null = null;
+        for (let i = list.length - 1; i >= 0; i--) {
+          const m = list[i];
+          if (
+            m.sender === "You" &&
+            !m.deleted &&
+            !m.recalled &&
+            m.text
+          ) {
+            lastUser = m;
+            break;
+          }
+        }
 
         if (
           lastUser &&
@@ -716,7 +713,7 @@ export function ChatProvider({
     [addMessage]
   );
 
-  /* ---------- 生成多条（手动 Sparkles） ---------- */
+  /* ---------- 生成多条 ---------- */
 
   const generateResponse = useCallback(
     async (threadIdOverride?: ThreadId) => {
@@ -770,7 +767,7 @@ export function ChatProvider({
     [createReplyFromPicked]
   );
 
-  /* ---------- 自动回复（由计时器触发） ---------- */
+  /* ---------- 自动回复 ---------- */
 
   const generateAutoReply = useCallback(
     async (threadIdOverride?: ThreadId) => {
@@ -788,7 +785,6 @@ export function ChatProvider({
       try {
         await sleep(randomInteger(1000, 4000));
 
-        /* 来电只在群聊触发 */
         if (
           tid === "group" &&
           !activeCall &&
@@ -798,7 +794,6 @@ export function ChatProvider({
           return;
         }
 
-        /* 世界事件引用只在群聊 */
         if (tid === "group") {
           const quoteChance =
             settingsRef.current.chatWorldQuoteChance ??
@@ -874,14 +869,13 @@ export function ChatProvider({
     ]
   );
 
-  /* ---------- 通话开始时清空生成状态 ---------- */
   useEffect(() => {
     if (activeCall) {
       setGeneratingCount(0);
     }
   }, [activeCall]);
 
-  /* ---------- 后台自动回复计时器（3 个 thread 各一个） ---------- */
+  /* ---------- 后台自动回复定时器 ---------- */
 
   const cfgReply = settings.chatReply;
 
@@ -911,11 +905,11 @@ export function ChatProvider({
     autoReplyEnabled,
     !!activeCall,
     cfgReply?.singleAutoReplyMin ?? 5,
-    cfgReply?.singleAutoReplyMax ?? 30,     
+    cfgReply?.singleAutoReplyMax ?? 30,
     generateAutoReply
   );
 
-  /* ---------- 用户发消息后的快速回复（当前 thread） ---------- */
+  /* ---------- 用户发消息后快速回复 ---------- */
 
   const scheduleAutoReplyAfterUserMessage =
     useCallback(() => {
@@ -932,7 +926,8 @@ export function ChatProvider({
         void generateAutoReply(tid);
       }, delay);
     }, [generateAutoReply]);
-      /* ---------- 消息转发 ---------- */
+
+  /* ---------- 消息转发 ---------- */
 
   const forwardMessages = useCallback(
     (
@@ -954,7 +949,7 @@ export function ChatProvider({
     [addMessage]
   );
 
-  /* ---------- 会话列表用的「最后一条消息」 ---------- */
+  /* ---------- 会话列表 ---------- */
 
   const threadLastMessages = useMemo(() => {
     const result: Record<
@@ -978,14 +973,182 @@ export function ChatProvider({
     return result;
   }, [threads]);
 
-  /* ---------- 切换 active thread ---------- */
-
   const setActiveThreadId = useCallback(
     (id: ThreadId) => {
       setActiveThreadIdState(id);
       activeThreadIdRef.current = id;
     },
     []
+  );
+
+  /* =========================================================
+     ★ 后台主动换头像定时器
+     ========================================================= */
+
+  /* 每个角色一个定时器 */
+  const bgAvatarTick = useCallback(
+    async (owner: AvatarLibraryOwner) => {
+      const cfg = settingsRef.current.avatarSwitch;
+      if (!cfg.backgroundEnabled) return;
+      if (owner === "Levi" && !cfg.backgroundLevi) return;
+      if (owner === "Erwin" && !cfg.backgroundErwin) return;
+      if (Math.random() >= cfg.backgroundChance) return;
+
+      const ok = await pickRandomAndWrite("chat", owner);
+      if (!ok) return;
+
+      addMessage(
+        {
+          id: createMessageId(),
+          sender: "You",
+          type: "system",
+          text: `${owner} 换了张新头像`,
+          timestamp: Date.now(),
+        },
+        { threadId: "group" }
+      );
+    },
+    [addMessage]
+  );
+
+  /* Levi 定时器 */
+  useEffect(() => {
+    const cfg = settings.avatarSwitch;
+    if (!cfg.backgroundEnabled) return;
+    if (!cfg.backgroundLevi) return;
+
+    const minMs = cfg.backgroundIntervalMin * 60 * 1000;
+    const maxMs = cfg.backgroundIntervalMax * 60 * 1000;
+
+    let timer: number | null = null;
+    let cancelled = false;
+
+    function schedule() {
+      const delay = randomInteger(minMs, maxMs);
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        void bgAvatarTick("Levi").then(() => {
+          if (!cancelled) schedule();
+        });
+      }, delay);
+    }
+
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [
+    bgAvatarTick,
+    settings.avatarSwitch.backgroundEnabled,
+    settings.avatarSwitch.backgroundLevi,
+    settings.avatarSwitch.backgroundIntervalMin,
+    settings.avatarSwitch.backgroundIntervalMax,
+  ]);
+
+  /* Erwin 定时器 */
+  useEffect(() => {
+    const cfg = settings.avatarSwitch;
+    if (!cfg.backgroundEnabled) return;
+    if (!cfg.backgroundErwin) return;
+
+    const minMs = cfg.backgroundIntervalMin * 60 * 1000;
+    const maxMs = cfg.backgroundIntervalMax * 60 * 1000;
+
+    let timer: number | null = null;
+    let cancelled = false;
+
+    function schedule() {
+      const delay = randomInteger(minMs, maxMs);
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        void bgAvatarTick("Erwin").then(() => {
+          if (!cancelled) schedule();
+        });
+      }, delay);
+    }
+
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [
+    bgAvatarTick,
+    settings.avatarSwitch.backgroundEnabled,
+    settings.avatarSwitch.backgroundErwin,
+    settings.avatarSwitch.backgroundIntervalMin,
+    settings.avatarSwitch.backgroundIntervalMax,
+  ]);
+
+  /* =========================================================
+     ★ 用户请求角色换头像
+     ========================================================= */
+
+  const requestAvatarChange = useCallback(
+    (requests: AvatarChangeRequest[]) => {
+      if (requests.length === 0) return;
+
+      const cfg = settingsRef.current.avatarSwitch;
+      if (!cfg.requestEnabled) return;
+
+      const tid = activeThreadIdRef.current;
+
+      const minMs = cfg.requestDelayMin * 1000;
+      const maxMs = cfg.requestDelayMax * 1000;
+
+      for (const req of requests) {
+        const delay = randomInteger(minMs, maxMs);
+
+        window.setTimeout(async () => {
+          /* 重新读一次设置（用户可能中途改了） */
+          const cfgNow =
+            settingsRef.current.avatarSwitch;
+          const accepted =
+            Math.random() < cfgNow.requestChance;
+
+          const cfg2 = settingsRef.current;
+          const ownerName =
+            req.owner === "Levi"
+              ? cfg2.characterNames.levi
+              : cfg2.characterNames.erwin;
+
+          if (accepted) {
+            const ok = await writeAvatar(
+              "chat",
+              req.owner,
+              req.blob
+            );
+            if (ok) {
+              addMessage(
+                {
+                  id: createMessageId(),
+                  sender: "You",
+                  type: "system",
+                  text: `${ownerName} 换上了新的头像`,
+                  timestamp: Date.now(),
+                },
+                { threadId: tid }
+              );
+            }
+          } else {
+            addMessage(
+              {
+                id: createMessageId(),
+                sender: "You",
+                type: "system",
+                text: `${ownerName} 不想用这张做头像哦`,
+                timestamp: Date.now(),
+              },
+              { threadId: tid }
+            );
+          }
+        }, delay);
+      }
+    },
+    [addMessage]
   );
 
   return (
@@ -1011,6 +1174,7 @@ export function ChatProvider({
         setAutoReplyEnabled,
         scheduleAutoReplyAfterUserMessage,
         forwardMessages,
+        requestAvatarChange,
       }}
     >
       {children}

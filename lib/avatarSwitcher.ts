@@ -26,49 +26,20 @@ import {
 const CHAT_EVENT = "runwithme:chat-avatar-updated";
 const ICITY_EVENT = "runwithme:icity-avatar-updated";
 
-function getChance(
-  scope: AvatarLibraryScope,
-  owner: AvatarLibraryOwner
-): number {
-  try {
-    const s = loadSystemSettings();
-    const cfg = s.avatarSwitch;
-    if (!cfg || !cfg.enabled) return 0;
-    if (scope === "chat") {
-      return owner === "Levi"
-        ? cfg.chatChanceLevi
-        : cfg.chatChanceErwin;
-    }
-    return owner === "Levi"
-      ? cfg.icityChanceLevi
-      : cfg.icityChanceErwin;
-  } catch {
-    return 0;
-  }
-}
+export const AVATAR_EVENTS = {
+  chat: CHAT_EVENT,
+  icity: ICITY_EVENT,
+};
 
 /**
- * 尝试为某个角色换头像（对应 scope）。
- * - 掷骰子失败 / 库里没图 → 返回 false
- * - 换了 → 返回 true
+ * 直接写入头像到目标 scope。
+ * 不做任何概率/骰子判定。
  */
-export async function maybeSwitchAvatar(
+export async function writeAvatar(
   scope: AvatarLibraryScope,
-  owner: AvatarLibraryOwner
+  owner: AvatarLibraryOwner,
+  blob: Blob
 ): Promise<boolean> {
-  const chance = getChance(scope, owner);
-  if (chance <= 0) return false;
-  if (Math.random() >= chance) return false;
-
-  const pool = loadAvatarLibraryByOwner(owner, scope).filter(
-    (a) => a.enabled
-  );
-  if (pool.length === 0) return false;
-
-  const pick = pool[Math.floor(Math.random() * pool.length)];
-  const blob = await getAvatarLibraryFile(pick.id);
-  if (!blob) return false;
-
   try {
     if (scope === "chat") {
       await saveChatFile(
@@ -82,12 +53,57 @@ export async function maybeSwitchAvatar(
     }
     return true;
   } catch (e) {
-    console.error("换头像失败:", e);
+    console.error("写头像失败:", e);
     return false;
   }
 }
 
-export const AVATAR_EVENTS = {
-  chat: CHAT_EVENT,
-  icity: ICITY_EVENT,
-};
+/**
+ * 从角色头像库里随机挑一张（对应 scope），直接换上。
+ * 给"后台主动换"用。
+ */
+export async function pickRandomAndWrite(
+  scope: AvatarLibraryScope,
+  owner: AvatarLibraryOwner
+): Promise<boolean> {
+  const pool = loadAvatarLibraryByOwner(owner, scope).filter(
+    (a) => a.enabled
+  );
+  if (pool.length === 0) return false;
+
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const blob = await getAvatarLibraryFile(pick.id);
+  if (!blob) return false;
+
+  return writeAvatar(scope, owner, blob);
+}
+
+/**
+ * 读 iCity 头像切概率
+ */
+export function getICityChance(
+  owner: AvatarLibraryOwner
+): number {
+  try {
+    const s = loadSystemSettings();
+    const cfg = s.avatarSwitch;
+    if (!cfg) return 0;
+    return owner === "Levi"
+      ? cfg.icityChanceLevi
+      : cfg.icityChanceErwin;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * 给 iCity 用：角色发帖 / 评论时掷骰子换头像
+ */
+export async function maybeSwitchICityAvatar(
+  owner: AvatarLibraryOwner
+): Promise<boolean> {
+  const chance = getICityChance(owner);
+  if (chance <= 0) return false;
+  if (Math.random() >= chance) return false;
+  return pickRandomAndWrite("icity", owner);
+}

@@ -692,28 +692,28 @@ export default function PotatoApp({ onBack }: Props) {
               恢复默认权重
             </button>
 
-            {/* ---------- 头像自动切换 ---------- */}
+            {/* ---------- 用户请求换头像 ---------- */}
             <div
               className="potato-section-title"
               style={{ marginTop: 18 }}
             >
-              头像自动切换
+              用户请求换头像
             </div>
             <div className="potato-hint">
-              用户发消息 / 角色发帖时，角色有概率从图库里换头像。
-              默认很小，避免频繁换。
+              在 Chat 的 + 菜单里可以向角色提议换头像。
+              角色会考虑一段时间后决定是否接受。
             </div>
 
             <div className="potato-sentence-row">
               <div className="potato-sentence-label">
                 <strong>启用</strong>
-                <small>总开关，关掉后永不自动换</small>
+                <small>关掉后点「换头像」不会响应</small>
               </div>
               <button
                 type="button"
                 className={
                   "potato-switch" +
-                  (settings.avatarSwitch.enabled
+                  (settings.avatarSwitch.requestEnabled
                     ? " is-on"
                     : "")
                 }
@@ -721,8 +721,9 @@ export default function PotatoApp({ onBack }: Props) {
                   updateSettings({
                     avatarSwitch: {
                       ...settings.avatarSwitch,
-                      enabled:
-                        !settings.avatarSwitch.enabled,
+                      requestEnabled:
+                        !settings.avatarSwitch
+                          .requestEnabled,
                     },
                   })
                 }
@@ -730,22 +731,324 @@ export default function PotatoApp({ onBack }: Props) {
               />
             </div>
 
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                答应概率
+              </span>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.avatarSwitch.requestChance *
+                      100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      avatarSwitch: {
+                        ...settings.avatarSwitch,
+                        requestChance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">
+                  %
+                </span>
+              </label>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                考虑时间
+              </span>
+              <div className="potato-inline-nums">
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最少
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.avatarSwitch.requestDelayMin
+                    }
+                    min={1}
+                    max={600}
+                    onChange={(e) =>
+                      updateSettings({
+                        avatarSwitch: {
+                          ...settings.avatarSwitch,
+                          requestDelayMin: Math.max(
+                            1,
+                            Math.min(
+                              600,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    秒
+                  </span>
+                </label>
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最多
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.avatarSwitch.requestDelayMax
+                    }
+                    min={1}
+                    max={600}
+                    onChange={(e) =>
+                      updateSettings({
+                        avatarSwitch: {
+                          ...settings.avatarSwitch,
+                          requestDelayMax: Math.max(
+                            1,
+                            Math.min(
+                              600,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    秒
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* ---------- 后台主动换头像 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              后台主动换头像
+            </div>
+            <div className="potato-hint">
+              角色会自己定期从头像库里挑一张换上。
+              默认 30~180 分钟掷一次骰子。
+            </div>
+
+            <div className="potato-sentence-row">
+              <div className="potato-sentence-label">
+                <strong>启用</strong>
+                <small>关掉后角色不会主动换</small>
+              </div>
+              <button
+                type="button"
+                className={
+                  "potato-switch" +
+                  (settings.avatarSwitch.backgroundEnabled
+                    ? " is-on"
+                    : "")
+                }
+                onClick={() =>
+                  updateSettings({
+                    avatarSwitch: {
+                      ...settings.avatarSwitch,
+                      backgroundEnabled:
+                        !settings.avatarSwitch
+                          .backgroundEnabled,
+                    },
+                  })
+                }
+                aria-label="开关"
+              />
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                参与角色
+              </span>
+              <div className="potato-inline-nums">
+                <button
+                  type="button"
+                  className={
+                    "potato-chip" +
+                    (settings.avatarSwitch.backgroundLevi
+                      ? " is-on"
+                      : "")
+                  }
+                  onClick={() =>
+                    updateSettings({
+                      avatarSwitch: {
+                        ...settings.avatarSwitch,
+                        backgroundLevi:
+                          !settings.avatarSwitch
+                            .backgroundLevi,
+                      },
+                    })
+                  }
+                >
+                  {settings.characterNames.levi}
+                </button>
+                <button
+                  type="button"
+                  className={
+                    "potato-chip" +
+                    (settings.avatarSwitch.backgroundErwin
+                      ? " is-on"
+                      : "")
+                  }
+                  onClick={() =>
+                    updateSettings({
+                      avatarSwitch: {
+                        ...settings.avatarSwitch,
+                        backgroundErwin:
+                          !settings.avatarSwitch
+                            .backgroundErwin,
+                      },
+                    })
+                  }
+                >
+                  {settings.characterNames.erwin}
+                </button>
+              </div>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                掷骰子概率
+              </span>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.avatarSwitch
+                      .backgroundChance * 100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      avatarSwitch: {
+                        ...settings.avatarSwitch,
+                        backgroundChance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">
+                  %
+                </span>
+              </label>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                间隔
+              </span>
+              <div className="potato-inline-nums">
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最少
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.avatarSwitch
+                        .backgroundIntervalMin
+                    }
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        avatarSwitch: {
+                          ...settings.avatarSwitch,
+                          backgroundIntervalMin:
+                            Math.max(
+                              1,
+                              Math.min(
+                                1440,
+                                Number(e.target.value) || 1
+                              )
+                            ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最多
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.avatarSwitch
+                        .backgroundIntervalMax
+                    }
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        avatarSwitch: {
+                          ...settings.avatarSwitch,
+                          backgroundIntervalMax:
+                            Math.max(
+                              1,
+                              Math.min(
+                                1440,
+                                Number(e.target.value) || 1
+                              )
+                            ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* ---------- iCity 头像 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              iCity 头像
+            </div>
+            <div className="potato-hint">
+              角色在 iCity 发帖 / 评论时，有概率换 iCity 头像。
+            </div>
+
             {(
               [
                 {
-                  label: "Chat · Levi",
-                  key: "chatChanceLevi" as const,
-                },
-                {
-                  label: "Chat · Erwin",
-                  key: "chatChanceErwin" as const,
-                },
-                {
-                  label: "iCity · Levi",
+                  label: settings.characterNames.levi,
                   key: "icityChanceLevi" as const,
                 },
                 {
-                  label: "iCity · Erwin",
+                  label: settings.characterNames.erwin,
                   key: "icityChanceErwin" as const,
                 },
               ]
@@ -791,10 +1094,6 @@ export default function PotatoApp({ onBack }: Props) {
                 </label>
               </div>
             ))}
-
-            <div className="potato-hint">
-              1% ≈ 每 100 条消息换一次。嫌频繁可以调到 0.5% 或更低。
-            </div>
           </div>
         )}
       </div>
