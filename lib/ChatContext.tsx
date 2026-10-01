@@ -514,6 +514,40 @@ export function ChatProvider({
     return unsubscribe;
   }, [registerCallEndListener, addMessage]);
 
+    /* ---------- 存钱目标达成 → 群聊系统消息 ---------- */
+
+  useEffect(() => {
+    function onGoalCompleted(e: Event) {
+      const detail = (
+        e as CustomEvent<{ goalName: string }>
+      ).detail;
+      if (!detail?.goalName) return;
+
+      addMessage(
+        {
+          id: createMessageId(),
+          sender: "You",
+          type: "system",
+          text: `🎯 存钱目标「${detail.goalName}」达成！`,
+          timestamp: Date.now(),
+        },
+        { threadId: "group" }
+      );
+    }
+
+    window.addEventListener(
+      "runwithme:goal-completed",
+      onGoalCompleted
+    );
+    return () => {
+      window.removeEventListener(
+        "runwithme:goal-completed",
+        onGoalCompleted
+      );
+    };
+  }, [addMessage]);
+
+
   /* ---------- 世界事件消费 ---------- */
 
   const consumeEvent = useCallback(

@@ -69418,3 +69418,204 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
     padding-top: 24px !important;
   }
 }
+/* =========================================================
+   存钱本（批次 2）
+   ========================================================= */
+
+.goal-list-section {
+  margin-bottom: 20px;
+}
+.goal-list-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8e8e93;
+  padding: 6px 4px 10px;
+}
+
+.goal-card {
+  padding: 16px 16px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-dark .goal-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.goal-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.goal-card-name {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.chat-dark .goal-card-name {
+  color: #fff;
+}
+.goal-card-done {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(52, 199, 89, 0.15);
+  color: #34c759;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.goal-card-edit {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #8e8e93;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.goal-card-edit:active {
+  background: rgba(0, 0, 0, 0.06);
+}
+.chat-dark .goal-card-edit:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.goal-card-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 14px;
+  color: #8e8e93;
+}
+.goal-card-saved {
+  font-size: 18px;
+  font-weight: 700;
+  color: #6d5bd0;
+}
+.chat-dark .goal-card-saved {
+  color: #c4b5fd;
+}
+.goal-card-target {
+  color: #8e8e93;
+}
+.goal-card-percent {
+  margin-left: auto;
+  font-weight: 600;
+  color: #8e8e93;
+}
+
+.goal-card-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.chat-dark .goal-card-bar {
+  background: rgba(255, 255, 255, 0.1);
+}
+.goal-card-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    #a78bfa 0%,
+    #7c3aed 100%
+  );
+  transition: width 0.3s ease;
+}
+
+.goal-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 2px;
+}
+.goal-card-supervisor {
+  font-size: 12px;
+  color: #8e8e93;
+}
+.goal-card-action-btn {
+  padding: 8px 14px;
+  border-radius: 18px;
+  border: none;
+  background: #111;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chat-dark .goal-card-action-btn {
+  background: #fff;
+  color: #111;
+}
+.goal-card-action-btn:active {
+  transform: scale(0.97);
+}
+
+/* GoalActionSheet 里的进度 */
+.goal-action-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.goal-action-progress-text {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 14px;
+  color: #8e8e93;
+}
+.goal-action-progress-text span:first-child {
+  font-size: 18px;
+  font-weight: 700;
+  color: #6d5bd0;
+}
+.chat-dark .goal-action-progress-text span:first-child {
+  color: #c4b5fd;
+}
+.goal-action-progress-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.chat-dark .goal-action-progress-bar {
+  background: rgba(255, 255, 255, 0.1);
+}
+.goal-action-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    #a78bfa 0%,
+    #7c3aed 100%
+  );
+  transition: width 0.3s ease;
+}
+
+/* Sheet 里的 hint */
+.wallet-sheet-hint {
+  font-size: 12px;
+  color: #8e8e93;
+  padding: 2px 4px 0;
+  line-height: 1.5;
+}

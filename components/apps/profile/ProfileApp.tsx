@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 import {
   ChevronRight,
-  ImagePlus,
   Target,
   Wallet as WalletIcon,
 } from "lucide-react";
@@ -26,11 +25,13 @@ import {
 
 import WalletPage from "./WalletPage";
 import WalletDetailPage from "./WalletDetailPage";
+import SavingGoalsPage from "./SavingGoalsPage";
 
 type View =
   | { kind: "home" }
   | { kind: "wallet" }
-  | { kind: "detail" };
+  | { kind: "detail" }
+  | { kind: "goals" };
 
 type Props = {
   onSubpageChange?: (isSub: boolean) => void;
@@ -160,6 +161,14 @@ export default function ProfileApp({
     );
   }
 
+  if (view.kind === "goals") {
+    return (
+      <SavingGoalsPage
+        onBack={() => setView({ kind: "home" })}
+      />
+    );
+  }
+
   /* ---------- 主页 ---------- */
 
   const balance = computeBalance(wallet);
@@ -190,9 +199,6 @@ export default function ProfileApp({
                 e.target.value = "";
               }}
             />
-            <span className="profile-avatar-overlay">
-              <ImagePlus size={20} strokeWidth={2.2} />
-            </span>
           </label>
 
           <input
@@ -239,9 +245,7 @@ export default function ProfileApp({
         <button
           type="button"
           className="profile-card"
-          onClick={() => {
-            window.alert("存钱本将在下一批完成");
-          }}
+          onClick={() => setView({ kind: "goals" })}
         >
           <div className="profile-card-icon target">
             <Target size={20} strokeWidth={2} />
