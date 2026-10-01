@@ -39,6 +39,9 @@ import {
 import type { GalleryOwner } from "@/data/gallery";
 import GalleryPage from "@/components/apps/potato/GalleryPage";
 
+import type { AvatarLibraryOwner } from "@/data/avatarLibrary";
+import AvatarLibraryPage from "@/components/apps/potato/AvatarLibraryPage";
+
 type Props = { onBack: () => void };
 
 type TabKey = "levi" | "erwin" | "sentence" | "general";
@@ -49,6 +52,8 @@ export default function PotatoApp({ onBack }: Props) {
   const [tab, setTab] = useState<TabKey>("levi");
   const [galleryOwner, setGalleryOwner] =
     useState<GalleryOwner | null>(null);
+  const [avatarLibOwner, setAvatarLibOwner] =
+    useState<AvatarLibraryOwner | null>(null);
 
   const [avatarPreviews, setAvatarPreviews] = useState<{
     levi: string | null;
@@ -226,6 +231,20 @@ export default function PotatoApp({ onBack }: Props) {
     );
   }
 
+  /* ---------- 头像库子页 ---------- */
+  if (avatarLibOwner) {
+    return (
+      <main
+        className={`phone-screen potato-app${themeClass}`}
+      >
+        <AvatarLibraryPage
+          owner={avatarLibOwner}
+          onBack={() => setAvatarLibOwner(null)}
+        />
+      </main>
+    );
+  }
+
   return (
     <main
       className={`phone-screen potato-app${themeClass}`}
@@ -295,6 +314,7 @@ export default function PotatoApp({ onBack }: Props) {
             }
             onRemove={() => void removeAvatar("levi")}
             onOpenGallery={() => setGalleryOwner("Levi")}
+            onOpenAvatarLib={() => setAvatarLibOwner("Levi")}
           />
         )}
 
@@ -314,6 +334,7 @@ export default function PotatoApp({ onBack }: Props) {
             }
             onRemove={() => void removeAvatar("erwin")}
             onOpenGallery={() => setGalleryOwner("Erwin")}
+            onOpenAvatarLib={() => setAvatarLibOwner("Erwin")}
           />
         )}
 
@@ -670,6 +691,110 @@ export default function PotatoApp({ onBack }: Props) {
             >
               恢复默认权重
             </button>
+
+            {/* ---------- 头像自动切换 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              头像自动切换
+            </div>
+            <div className="potato-hint">
+              用户发消息 / 角色发帖时，角色有概率从图库里换头像。
+              默认很小，避免频繁换。
+            </div>
+
+            <div className="potato-sentence-row">
+              <div className="potato-sentence-label">
+                <strong>启用</strong>
+                <small>总开关，关掉后永不自动换</small>
+              </div>
+              <button
+                type="button"
+                className={
+                  "potato-switch" +
+                  (settings.avatarSwitch.enabled
+                    ? " is-on"
+                    : "")
+                }
+                onClick={() =>
+                  updateSettings({
+                    avatarSwitch: {
+                      ...settings.avatarSwitch,
+                      enabled:
+                        !settings.avatarSwitch.enabled,
+                    },
+                  })
+                }
+                aria-label="开关"
+              />
+            </div>
+
+            {(
+              [
+                {
+                  label: "Chat · Levi",
+                  key: "chatChanceLevi" as const,
+                },
+                {
+                  label: "Chat · Erwin",
+                  key: "chatChanceErwin" as const,
+                },
+                {
+                  label: "iCity · Levi",
+                  key: "icityChanceLevi" as const,
+                },
+                {
+                  label: "iCity · Erwin",
+                  key: "icityChanceErwin" as const,
+                },
+              ]
+            ).map(({ label, key }) => (
+              <div
+                key={key}
+                className="potato-reply-row"
+              >
+                <span className="potato-reply-label">
+                  {label}
+                </span>
+                <label className="potato-num">
+                  <input
+                    type="number"
+                    value={Number(
+                      (
+                        settings.avatarSwitch[key] * 100
+                      ).toFixed(2)
+                    )}
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    onChange={(e) => {
+                      const v =
+                        Math.max(
+                          0,
+                          Math.min(
+                            100,
+                            Number(e.target.value) || 0
+                          )
+                        ) / 100;
+                      updateSettings({
+                        avatarSwitch: {
+                          ...settings.avatarSwitch,
+                          [key]: v,
+                        },
+                      });
+                    }}
+                  />
+                  <span className="potato-num-suffix">
+                    %
+                  </span>
+                </label>
+              </div>
+            ))}
+
+            <div className="potato-hint">
+              1% ≈ 每 100 条消息换一次。嫌频繁可以调到 0.5% 或更低。
+            </div>
           </div>
         )}
       </div>
@@ -692,6 +817,7 @@ function CharacterPanel({
   onUpload,
   onRemove,
   onOpenGallery,
+  onOpenAvatarLib,
 }: {
   avatarUrl: string | null;
   avatarClass: string;
@@ -703,6 +829,7 @@ function CharacterPanel({
   onUpload: (file: File) => void;
   onRemove: () => void;
   onOpenGallery: () => void;
+  onOpenAvatarLib: () => void;
 }) {
   return (
     <div className="potato-character">
@@ -780,6 +907,15 @@ function CharacterPanel({
       >
         <Images size={18} strokeWidth={2.2} />
         <span>打开图库</span>
+      </button>
+
+      <button
+        type="button"
+        className="potato-gallery-entry"
+        onClick={onOpenAvatarLib}
+      >
+        <ImagePlus size={18} strokeWidth={2.2} />
+        <span>头像库</span>
       </button>
     </div>
   );

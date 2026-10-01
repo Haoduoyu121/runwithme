@@ -31,6 +31,7 @@ import { createReplyMessage } from "@/lib/chatReply";
 import { pickCardWithRules } from "@/lib/cardPicker";
 import { loadSentenceSettings } from "@/lib/sentenceStorage";
 import { generateSentence } from "@/lib/sentenceGenerator";
+import { maybeSwitchAvatar } from "@/lib/avatarSwitcher";
 
 import { getImageFile } from "@/lib/imageFiles";
 import { getStickerFile } from "@/lib/stickerFiles";
@@ -438,6 +439,17 @@ export function ChatProvider({
 
       if (msg.sender === "You") {
         userLastActiveAtRef.current = Date.now();
+
+        /* ★ 用户发消息 → 掷骰子换当前 thread 角色头像 */
+        if (tid === "levi") {
+          void maybeSwitchAvatar("chat", "Levi");
+        } else if (tid === "erwin") {
+          void maybeSwitchAvatar("chat", "Erwin");
+        } else if (tid === "group") {
+          void maybeSwitchAvatar("chat", "Levi");
+          void maybeSwitchAvatar("chat", "Erwin");
+        }
+
         return;
       }
 

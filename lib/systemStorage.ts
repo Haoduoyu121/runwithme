@@ -52,6 +52,18 @@ export type ChatReplySettings = {
   quoteChance: number;
 };
 
+/* ---------- 头像自动切换 ---------- */
+
+export type AvatarSwitchSettings = {
+  enabled: boolean;
+  /** Chat 头像切换概率（0~1），每次用户发消息时掷骰子 */
+  chatChanceLevi: number;
+  chatChanceErwin: number;
+  /** iCity 头像切换概率（0~1），角色发帖 / 评论时掷骰子 */
+  icityChanceLevi: number;
+  icityChanceErwin: number;
+};
+
 /* ---------- 角色显示名 ---------- */
 
 export type CharacterNames = {
@@ -91,6 +103,9 @@ export type SystemSettings = {
   characterNames: CharacterNames;
 
   chatReply: ChatReplySettings;
+
+  /* ★ 头像自动切换 */
+  avatarSwitch: AvatarSwitchSettings;
 
   chatCustomCSS: string;
 };
@@ -175,6 +190,13 @@ const defaultSettings: SystemSettings = {
     singleAutoReplyMin: 5,   
     singleAutoReplyMax: 30,
     quoteChance: 0.25,
+  },
+  avatarSwitch: {
+    enabled: true,
+    chatChanceLevi: 0.01,
+    chatChanceErwin: 0.01,
+    icityChanceLevi: 0.02,
+    icityChanceErwin: 0.02,
   },
   chatCustomCSS: "",
 };
@@ -263,6 +285,36 @@ export function loadSystemSettings(): SystemSettings {
         ...defaultSettings.chatReply,
         ...(parsed.chatReply ?? {}),
       },
+      /* ★ 头像自动切换归一化 */
+      avatarSwitch: (() => {
+        const a = parsed.avatarSwitch ?? {};
+        const clamp = (v: unknown, fallback: number) =>
+          typeof v === "number"
+            ? Math.min(1, Math.max(0, v))
+            : fallback;
+        return {
+          enabled:
+            typeof a.enabled === "boolean"
+              ? a.enabled
+              : defaultSettings.avatarSwitch.enabled,
+          chatChanceLevi: clamp(
+            a.chatChanceLevi,
+            defaultSettings.avatarSwitch.chatChanceLevi
+          ),
+          chatChanceErwin: clamp(
+            a.chatChanceErwin,
+            defaultSettings.avatarSwitch.chatChanceErwin
+          ),
+          icityChanceLevi: clamp(
+            a.icityChanceLevi,
+            defaultSettings.avatarSwitch.icityChanceLevi
+          ),
+          icityChanceErwin: clamp(
+            a.icityChanceErwin,
+            defaultSettings.avatarSwitch.icityChanceErwin
+          ),
+        };
+      })(),
       chatCustomCSS:
         typeof parsed.chatCustomCSS === "string"
           ? parsed.chatCustomCSS
@@ -321,6 +373,11 @@ export function updateSystemSettings(
     chatReply: {
       ...current.chatReply,
       ...(updates.chatReply ?? {}),
+    },
+    /* ★ 头像自动切换浅合并 */
+    avatarSwitch: {
+      ...current.avatarSwitch,
+      ...(updates.avatarSwitch ?? {}),
     },
   };
 

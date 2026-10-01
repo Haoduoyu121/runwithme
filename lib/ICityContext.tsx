@@ -42,6 +42,8 @@ import {
   postImageKey,
 } from "@/lib/icityFiles";
 
+import { maybeSwitchAvatar } from "@/lib/avatarSwitcher";
+
 import {
   createPostId,
   createCommentId,
@@ -448,10 +450,10 @@ export function ICityProvider({
     return () => window.clearInterval(t);
   }, []);
 
-  /* 加载头像 / 背景图 */
+  /* 加载头像 / 背景图（含事件刷新） */
   useEffect(() => {
     let cancelled = false;
-    const created: string[] = [];
+    let created: string[] = [];
 
     async function loadImages() {
       const nextAvatar: AvatarUrlMap = {
@@ -505,8 +507,28 @@ export function ICityProvider({
 
     void loadImages();
 
+    /* ★ 换头像事件 → 重新加载 */
+    function onAvatarUpdated() {
+      created.forEach((u) => {
+        try {
+          URL.revokeObjectURL(u);
+        } catch {}
+        createdBlobUrlsRef.current.delete(u);
+      });
+      created = [];
+      void loadImages();
+    }
+    window.addEventListener(
+      "runwithme:icity-avatar-updated",
+      onAvatarUpdated
+    );
+
     return () => {
       cancelled = true;
+      window.removeEventListener(
+        "runwithme:icity-avatar-updated",
+        onAvatarUpdated
+      );
     };
   }, []);
 
@@ -695,6 +717,9 @@ export function ICityProvider({
     const cards = loadCards(defaultCards);
     const character = pickRandomCharacter();
 
+    /* ★ 角色发帖时掷骰子换 iCity 头像 */
+    void maybeSwitchAvatar("icity", character);
+
     if (Math.random() < 0.1) {
       const photoCards = loadPhotoTextCards();
       const pool = photoCards.filter(
@@ -825,6 +850,9 @@ export function ICityProvider({
             (p) => p.id === sourceComment.postId
           );
           if (!stillExists) return;
+
+          /* ★ 角色评论时掷骰子换 iCity 头像 */
+          void maybeSwitchAvatar("icity", character);
 
           const newComment: ICityComment = {
             id: createCommentId(),

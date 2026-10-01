@@ -68486,3 +68486,43 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
 .gallery-item-btn.is-danger {
   color: #ff6b6b;
 }
+/* =========================================================
+   头像库 · scope 切换 tab
+   ========================================================= */
+.avatar-lib-scope-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 6px 16px 12px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+.chat-dark .avatar-lib-scope-tabs {
+  background: rgba(255, 255, 255, 0.08);
+}
+.avatar-lib-scope-tabs button {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #6b6b70;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.chat-dark .avatar-lib-scope-tabs button {
+  color: rgba(255, 255, 255, 0.6);
+}
+.avatar-lib-scope-tabs button.active {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.chat-dark .avatar-lib-scope-tabs button.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: none;
+}

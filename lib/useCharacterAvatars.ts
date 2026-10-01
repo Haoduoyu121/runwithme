@@ -17,25 +17,13 @@ const EMPTY: CharacterAvatars = {
   erwin: null,
 };
 
-/**
- * 读取 Chat / Home Studio 里保存的自定义头像。
- *
- * 数据源：runwithme_chat_files_db
- *   avatar-you / avatar-levi / avatar-erwin
- *
- * 用法：
- *   const avatars = useCharacterAvatars();
- *   avatars.levi   // string | null （objectURL）
- *
- * 卸载时自动释放所有 objectURL。
- */
 export function useCharacterAvatars(): CharacterAvatars {
   const [urls, setUrls] =
     useState<CharacterAvatars>(EMPTY);
 
   useEffect(() => {
     let cancelled = false;
-    const created: string[] = [];
+    let created: string[] = [];
 
     async function load() {
       const next: CharacterAvatars = { ...EMPTY };
@@ -67,8 +55,27 @@ export function useCharacterAvatars(): CharacterAvatars {
 
     void load();
 
+    /* ★ 换头像事件 → 重新加载 */
+    function onAvatarUpdated() {
+      created.forEach((u) => {
+        try {
+          URL.revokeObjectURL(u);
+        } catch {}
+      });
+      created = [];
+      void load();
+    }
+    window.addEventListener(
+      "runwithme:chat-avatar-updated",
+      onAvatarUpdated
+    );
+
     return () => {
       cancelled = true;
+      window.removeEventListener(
+        "runwithme:chat-avatar-updated",
+        onAvatarUpdated
+      );
       created.forEach((u) => URL.revokeObjectURL(u));
     };
   }, []);
@@ -76,10 +83,6 @@ export function useCharacterAvatars(): CharacterAvatars {
   return urls;
 }
 
-/**
- * 把 "Levi" / "Erwin" / "Yui" / "You" 映射到 AvatarKey。
- * 大小写都兼容。无法识别时返回 null。
- */
 export function toAvatarKey(
   who: string
 ): AvatarKey | null {
