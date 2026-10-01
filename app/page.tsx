@@ -793,6 +793,7 @@ export default function Home() {
     new Map()
   );
   const transitionInFlightRef = useRef(false);
+  const backGuardUntilRef = useRef(0);
 
   const [unlocked, setUnlocked] = useState<boolean | null>(
     null
@@ -1120,7 +1121,10 @@ export default function Home() {
     setUnlocked(true);
   };
 
-  const handleBackHome = () => setCurrentApp(null);
+  const handleBackHome = () => {
+  backGuardUntilRef.current = Date.now() + 400;
+  setCurrentApp(null);
+};
 
   async function reloadAppIcon(id: AppId) {
     try {
@@ -1183,8 +1187,8 @@ export default function Home() {
   }
 
       function handleOpenApp(id: AppId) {
-    /* ★ 用 ref 判断，不依赖可能卡住的 state */
-    if (transitionInFlightRef.current) return;
+     if (Date.now() < backGuardUntilRef.current) return; 
+     if (transitionInFlightRef.current) return;
 
     const el = document.querySelector(
       `[data-app-icon="${id}"]`

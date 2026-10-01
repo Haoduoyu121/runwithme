@@ -144,7 +144,7 @@ export default function PotatoApp({ onBack }: Props) {
       className={`phone-screen potato-app${themeClass}`}
     >
       <div className="potato-topbar">
-  <button
+ <button
   type="button"
   className="potato-topbar-back"
   onClick={onBack}
