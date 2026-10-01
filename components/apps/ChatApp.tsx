@@ -58,6 +58,7 @@ import { getChatFile } from "@/lib/chatFiles";
 
 import ChatSettingsPanel from "@/components/apps/chat/ChatSettingsPanel";
 import AvatarRequestSheet from "@/components/apps/chat/AvatarRequestSheet";
+import ProfileApp from "@/components/apps/profile/ProfileApp";
 
 import type { CharacterNames } from "@/lib/systemStorage";
 
@@ -686,32 +687,6 @@ function ThreadRow({
   );
 }
 
-function ProfilePlaceholder() {
-  const { settings } = useSystem();
-  const avatarUrls = useChatAvatars();
-  const names = settings.characterNames;
-
-  return (
-    <div className="chat-profile-placeholder">
-      <div
-        className={`chat-profile-avatar${
-          avatarUrls.you ? " has-image" : ""
-        }`}
-      >
-        {avatarUrls.you ? (
-          <img src={avatarUrls.you} alt={names.you} />
-        ) : (
-          names.you.charAt(0).toUpperCase()
-        )}
-      </div>
-      <div className="chat-profile-name">{names.you}</div>
-      <div className="chat-profile-hint">
-        个人主页 · 敬请期待
-      </div>
-    </div>
-  );
-}
-
 function ChatListView({
   onOpenThread,
   onBack,
@@ -725,6 +700,14 @@ function ChatListView({
   const [tab, setTab] = useState<"messages" | "profile">(
     "messages"
   );
+  const [profileIsSub, setProfileIsSub] =
+    useState(false);
+
+  useEffect(() => {
+    if (tab === "messages") setProfileIsSub(false);
+  }, [tab]);
+
+  const showBottomTab = !(tab === "profile" && profileIsSub);
 
   const names = settings.characterNames;
   const chatName = settings.chatName;
@@ -794,9 +777,10 @@ function ChatListView({
           </div>
         </>
       ) : (
-        <ProfilePlaceholder />
+        <ProfileApp onSubpageChange={setProfileIsSub} />
       )}
 
+      {showBottomTab && (
       <nav className="chat-bottom-tab">
         <button
           type="button"
@@ -821,6 +805,7 @@ function ChatListView({
           <span>我的</span>
         </button>
       </nav>
+      )}
     </main>
   );
 }
