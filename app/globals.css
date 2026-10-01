@@ -68247,3 +68247,33 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   background: rgba(167, 139, 250, 0.22);
   color: #c4b5fd;
 }
+/* =========================================================
+   引用消息太长时，气泡被吞 —— 修复
+   ========================================================= */
+
+/* 1. 引用块：最多显示 3 行，超出省略 */
+.message-quote {
+  max-height: 72px;
+  overflow: hidden;
+}
+
+.message-quote-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* 2. 主气泡不能被压缩，永远显示 */
+.message-text-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.message-bubble {
+  flex-shrink: 0;
+  max-width: 100%;
+  word-break: break-word;
+}
