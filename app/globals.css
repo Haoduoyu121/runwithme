@@ -67608,3 +67608,29 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   padding: 0 12px 6px;
   min-height: 40px;
 }
+/* =========================================================
+   生姜土豆 App · 顶栏修正
+   ========================================================= */
+.potato-app {
+  padding-top: 0;
+}
+.potato-header {
+  padding: 0 12px;
+  min-height: 36px;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.potato-back {
+  width: 32px;
+  height: 32px;
+}
+.potato-title {
+  font-size: 16px;
+}
+.potato-header-spacer {
+  width: 32px;
+  height: 32px;
+}
+.potato-tabs {
+  margin: 0 16px 10px;
+}
