@@ -82,6 +82,9 @@ export type ChatMessage = {
   forwardItems?: ForwardItem[];
   /* ★ 从哪个 thread 转发的（来源），目前用于显示 / 未来跳转 */
   forwardFrom?: ThreadId;
+
+  /* ★ 是否由"自由造句"生成 */
+  sentence?: boolean;
 };
 
 export function createMessageId(): string {

@@ -1873,6 +1873,11 @@ function ChatThreadView({
 
           {isGroupEnd && !selectionMode && (
             <div className="message-meta">
+              {message.sentence && (
+                <span className="message-sentence-tag">
+                  ✎ 自由造句
+                </span>
+              )}
               <span className="message-time">
                 {formatTime(message.timestamp)}
               </span>

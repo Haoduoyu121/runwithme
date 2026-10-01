@@ -29,6 +29,8 @@ import {
 
 import { createReplyMessage } from "@/lib/chatReply";
 import { pickCardWithRules } from "@/lib/cardPicker";
+import { loadSentenceSettings } from "@/lib/sentenceStorage";
+import { generateSentence } from "@/lib/sentenceGenerator";
 
 import { getImageFile } from "@/lib/imageFiles";
 import { getStickerFile } from "@/lib/stickerFiles";
@@ -574,7 +576,8 @@ export function ChatProvider({
   const createReplyFromPicked = useCallback(
     async (
       picked: ReturnType<typeof pickCardWithRules>,
-      threadId: ThreadId
+      threadId: ThreadId,
+      latestCards: ReturnType<typeof loadCards>
     ) => {
       if (!picked) return;
 
@@ -607,9 +610,28 @@ export function ChatProvider({
       }
 
       let textOverride: string | undefined;
+      let isSentence = false;
 
       if (card.type === "text") {
         let t = card.text;
+
+        /* ★ 自由造句判定 */
+        const sentenceCfg = loadSentenceSettings();
+        if (
+          sentenceCfg.enabled &&
+          Math.random() < sentenceCfg.chance
+        ) {
+          const made = generateSentence(
+            latestCards,
+            character,
+            sentenceCfg
+          );
+          if (made) {
+            t = made;
+            isSentence = true;
+          }
+        }
+
         if (emojiPrefix) t = `${emojiPrefix} ${t}`;
         if (emojiSuffix) t = `${t} ${emojiSuffix}`;
         textOverride = t;
@@ -622,6 +644,11 @@ export function ChatProvider({
       );
 
       if (result.message) {
+        /* ★ 标记造句 */
+        if (isSentence) {
+          result.message.sentence = true;
+        }
+
         const quoteChance =
           settingsRef.current.chatReply?.quoteChance ??
           0.25;
@@ -698,7 +725,11 @@ export function ChatProvider({
           );
           if (!picked) break;
 
-          await createReplyFromPicked(picked, tid);
+          await createReplyFromPicked(
+            picked,
+            tid,
+            latestCards
+          );
 
           if (i < replyCount - 1) {
             const dMin = cfg?.replyIntervalMin ?? 2;
@@ -802,7 +833,11 @@ export function ChatProvider({
         );
         if (!picked) return;
 
-        await createReplyFromPicked(picked, tid);
+        await createReplyFromPicked(
+          picked,
+          tid,
+          latestCards
+        );
       } finally {
         setGeneratingCount((prev) =>
           Math.max(0, prev - 1)

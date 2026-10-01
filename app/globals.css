@@ -68054,3 +68054,196 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
 .chat-forward-picker-cancel:active {
   transform: scale(0.98);
 }
+/* =========================================================
+   自由造句 · 生姜土豆面板
+   ========================================================= */
+
+.potato-sentence {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 6px 0 20px;
+}
+
+.potato-sentence-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+.chat-dark .potato-sentence-row {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.potato-sentence-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.potato-sentence-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #111;
+}
+.chat-dark .potato-sentence-label {
+  color: #fff;
+}
+.potato-sentence-label strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+.potato-sentence-label small {
+  font-size: 12px;
+  font-weight: 400;
+  color: #8e8e93;
+  line-height: 1.4;
+}
+
+/* 开关 */
+.potato-switch {
+  position: relative;
+  width: 50px;
+  height: 30px;
+  border-radius: 15px;
+  border: none;
+  background: rgba(120, 120, 128, 0.24);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.chat-dark .potato-switch {
+  background: rgba(255, 255, 255, 0.18);
+}
+.potato-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+.potato-switch.is-on {
+  background: #a78bfa;
+}
+.potato-switch.is-on::after {
+  transform: translateX(20px);
+}
+
+/* 分段控件 */
+.potato-segment {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.06);
+}
+.chat-dark .potato-segment {
+  background: rgba(255, 255, 255, 0.08);
+}
+.potato-segment button {
+  flex: 1;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #6b6b70;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+.chat-dark .potato-segment button {
+  color: rgba(255, 255, 255, 0.6);
+}
+.potato-segment button.active {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.chat-dark .potato-segment button.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: none;
+}
+
+/* 两个数字并排 */
+.potato-inline-nums {
+  display: flex;
+  gap: 10px;
+}
+
+/* 字池 textarea */
+.potato-sentence-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.75);
+  color: #111;
+  font-size: 15px;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+}
+.chat-dark .potato-sentence-textarea {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.potato-sentence-textarea:focus {
+  border-color: rgba(167, 139, 250, 0.6);
+}
+
+/* 恢复默认按钮 */
+.potato-sentence-reset {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 59, 48, 0.28);
+  background: transparent;
+  color: #ff3b30;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chat-dark .potato-sentence-reset {
+  border-color: rgba(255, 69, 58, 0.4);
+  color: #ff453a;
+}
+.potato-sentence-reset:active {
+  transform: scale(0.98);
+}
+
+/* =========================================================
+   消息气泡上的"自由造句"标记
+   ========================================================= */
+
+.message-sentence-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(167, 139, 250, 0.15);
+  color: #6d5bd0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.chat-dark .message-sentence-tag {
+  background: rgba(167, 139, 250, 0.22);
+  color: #c4b5fd;
+}
