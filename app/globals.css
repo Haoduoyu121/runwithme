@@ -67630,3 +67630,145 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   all: unset;
   display: none;
 }
+/* =========================================================
+   生姜土豆 · 顶栏彻底重做
+   ========================================================= */
+
+/* 覆盖之前所有旧的 .potato-header / .potato-back / .potato-title */
+.potato-header,
+.potato-back,
+.potato-title,
+.potato-header-spacer,
+.potato-app .telegram-header,
+.potato-app .telegram-back,
+.potato-app .telegram-contact,
+.potato-app .telegram-more {
+  all: unset !important;
+  display: none !important;
+}
+
+/* App 容器：纵向 flex，占满整屏，顶部预留状态栏 */
+.potato-app {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  padding-top: env(safe-area-inset-top, 44px) !important;
+  box-sizing: border-box !important;
+  background: #f2f2f7;
+  overflow: hidden;
+}
+.potato-app.chat-dark {
+  background: #000;
+}
+
+/* 顶栏 */
+.potato-topbar {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 12px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  background: transparent;
+}
+
+.potato-topbar-back {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #111;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  padding: 0;
+}
+.chat-dark .potato-topbar-back {
+  color: #fff;
+}
+.potato-topbar-back:active {
+  background: rgba(0, 0, 0, 0.06);
+}
+.chat-dark .potato-topbar-back:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.potato-topbar-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #111;
+  text-align: center;
+  flex: 1;
+  letter-spacing: 0.2px;
+}
+.chat-dark .potato-topbar-title {
+  color: #fff;
+}
+
+.potato-topbar-spacer {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+/* tabs */
+.potato-tabs {
+  display: flex !important;
+  gap: 4px;
+  margin: 0 16px 10px !important;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  touch-action: manipulation;
+}
+.chat-dark .potato-tabs {
+  background: rgba(255, 255, 255, 0.08);
+}
+.potato-tabs button {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #6b6b70;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.chat-dark .potato-tabs button {
+  color: rgba(255, 255, 255, 0.6);
+}
+.potato-tabs button.active {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.chat-dark .potato-tabs button.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: none;
+}
+
+/* 滚动区 */
+.potato-app .potato-scroll {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 20px 40px;
+}
