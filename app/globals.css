@@ -68277,3 +68277,30 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   max-width: 100%;
   word-break: break-word;
 }
+/* =========================================================
+   引用块防溢出 + 主气泡贴左
+   ========================================================= */
+
+/* 引用容器：宽度跟随气泡，单行省略 */
+.message-quote {
+  max-width: 100%;
+  overflow: hidden;
+}
+.message-quote-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
+}
+
+/* 主气泡：不因为引用块被撑宽 */
+.message-text-wrapper {
+  max-width: 100%;
+  min-width: 0;
+}
+.message-bubble {
+  max-width: 100%;
+  word-break: break-word;
+  white-space: pre-wrap;
+}

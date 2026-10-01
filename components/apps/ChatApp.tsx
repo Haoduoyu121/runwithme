@@ -96,6 +96,13 @@ function getSenderName(
    子组件
    ------------------------------------------------------- */
 
+function truncateQuote(text: string, max = 24): string {
+  if (!text) return "";
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  if (oneLine.length <= max) return oneLine;
+  return oneLine.slice(0, max) + "…";
+}
+
 function MessageActions({
   message,
   isCollected,
@@ -169,7 +176,9 @@ function MessageQuote({
           </span>
         )}
       </div>
-      <div className="message-quote-text">{quote.text}</div>
+      <div className="message-quote-text">
+        {truncateQuote(quote.text, 24)}
+      </div>
     </div>
   );
 }
