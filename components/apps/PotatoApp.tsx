@@ -143,17 +143,29 @@ export default function PotatoApp({ onBack }: Props) {
     <main
       className={`phone-screen potato-app${themeClass}`}
     >
-      <header className="potato-header">
-        <button
-          className="potato-back"
-          onClick={onBack}
-          aria-label="返回"
-        >
-          <ChevronLeft size={26} strokeWidth={2.4} />
-        </button>
-        <div className="potato-title">生姜土豆</div>
-        <div className="potato-header-spacer" />
-      </header>
+      <header className="telegram-header">
+  <button
+    className="telegram-back"
+    onClick={onBack}
+    aria-label="返回"
+  >
+    <ChevronLeft size={26} strokeWidth={2.4} />
+  </button>
+
+  <div className="telegram-contact">
+    <div className="telegram-name">生姜土豆</div>
+    <div className="telegram-status">
+      character archive
+    </div>
+  </div>
+
+  <span
+    className="telegram-more"
+    style={{ visibility: "hidden" }}
+  >
+    &nbsp;
+  </span>
+</header>
 
      <div className="potato-tabs">
   <button

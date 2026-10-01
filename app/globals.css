@@ -67609,28 +67609,24 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   min-height: 40px;
 }
 /* =========================================================
-   生姜土豆 App · 顶栏修正
+   生姜土豆 · 用 telegram-header 后清掉残留
    ========================================================= */
 .potato-app {
-  padding-top: 0;
+  padding-top: 0 !important;
 }
-.potato-header {
-  padding: 0 12px;
-  min-height: 36px;
-  margin-top: 0;
-  margin-bottom: 0;
-}
-.potato-back {
-  width: 32px;
-  height: 32px;
-}
-.potato-title {
-  font-size: 16px;
-}
-.potato-header-spacer {
-  width: 32px;
-  height: 32px;
+.potato-app .telegram-header {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
 }
 .potato-tabs {
   margin: 0 16px 10px;
+}
+
+/* 清掉旧的 potato-header 规则（避免干扰） */
+.potato-header,
+.potato-back,
+.potato-title,
+.potato-header-spacer {
+  all: unset;
+  display: none;
 }
