@@ -1,3 +1,5 @@
+export type ThreadId = "group" | "levi" | "erwin";
+
 export type ChatMessageType =
   | "text"
   | "image"
@@ -38,7 +40,7 @@ export type ChatMessage = {
 
   mediaUrl?: string;
   mediaId?: string;
-    textCardSnapshot?: {
+  textCardSnapshot?: {
     author: "Levi" | "Erwin";
     place: string;
     weather: string;
@@ -57,7 +59,7 @@ export type ChatMessage = {
   recalled?: boolean;
   deleted?: boolean;
 
-    quote?: {
+  quote?: {
     messageId: string;
     sender: ChatSender;
     text: string;

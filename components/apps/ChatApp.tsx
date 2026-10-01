@@ -9,6 +9,7 @@ import {
   Ellipsis,
   Hand,
   ImagePlus,
+  MessageSquare,
   Pause,
   Phone,
   PhoneOff,
@@ -16,6 +17,8 @@ import {
   Plus,
   Smile,
   Sparkles,
+  User as UserIcon,
+  Users,
   X,
 } from "lucide-react";
 
@@ -30,6 +33,7 @@ import {
   type CallStatus,
   type CallDirection,
   type CallCharacter,
+  type ThreadId,
 } from "@/data/chat";
 
 import type { StickerItem } from "@/data/stickers";
@@ -469,10 +473,294 @@ function CallMessage({
 }
 
 /* =========================================================
-   ChatApp
+   消息列表视图
+   ========================================================= */
+
+function useChatAvatars() {
+  const { settings } = useSystem();
+  const [avatarUrls, setAvatarUrls] = useState<{
+    you: string | null;
+    levi: string | null;
+    erwin: string | null;
+  }>({ you: null, levi: null, erwin: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    const created: string[] = [];
+    async function loadAvatars() {
+      const next: {
+        you: string | null;
+        levi: string | null;
+        erwin: string | null;
+      } = { you: null, levi: null, erwin: null };
+      for (const key of [
+        "you",
+        "levi",
+        "erwin",
+      ] as const) {
+        if (!settings.avatars[key]) continue;
+        const file = await getChatFile(`avatar-${key}`);
+        if (!file) continue;
+        const url = URL.createObjectURL(file);
+        created.push(url);
+        next[key] = url;
+      }
+      if (!cancelled) setAvatarUrls(next);
+    }
+    void loadAvatars();
+    return () => {
+      cancelled = true;
+      created.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [settings.avatars]);
+
+  return avatarUrls;
+}
+
+function previewText(m: ChatMessage | null): string {
+  if (!m) return "";
+  if (m.deleted) return "此消息已删除";
+  if (m.recalled) return "撤回了一条消息";
+  if (m.type === "text") return m.text ?? "";
+  if (m.type === "image") return "[图片]";
+  if (m.type === "sticker") return "[表情]";
+  if (m.type === "voice") return "[语音]";
+  if (m.type === "pat") return m.text ?? "[拍一拍]";
+  if (m.type === "call") return "[通话]";
+  if (m.type === "textcard") return "[照片]";
+  if (m.type === "system") return m.text ?? "";
+  return "";
+}
+
+function ThreadRow({
+  threadId,
+  name,
+  avatarUrl,
+  avatarFallback,
+  avatarClass,
+  lastMessage,
+  onClick,
+}: {
+  threadId: ThreadId;
+  name: string;
+  avatarUrl: string | null;
+  avatarFallback: string;
+  avatarClass: string;
+  lastMessage: ChatMessage | null;
+  onClick: () => void;
+}) {
+  const preview = previewText(lastMessage);
+  const time = lastMessage
+    ? formatTime(lastMessage.timestamp)
+    : "";
+
+  return (
+    <button
+      type="button"
+      className="chat-thread-row"
+      onClick={onClick}
+      data-thread={threadId}
+    >
+      <div
+        className={`chat-thread-avatar ${avatarClass}${
+          avatarUrl ? " has-image" : ""
+        }`}
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={name} />
+        ) : (
+          avatarFallback
+        )}
+      </div>
+      <div className="chat-thread-content">
+        <div className="chat-thread-title-row">
+          <span className="chat-thread-name">{name}</span>
+          {time && (
+            <span className="chat-thread-time">{time}</span>
+          )}
+        </div>
+        <div className="chat-thread-preview">
+          {preview || "还没有消息"}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function ProfilePlaceholder() {
+  const { settings } = useSystem();
+  const avatarUrls = useChatAvatars();
+  const names = settings.characterNames;
+
+  return (
+    <div className="chat-profile-placeholder">
+      <div
+        className={`chat-profile-avatar${
+          avatarUrls.you ? " has-image" : ""
+        }`}
+      >
+        {avatarUrls.you ? (
+          <img src={avatarUrls.you} alt={names.you} />
+        ) : (
+          names.you.charAt(0).toUpperCase()
+        )}
+      </div>
+      <div className="chat-profile-name">{names.you}</div>
+      <div className="chat-profile-hint">
+        个人主页 · 敬请期待
+      </div>
+    </div>
+  );
+}
+
+function ChatListView({
+  onOpenThread,
+  onBack,
+}: {
+  onOpenThread: (id: ThreadId) => void;
+  onBack: () => void;
+}) {
+  const { settings, theme } = useSystem();
+  const { threadLastMessages } = useChat();
+  const avatarUrls = useChatAvatars();
+  const [tab, setTab] = useState<"messages" | "profile">(
+    "messages"
+  );
+
+  const names = settings.characterNames;
+  const chatName = settings.chatName;
+
+  const themeClass =
+    theme === "dark" ? " chat-dark" : " chat-light";
+
+  return (
+    <main
+      className={`phone-screen chat-page chat-list-page${themeClass}`}
+    >
+      {tab === "messages" ? (
+        <>
+          <header className="chat-list-header">
+            <button
+              className="chat-list-back"
+              onClick={onBack}
+              aria-label="返回"
+            >
+              <ChevronLeft size={26} strokeWidth={2.4} />
+            </button>
+            <span className="chat-list-title">消息</span>
+            <span className="chat-list-header-spacer" />
+          </header>
+
+          <div className="chat-list-body">
+            <ThreadRow
+              threadId="group"
+              name={chatName}
+              avatarUrl={null}
+              avatarFallback="L&E"
+              avatarClass="avatar-group"
+              lastMessage={threadLastMessages.group}
+              onClick={() => onOpenThread("group")}
+            />
+            <ThreadRow
+              threadId="levi"
+              name={names.levi}
+              avatarUrl={avatarUrls.levi}
+              avatarFallback={names.levi
+                .charAt(0)
+                .toUpperCase()}
+              avatarClass="avatar-levi"
+              lastMessage={threadLastMessages.levi}
+              onClick={() => onOpenThread("levi")}
+            />
+            <ThreadRow
+              threadId="erwin"
+              name={names.erwin}
+              avatarUrl={avatarUrls.erwin}
+              avatarFallback={names.erwin
+                .charAt(0)
+                .toUpperCase()}
+              avatarClass="avatar-erwin"
+              lastMessage={threadLastMessages.erwin}
+              onClick={() => onOpenThread("erwin")}
+            />
+          </div>
+        </>
+      ) : (
+        <ProfilePlaceholder />
+      )}
+
+      <nav className="chat-bottom-tab">
+        <button
+          type="button"
+          className={
+            "chat-bottom-tab-item" +
+            (tab === "messages" ? " active" : "")
+          }
+          onClick={() => setTab("messages")}
+        >
+          <MessageSquare size={22} strokeWidth={2} />
+          <span>消息</span>
+        </button>
+        <button
+          type="button"
+          className={
+            "chat-bottom-tab-item" +
+            (tab === "profile" ? " active" : "")
+          }
+          onClick={() => setTab("profile")}
+        >
+          <UserIcon size={22} strokeWidth={2} />
+          <span>我的</span>
+        </button>
+      </nav>
+    </main>
+  );
+}
+
+/* =========================================================
+   ChatApp（外层路由）
    ========================================================= */
 
 export default function ChatApp({ onBack }: ChatAppProps) {
+  const { setActiveThreadId } = useChat();
+  const [view, setView] = useState<"list" | "chat">("list");
+  const [threadId, setThreadId] =
+    useState<ThreadId>("group");
+
+  function openThread(id: ThreadId) {
+    setThreadId(id);
+    setActiveThreadId(id);
+    setView("chat");
+  }
+
+  if (view === "list") {
+    return (
+      <ChatListView
+        onOpenThread={openThread}
+        onBack={onBack}
+      />
+    );
+  }
+
+  return (
+    <ChatThreadView
+      threadId={threadId}
+      onBack={() => setView("list")}
+    />
+  );
+}
+
+/* =========================================================
+   聊天视图（原 ChatApp 主体）
+   ========================================================= */
+
+function ChatThreadView({
+  threadId,
+  onBack,
+}: {
+  threadId: ThreadId;
+  onBack: () => void;
+}) {
   const { activeCall, startOutgoingCall } = useCall();
   const { settings, theme } = useSystem();
 
@@ -600,7 +888,13 @@ export default function ChatApp({ onBack }: ChatAppProps) {
   const messagesScrollRef = useRef<HTMLElement | null>(null);
   const initialScrollDoneRef = useRef(false);
 
-  const chatName = settings.chatName;
+  /* 顶部标题根据 thread 变化 */
+  const headerTitle =
+    threadId === "group"
+      ? settings.chatName
+      : threadId === "levi"
+        ? settings.characterNames.levi
+        : settings.characterNames.erwin;
 
   /* ---------------- 注入自定义 CSS ---------------- */
 
@@ -772,13 +1066,8 @@ export default function ChatApp({ onBack }: ChatAppProps) {
       });
     };
 
-    // 先滚一次
     doScroll();
-
-    // 等一帧再滚一次（等图片 / 卡片撑开高度）
     const raf = requestAnimationFrame(doScroll);
-
-    // 再过 200ms 兜底滚一次
     const t = window.setTimeout(doScroll, 200);
 
     return () => {
@@ -852,7 +1141,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     });
   }
 
-    /* ★ 批量添加表情（面板里的「+ 添加」用） */
+  /* ★ 批量添加表情 */
   async function handleBatchAddStickers(
     files: File[]
   ) {
@@ -900,7 +1189,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     } catch {}
   }
 
-    /* ★ 批量删除表情 */
+  /* ★ 批量删除表情 */
   async function handleBatchDeleteStickers() {
     if (selectedStickerIds.size === 0) return;
     if (
@@ -910,14 +1199,12 @@ export default function ChatApp({ onBack }: ChatAppProps) {
     )
       return;
 
-    /* 删 IDB 文件 */
     for (const id of selectedStickerIds) {
       try {
         await deleteStickerFile(id);
       } catch (e) {
         console.error("删除表情文件失败:", id, e);
       }
-      /* 顺便释放旧的 objectURL */
       const u = stickerUrls[id];
       if (u) {
         try {
@@ -926,14 +1213,12 @@ export default function ChatApp({ onBack }: ChatAppProps) {
       }
     }
 
-    /* 更新列表 */
     const next = loadStickers().filter(
       (s) => !selectedStickerIds.has(s.id)
     );
     saveStickers(next);
     setStickers(next);
 
-    /* 清 selected */
     setSelectedStickerIds(new Set());
     setStickerManageMode(false);
 
@@ -1420,7 +1705,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 </div>
               )}
 
-                          {message.type === "textcard" &&
+            {message.type === "textcard" &&
               message.textCardSnapshot && (
                 <div className="chat-textcard-message">
                   <TextCard
@@ -1596,7 +1881,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 setQuoteDraft(null);
                 onBack();
               }}
-              aria-label="返回桌面"
+              aria-label="返回消息列表"
             >
               <ChevronLeft
                 size={26}
@@ -1606,7 +1891,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
 
             <div className="telegram-contact">
               <div className="telegram-name">
-                {chatName}
+                {headerTitle}
               </div>
               <div className="telegram-status">
                 {generatingCount > 0
@@ -1656,7 +1941,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
         <div ref={messagesEndRef} />
       </section>
 
-      {/* ★ 多选模式底部操作条 */}
       {selectionMode ? (
         <div className="chat-selection-bar">
           <button
@@ -1774,7 +2058,7 @@ export default function ChatApp({ onBack }: ChatAppProps) {
             </div>
           )}
 
-                   {showStickerPanel && (
+          {showStickerPanel && (
             <div className="chat-sticker-panel">
               <div className="chat-sticker-panel-header">
                 {!stickerManageMode ? (
@@ -1978,7 +2262,6 @@ export default function ChatApp({ onBack }: ChatAppProps) {
                 quoteDraft ? "回复消息…" : "Message"
               }
             />
-
 
             <button
               className={
