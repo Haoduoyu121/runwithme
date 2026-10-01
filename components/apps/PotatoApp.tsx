@@ -143,10 +143,19 @@ export default function PotatoApp({ onBack }: Props) {
     <main
       className={`phone-screen potato-app${themeClass}`}
     >
-      <header className="potato-topbar">
+      <div className="potato-topbar">
   <button
+    type="button"
     className="potato-topbar-back"
-    onClick={onBack}
+    onPointerDown={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onBack();
+    }}
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    }}
     aria-label="返回"
   >
     <ChevronLeft size={26} strokeWidth={2.4} />
@@ -157,7 +166,7 @@ export default function PotatoApp({ onBack }: Props) {
   </div>
 
   <div className="potato-topbar-spacer" />
-</header>
+</div>
 
      <div className="potato-tabs">
   <button
