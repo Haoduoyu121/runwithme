@@ -10,7 +10,8 @@ export type ChatMessageType =
   | "system"
   | "textcard"
   | "forward"
-  | "gallery";
+  | "gallery"
+  | "redpacket";
 
 export type ChatSender = "You" | "Levi" | "Erwin";
 
@@ -86,6 +87,16 @@ export type ChatMessage = {
 
   /* ★ 是否由"自由造句"生成 */
   sentence?: boolean;
+
+  /* ★ 红包数据 */
+  redpacket?: {
+    amount: number;
+    from: ChatSender;
+    to: ChatSender;
+    claimed: boolean;
+    claimedAt?: number;
+    note?: string;
+  };
 };
 
 export function createMessageId(): string {

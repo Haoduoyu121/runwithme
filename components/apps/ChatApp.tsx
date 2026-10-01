@@ -59,6 +59,9 @@ import { getChatFile } from "@/lib/chatFiles";
 import ChatSettingsPanel from "@/components/apps/chat/ChatSettingsPanel";
 import AvatarRequestSheet from "@/components/apps/chat/AvatarRequestSheet";
 import ProfileApp from "@/components/apps/profile/ProfileApp";
+import RedPacketSheet from "@/components/apps/chat/RedPacketSheet";
+import RedPacketCard from "@/components/apps/chat/RedPacketCard";
+import { sendRedPacketToRoles } from "@/lib/redPacket";
 
 import type { CharacterNames } from "@/lib/systemStorage";
 
@@ -626,6 +629,8 @@ function previewText(m: ChatMessage | null): string {
   if (m.type === "call") return "[通话]";
   if (m.type === "textcard") return "[照片]";
   if (m.type === "gallery") return "[图片]";
+  if (m.type === "redpacket")
+    return `[红包] ${m.redpacket?.amount ?? 0}`;
   if (m.type === "forward")
     return `[转发了 ${m.forwardItems?.length ?? 0} 条消息]`;
   if (m.type === "system") return m.text ?? "";
@@ -865,6 +870,7 @@ function ChatThreadView({
     generateResponse,
     scheduleAutoReplyAfterUserMessage,
     forwardMessages,
+    updateThreadMessages,
     requestAvatarChange,
     activeThreadId,
   } = useChat();
@@ -967,6 +973,10 @@ function ChatThreadView({
 
   /* ★ 换头像请求 */
   const [showAvatarRequest, setShowAvatarRequest] =
+    useState(false);
+
+  /* ★ 红包 sheet */
+  const [showRedPacketSheet, setShowRedPacketSheet] =
     useState(false);
   const [expandedForwardIds, setExpandedForwardIds] =
     useState<Set<string>>(new Set());
@@ -1881,6 +1891,13 @@ function ChatThreadView({
                 }
               />
             )}
+
+            {message.type === "redpacket" && (
+              <RedPacketCard
+                message={message}
+                names={names}
+              />
+            )}
           </div>
 
           {isGroupEnd && !selectionMode && (
@@ -2196,6 +2213,20 @@ function ChatThreadView({
                   <UserIcon size={20} strokeWidth={1.9} />
                 </span>
                 <small>换头像</small>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowPlusMenu(false);
+                  setShowRedPacketSheet(true);
+                }}
+              >
+                <span>
+                  <span className="chat-plus-redpacket-icon">
+                    福
+                  </span>
+                </span>
+                <small>红包</small>
               </button>
             </div>
           )}
@@ -2582,6 +2613,42 @@ function ChatThreadView({
           onConfirm={(requests) =>
             requestAvatarChange(requests)
           }
+        />
+      )}
+
+      {showRedPacketSheet && (
+        <RedPacketSheet
+          lockedTarget={
+            activeThreadId === "levi"
+              ? "Levi"
+              : activeThreadId === "erwin"
+                ? "Erwin"
+                : null
+          }
+          names={{
+            levi: names.levi,
+            erwin: names.erwin,
+          }}
+          onClose={() => setShowRedPacketSheet(false)}
+          onConfirm={({ targets, amount, note }) => {
+            void (async () => {
+              const result = await sendRedPacketToRoles({
+                targets,
+                amount,
+                note,
+                threadId: activeThreadId,
+                addMessage,
+                updateThreadMessages,
+              });
+              if (!result.ok) {
+                if (result.reason === "insufficient") {
+                  window.alert("余额不足，先去钱包记点收入吧");
+                } else {
+                  window.alert("红包参数无效");
+                }
+              }
+            })();
+          }}
         />
       )}
 

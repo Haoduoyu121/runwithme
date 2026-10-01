@@ -175,6 +175,12 @@ type ChatContextValue = {
     fromThreadId: ThreadId
   ) => void;
 
+  /* ★ 更新指定 thread 的消息（不受 activeThread 影响） */
+  updateThreadMessages: (
+    threadId: ThreadId,
+    updater: (prev: ChatMessage[]) => ChatMessage[]
+  ) => void;
+
   /* ★ 用户请求角色换头像 */
   requestAvatarChange: (
     requests: AvatarChangeRequest[]
@@ -983,6 +989,19 @@ export function ChatProvider({
     [addMessage]
   );
 
+  const updateThreadMessages = useCallback(
+    (
+      threadId: ThreadId,
+      updater: (prev: ChatMessage[]) => ChatMessage[]
+    ) => {
+      setThreads((prev) => ({
+        ...prev,
+        [threadId]: updater(prev[threadId]),
+      }));
+    },
+    []
+  );
+
   /* ---------- 会话列表 ---------- */
 
   const threadLastMessages = useMemo(() => {
@@ -1208,6 +1227,7 @@ export function ChatProvider({
         setAutoReplyEnabled,
         scheduleAutoReplyAfterUserMessage,
         forwardMessages,
+        updateThreadMessages,
         requestAvatarChange,
       }}
     >
