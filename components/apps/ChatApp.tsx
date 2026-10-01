@@ -7,6 +7,7 @@ import {
   Check,
   ChevronLeft,
   Ellipsis,
+  Forward,
   Hand,
   ImagePlus,
   MessageSquare,
@@ -34,6 +35,7 @@ import {
   type CallDirection,
   type CallCharacter,
   type ThreadId,
+  type ForwardItem,
 } from "@/data/chat";
 
 import type { StickerItem } from "@/data/stickers";
@@ -473,6 +475,90 @@ function CallMessage({
 }
 
 /* =========================================================
+   转发卡片
+   ========================================================= */
+
+function ForwardCard({
+  message,
+  names,
+  expanded,
+  onToggle,
+}: {
+  message: ChatMessage;
+  names: CharacterNames;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  if (message.deleted) {
+    return (
+      <div className="message-deleted">此消息已删除</div>
+    );
+  }
+  if (message.recalled) {
+    return (
+      <div className="message-recalled">
+        你撤回了一条转发
+      </div>
+    );
+  }
+
+  const items = message.forwardItems ?? [];
+
+  return (
+    <div
+      className="chat-forward-card"
+      onClick={onToggle}
+    >
+      <div className="chat-forward-card-header">
+        <Forward
+          size={14}
+          strokeWidth={2.2}
+          className="chat-forward-card-icon"
+        />
+        <span className="chat-forward-card-title">
+          转发了 {items.length} 条消息
+        </span>
+        <span className="chat-forward-card-toggle">
+          {expanded ? "收起" : "展开"}
+        </span>
+      </div>
+
+      {expanded && (
+        <div className="chat-forward-card-body">
+          {items.map((it, i) => {
+            const senderLabel =
+              it.sender === "You"
+                ? "你"
+                : getSenderName(it.sender, names);
+
+            const isPat = it.type === "pat";
+            const body = isPat
+              ? `${senderLabel}${it.text || "拍了一拍"}`
+              : it.text;
+
+            return (
+              <div
+                key={i}
+                className="chat-forward-card-item"
+              >
+                {!isPat && (
+                  <span className="chat-forward-card-item-sender">
+                    {senderLabel}：
+                  </span>
+                )}
+                <span className="chat-forward-card-item-text">
+                  {body}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
    消息列表视图
    ========================================================= */
 
@@ -528,6 +614,8 @@ function previewText(m: ChatMessage | null): string {
   if (m.type === "pat") return m.text ?? "[拍一拍]";
   if (m.type === "call") return "[通话]";
   if (m.type === "textcard") return "[照片]";
+  if (m.type === "forward")
+    return `[转发了 ${m.forwardItems?.length ?? 0} 条消息]`;
   if (m.type === "system") return m.text ?? "";
   return "";
 }
@@ -780,6 +868,7 @@ function ChatThreadView({
     updateMessages,
     generateResponse,
     scheduleAutoReplyAfterUserMessage,
+    forwardMessages,
   } = useChat();
 
   const {
@@ -873,6 +962,38 @@ function ChatThreadView({
     sender: ChatSender;
     text: string;
   } | null>(null);
+
+  /* ★ 转发 */
+  const [showForwardPicker, setShowForwardPicker] =
+    useState(false);
+  const [expandedForwardIds, setExpandedForwardIds] =
+    useState<Set<string>>(new Set());
+
+  function toggleForwardExpand(id: string) {
+    setExpandedForwardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function getForwardableItems(): ForwardItem[] {
+    const idSet = new Set(selectedIds);
+    const items: ForwardItem[] = [];
+    for (const m of messages) {
+      if (!idSet.has(m.id)) continue;
+      if (m.deleted || m.recalled) continue;
+      if (m.type !== "text" && m.type !== "pat") continue;
+      items.push({
+        sender: m.sender,
+        type: m.type,
+        text: m.text ?? "",
+        timestamp: m.timestamp,
+      });
+    }
+    return items;
+  }
 
   const [customBgUrl, setCustomBgUrl] = useState<
     string | null
@@ -1735,6 +1856,19 @@ function ChatThreadView({
                 names={names}
               />
             )}
+
+            {message.type === "forward" && (
+              <ForwardCard
+                message={message}
+                names={names}
+                expanded={expandedForwardIds.has(
+                  message.id
+                )}
+                onToggle={() =>
+                  toggleForwardExpand(message.id)
+                }
+              />
+            )}
           </div>
 
           {isGroupEnd && !selectionMode && (
@@ -1957,6 +2091,16 @@ function ChatThreadView({
             onClick={exitSelectionMode}
           >
             取消
+          </button>
+          <button
+            className="chat-selection-btn chat-selection-forward"
+            disabled={
+              selectedIds.length === 0 ||
+              getForwardableItems().length === 0
+            }
+            onClick={() => setShowForwardPicker(true)}
+          >
+            转发
           </button>
           <button
             className="chat-selection-btn chat-selection-delete"
@@ -2304,6 +2448,93 @@ function ChatThreadView({
               aria-label="发送"
             >
               <ArrowUp size={20} strokeWidth={2.6} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showForwardPicker && (
+        <div
+          className="chat-forward-picker-backdrop"
+          onClick={() => setShowForwardPicker(false)}
+        >
+          <div
+            className="chat-forward-picker"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="chat-forward-picker-title">
+              转发到
+            </div>
+
+            <div className="chat-forward-picker-options">
+              {(["group", "levi", "erwin"] as ThreadId[])
+                .filter((tid) => tid !== threadId)
+                .map((tid) => {
+                  const isGroup = tid === "group";
+                  const displayName = isGroup
+                    ? settings.chatName
+                    : tid === "levi"
+                      ? names.levi
+                      : names.erwin;
+                  const avatarUrl = isGroup
+                    ? null
+                    : tid === "levi"
+                      ? avatarUrls.levi
+                      : avatarUrls.erwin;
+                  const fallback = isGroup
+                    ? "L&E"
+                    : displayName.charAt(0).toUpperCase();
+                  const avatarClass = isGroup
+                    ? "avatar-group"
+                    : tid === "levi"
+                      ? "avatar-levi"
+                      : "avatar-erwin";
+
+                  return (
+                    <button
+                      key={tid}
+                      type="button"
+                      onClick={() => {
+                        const items =
+                          getForwardableItems();
+                        if (items.length === 0) {
+                          setShowForwardPicker(false);
+                          return;
+                        }
+                        forwardMessages(
+                          tid,
+                          items,
+                          threadId
+                        );
+                        setShowForwardPicker(false);
+                        exitSelectionMode();
+                      }}
+                    >
+                      <span
+                        className={`chat-forward-picker-avatar ${avatarClass}${
+                          avatarUrl ? " has-image" : ""
+                        }`}
+                      >
+                        {avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt={displayName}
+                          />
+                        ) : (
+                          fallback
+                        )}
+                      </span>
+                      <small>{displayName}</small>
+                    </button>
+                  );
+                })}
+            </div>
+
+            <button
+              className="chat-forward-picker-cancel"
+              onClick={() => setShowForwardPicker(false)}
+            >
+              取消
             </button>
           </div>
         </div>

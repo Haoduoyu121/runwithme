@@ -8,7 +8,8 @@ export type ChatMessageType =
   | "call"
   | "pat"
   | "system"
-  | "textcard";
+  | "textcard"
+  | "forward";
 
 export type ChatSender = "You" | "Levi" | "Erwin";
 
@@ -29,6 +30,14 @@ export type CallStatus =
   | "missed";
 
 export type CallDirection = "outgoing" | "incoming";
+
+/* ★ 被转发的单条消息（只支持 text / pat） */
+export type ForwardItem = {
+  sender: ChatSender;
+  type: "text" | "pat";
+  text: string;
+  timestamp: number;
+};
 
 export type ChatMessage = {
   id: string;
@@ -68,6 +77,11 @@ export type ChatMessage = {
     /** 引用的来源对象 id */
     sourceId?: string;
   };
+
+  /* ★ 转发的消息内容 */
+  forwardItems?: ForwardItem[];
+  /* ★ 从哪个 thread 转发的（来源），目前用于显示 / 未来跳转 */
+  forwardFrom?: ThreadId;
 };
 
 export function createMessageId(): string {

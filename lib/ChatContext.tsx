@@ -24,6 +24,7 @@ import {
   type ChatMessage,
   type ChatSender,
   type ThreadId,
+  type ForwardItem,
 } from "@/data/chat";
 
 import { createReplyMessage } from "@/lib/chatReply";
@@ -159,6 +160,11 @@ type ChatContextValue = {
   ) => Promise<void>;
   setAutoReplyEnabled: (v: boolean) => void;
   scheduleAutoReplyAfterUserMessage: () => void;
+  forwardMessages: (
+    targetThreadId: ThreadId,
+    items: ForwardItem[],
+    fromThreadId: ThreadId
+  ) => void;
 };
 
 const ChatContext =
@@ -869,6 +875,27 @@ export function ChatProvider({
         void generateAutoReply(tid);
       }, delay);
     }, [generateAutoReply]);
+      /* ---------- 消息转发 ---------- */
+
+  const forwardMessages = useCallback(
+    (
+      targetThreadId: ThreadId,
+      items: ForwardItem[],
+      fromThreadId: ThreadId
+    ) => {
+      if (items.length === 0) return;
+      const msg: ChatMessage = {
+        id: createMessageId(),
+        sender: "You",
+        type: "forward",
+        timestamp: Date.now(),
+        forwardItems: items,
+        forwardFrom: fromThreadId,
+      };
+      addMessage(msg, { threadId: targetThreadId });
+    },
+    [addMessage]
+  );
 
   /* ---------- 会话列表用的「最后一条消息」 ---------- */
 
@@ -926,6 +953,7 @@ export function ChatProvider({
         generateAutoReply,
         setAutoReplyEnabled,
         scheduleAutoReplyAfterUserMessage,
+        forwardMessages,
       }}
     >
       {children}
