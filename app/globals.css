@@ -69665,3 +69665,56 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
 .chat-dark .wallet-eval-text {
   color: rgba(255, 255, 255, 0.7);
 }
+/* =========================================================
+   角色钱包（批次 1）
+   ========================================================= */
+
+.role-wallet-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0 16px;
+}
+.role-wallet-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  background: #b0b0b0;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+.role-wallet-avatar.avatar-levi {
+  background: #8b6a5b;
+}
+.role-wallet-avatar.avatar-erwin {
+  background: #c4a04a;
+}
+.role-wallet-avatar.has-image {
+  background: transparent;
+}
+.role-wallet-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.role-wallet-initial {
+  font-size: 12px;
+  opacity: 0.75;
+  letter-spacing: 0.2px;
+}
+
+/* 只读交易行 */
+.role-wallet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 6px;
+}

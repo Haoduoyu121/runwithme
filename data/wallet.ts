@@ -2,11 +2,15 @@
    Runwithme · 钱包
    ========================================================= */
 
+export type WalletOwner = "user" | "Levi" | "Erwin";
+
 export type WalletEntryType =
-  | "income"      // 收入（用户手动）
-  | "expense"     // 支出（用户手动）
-  | "save-in"     // 钱包 → 存钱目标（批次 2）
-  | "save-out";   // 存钱目标 → 钱包（批次 2）
+  | "income"         // 收入（手动）
+  | "expense"        // 支出（手动）
+  | "save-in"        // 钱包 → 存钱目标
+  | "save-out"       // 存钱目标 → 钱包
+  | "redpacket-in"   // 收到红包
+  | "redpacket-out"; // 发出红包
 
 export type WalletEvaluation = {
   owner: "Levi" | "Erwin";
@@ -52,6 +56,9 @@ export const DEFAULT_WALLET: WalletData = {
   goals: [],
 };
 
+/** 角色钱包的初始余额（默认给一笔"生活费"） */
+export const DEFAULT_ROLE_INITIAL_BALANCE = 1000;
+
 /* ---------- ID ---------- */
 
 export function createWalletEntryId(): string {
@@ -75,6 +82,8 @@ export function computeBalance(data: WalletData): number {
     else if (e.type === "expense") balance -= e.amount;
     else if (e.type === "save-in") balance -= e.amount;
     else if (e.type === "save-out") balance += e.amount;
+    else if (e.type === "redpacket-in") balance += e.amount;
+    else if (e.type === "redpacket-out") balance -= e.amount;
   }
   return balance;
 }

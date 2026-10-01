@@ -7,6 +7,7 @@ import {
   ImagePlus,
   Images,
   Trash2,
+  Wallet as WalletIcon,
 } from "lucide-react";
 
 import { useSystem } from "@/lib/SystemContext";
@@ -41,6 +42,7 @@ import GalleryPage from "@/components/apps/potato/GalleryPage";
 
 import type { AvatarLibraryOwner } from "@/data/avatarLibrary";
 import AvatarLibraryPage from "@/components/apps/potato/AvatarLibraryPage";
+import RoleWalletPage from "@/components/apps/potato/RoleWalletPage";
 
 import {
   loadWalletEvalPool,
@@ -60,6 +62,8 @@ export default function PotatoApp({ onBack }: Props) {
     useState<GalleryOwner | null>(null);
   const [avatarLibOwner, setAvatarLibOwner] =
     useState<AvatarLibraryOwner | null>(null);
+  const [roleWalletOwner, setRoleWalletOwner] =
+    useState<"Levi" | "Erwin" | null>(null);
 
   const [avatarPreviews, setAvatarPreviews] = useState<{
     levi: string | null;
@@ -290,6 +294,31 @@ export default function PotatoApp({ onBack }: Props) {
     );
   }
 
+  /* ---------- 角色钱包子页 ---------- */
+  if (roleWalletOwner) {
+    const displayName =
+      roleWalletOwner === "Levi"
+        ? settings.characterNames.levi
+        : settings.characterNames.erwin;
+    const avatarUrl =
+      roleWalletOwner === "Levi"
+        ? avatarPreviews.levi
+        : avatarPreviews.erwin;
+
+    return (
+      <main
+        className={`phone-screen potato-app${themeClass}`}
+      >
+        <RoleWalletPage
+          owner={roleWalletOwner}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          onBack={() => setRoleWalletOwner(null)}
+        />
+      </main>
+    );
+  }
+
   return (
     <main
       className={`phone-screen potato-app${themeClass}`}
@@ -360,6 +389,7 @@ export default function PotatoApp({ onBack }: Props) {
             onRemove={() => void removeAvatar("levi")}
             onOpenGallery={() => setGalleryOwner("Levi")}
             onOpenAvatarLib={() => setAvatarLibOwner("Levi")}
+            onOpenWallet={() => setRoleWalletOwner("Levi")}
           />
         )}
 
@@ -380,6 +410,7 @@ export default function PotatoApp({ onBack }: Props) {
             onRemove={() => void removeAvatar("erwin")}
             onOpenGallery={() => setGalleryOwner("Erwin")}
             onOpenAvatarLib={() => setAvatarLibOwner("Erwin")}
+            onOpenWallet={() => setRoleWalletOwner("Erwin")}
           />
         )}
 
@@ -1377,6 +1408,7 @@ function CharacterPanel({
   onRemove,
   onOpenGallery,
   onOpenAvatarLib,
+  onOpenWallet,
 }: {
   avatarUrl: string | null;
   avatarClass: string;
@@ -1389,6 +1421,7 @@ function CharacterPanel({
   onRemove: () => void;
   onOpenGallery: () => void;
   onOpenAvatarLib: () => void;
+  onOpenWallet: () => void;
 }) {
   return (
     <div className="potato-character">
@@ -1475,6 +1508,15 @@ function CharacterPanel({
       >
         <ImagePlus size={18} strokeWidth={2.2} />
         <span>头像库</span>
+      </button>
+
+      <button
+        type="button"
+        className="potato-gallery-entry"
+        onClick={onOpenWallet}
+      >
+        <WalletIcon size={18} strokeWidth={2.2} />
+        <span>钱包</span>
       </button>
     </div>
   );

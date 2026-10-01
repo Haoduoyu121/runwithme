@@ -2,12 +2,17 @@
 
 import {
   DEFAULT_WALLET,
+  DEFAULT_ROLE_INITIAL_BALANCE,
   type WalletData,
   type WalletEntry,
+  type WalletOwner,
   type SavingGoal,
 } from "@/data/wallet";
 
-const WALLET_KEY = "runwithme_wallet_v1";
+function getKey(owner: WalletOwner): string {
+  if (owner === "user") return "runwithme_wallet_v1";
+  return `runwithme_wallet_${owner.toLowerCase()}_v1`;
+}
 
 function isValidEntry(v: unknown): v is WalletEntry {
   if (!v || typeof v !== "object") return false;
@@ -32,17 +37,30 @@ function isValidGoal(v: unknown): v is SavingGoal {
   );
 }
 
-export function loadWallet(): WalletData {
+function defaultFor(owner: WalletOwner): WalletData {
+  if (owner === "user") return { ...DEFAULT_WALLET };
+  return {
+    initialBalance: DEFAULT_ROLE_INITIAL_BALANCE,
+    currency: DEFAULT_WALLET.currency,
+    entries: [],
+    goals: [],
+  };
+}
+
+export function loadWallet(
+  owner: WalletOwner = "user"
+): WalletData {
   if (typeof window === "undefined") {
-    return { ...DEFAULT_WALLET };
+    return defaultFor(owner);
   }
+  const key = getKey(owner);
   try {
-    const raw = window.localStorage.getItem(WALLET_KEY);
-    if (!raw) return { ...DEFAULT_WALLET };
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return defaultFor(owner);
 
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") {
-      return { ...DEFAULT_WALLET };
+      return defaultFor(owner);
     }
 
     const p = parsed as Partial<WalletData>;
@@ -52,7 +70,7 @@ export function loadWallet(): WalletData {
         typeof p.initialBalance === "number" &&
         Number.isFinite(p.initialBalance)
           ? p.initialBalance
-          : DEFAULT_WALLET.initialBalance,
+          : defaultFor(owner).initialBalance,
       currency:
         typeof p.currency === "string" && p.currency.length > 0
           ? p.currency
@@ -65,19 +83,24 @@ export function loadWallet(): WalletData {
         : [],
     };
   } catch {
-    return { ...DEFAULT_WALLET };
+    return defaultFor(owner);
   }
 }
 
-export function saveWallet(data: WalletData): void {
+export function saveWallet(
+  data: WalletData,
+  owner: WalletOwner = "user"
+): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(
-      WALLET_KEY,
+      getKey(owner),
       JSON.stringify(data)
     );
     window.dispatchEvent(
-      new Event("runwithme:wallet-updated")
+      new CustomEvent("runwithme:wallet-updated", {
+        detail: { owner },
+      })
     );
   } catch (e) {
     console.error("保存钱包失败:", e);
