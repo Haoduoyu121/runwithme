@@ -69397,3 +69397,24 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
 .wallet-sheet-btn:active {
   transform: scale(0.98);
 }
+/* =========================================================
+   修复：个人主页 / 钱包 顶栏被状态栏遮住
+   ========================================================= */
+
+.profile-app {
+  padding-top: env(safe-area-inset-top, 44px) !important;
+  box-sizing: border-box !important;
+}
+
+.wallet-page {
+  padding-top: env(safe-area-inset-top, 44px) !important;
+  box-sizing: border-box !important;
+}
+
+/* 若状态栏过矮（比如安卓无刘海），最少留 24px */
+@supports not (padding: env(safe-area-inset-top)) {
+  .profile-app,
+  .wallet-page {
+    padding-top: 24px !important;
+  }
+}
