@@ -78,6 +78,18 @@ export type AvatarSwitchSettings = {
   icityChanceErwin: number;
 };
 
+/* ---------- 钱包评价 ---------- */
+
+export type WalletEvalSettings = {
+  enabled: boolean;
+  /** 触发概率 0~1 */
+  chance: number;
+  /** 延迟（秒） */
+  delayMinSec: number;
+  delayMaxSec: number;
+  /** 冷却（秒） */
+  cooldownSec: number;
+};
 /* ---------- 角色显示名 ---------- */
 
 export type CharacterNames = {
@@ -119,6 +131,8 @@ export type SystemSettings = {
   chatReply: ChatReplySettings;
 
   avatarSwitch: AvatarSwitchSettings;
+
+  walletEval: WalletEvalSettings;
 
   chatCustomCSS: string;
 };
@@ -219,6 +233,13 @@ const defaultSettings: SystemSettings = {
 
     icityChanceLevi: 0.02,
     icityChanceErwin: 0.02,
+  },
+  walletEval: {
+    enabled: true,
+    chance: 0.4,
+    delayMinSec: 5,
+    delayMaxSec: 30,
+    cooldownSec: 30,
   },
   chatCustomCSS: "",
 };
@@ -388,6 +409,35 @@ export function loadSystemSettings(): SystemSettings {
           ),
         };
       })(),
+      walletEval: (() => {
+        const w = parsed.walletEval ?? {};
+        const d = defaultSettings.walletEval;
+        return {
+          enabled:
+            typeof w.enabled === "boolean"
+              ? w.enabled
+              : d.enabled,
+          chance: clamp01(w.chance, d.chance),
+          delayMinSec: clampNum(
+            w.delayMinSec,
+            0,
+            3600,
+            d.delayMinSec
+          ),
+          delayMaxSec: clampNum(
+            w.delayMaxSec,
+            0,
+            3600,
+            d.delayMaxSec
+          ),
+          cooldownSec: clampNum(
+            w.cooldownSec,
+            0,
+            3600,
+            d.cooldownSec
+          ),
+        };
+      })(),
       chatCustomCSS:
         typeof parsed.chatCustomCSS === "string"
           ? parsed.chatCustomCSS
@@ -450,6 +500,10 @@ export function updateSystemSettings(
     avatarSwitch: {
       ...current.avatarSwitch,
       ...(updates.avatarSwitch ?? {}),
+    },
+    walletEval: {
+      ...current.walletEval,
+      ...(updates.walletEval ?? {}),
     },
   };
 

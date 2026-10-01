@@ -69619,3 +69619,49 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   padding: 2px 4px 0;
   line-height: 1.5;
 }
+/* =========================================================
+   钱包评价（批次 3）
+   ========================================================= */
+
+.wallet-row-wrap {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.chat-dark .wallet-row-wrap {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+/* 因为外层已经带 border，让内层按钮不再重复 */
+.wallet-row-wrap .wallet-row {
+  border-bottom: none;
+}
+
+.wallet-eval-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0 6px 10px 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.035);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.chat-dark .wallet-eval-row {
+  background: rgba(255, 255, 255, 0.05);
+}
+.wallet-eval-owner {
+  font-weight: 700;
+  color: #6d5bd0;
+  flex-shrink: 0;
+}
+.chat-dark .wallet-eval-owner {
+  color: #c4b5fd;
+}
+.wallet-eval-text {
+  color: #555;
+  word-break: break-word;
+}
+.chat-dark .wallet-eval-text {
+  color: rgba(255, 255, 255, 0.7);
+}

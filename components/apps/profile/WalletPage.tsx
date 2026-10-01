@@ -21,6 +21,7 @@ import {
 } from "@/lib/walletStorage";
 
 import WalletEntrySheet from "./WalletEntrySheet";
+import { evaluateExpense } from "@/lib/walletEvaluator";
 
 type Props = {
   onBack: () => void;
@@ -165,6 +166,9 @@ export default function WalletPage({
           onClose={() => setShowEntrySheet(false)}
           onSave={(entry) => {
             const next = { ...wallet };
+            const isNewExpense =
+              !editingEntry && entry.type === "expense";
+
             if (editingEntry) {
               next.entries = next.entries.map((x) =>
                 x.id === editingEntry.id ? entry : x
@@ -175,6 +179,31 @@ export default function WalletPage({
             saveWallet(next);
             setWallet(next);
             setShowEntrySheet(false);
+
+            /* 后台触发评价（不阻塞 UI） */
+            if (isNewExpense) {
+              void (async () => {
+                const evaluation = await evaluateExpense(
+                  entry,
+                  next.goals
+                );
+                if (!evaluation) return;
+                const w = loadWallet();
+                if (
+                  !w.entries.some((x) => x.id === entry.id)
+                )
+                  return;
+                const w2 = {
+                  ...w,
+                  entries: w.entries.map((x) =>
+                    x.id === entry.id
+                      ? { ...x, evaluation }
+                      : x
+                  ),
+                };
+                saveWallet(w2);
+              })();
+            }
           }}
           onDelete={
             editingEntry
@@ -279,27 +308,39 @@ function WalletRow({
           : "从存钱本取出");
 
   return (
-    <button
-      type="button"
-      className="wallet-row"
-      onClick={onClick}
-    >
-      <div className="wallet-row-content">
-        <div className="wallet-row-note">{label}</div>
-        <div className="wallet-row-time">
-          {formatTime(entry.timestamp)}
-        </div>
-      </div>
-      <div
-        className={
-          "wallet-row-amount " +
-          (isPlus ? "is-plus" : "is-minus")
-        }
+    <div className="wallet-row-wrap">
+      <button
+        type="button"
+        className="wallet-row"
+        onClick={onClick}
       >
-        {isPlus ? "+" : "-"}
-        {formatMoney(entry.amount, currency)}
-      </div>
-    </button>
+        <div className="wallet-row-content">
+          <div className="wallet-row-note">{label}</div>
+          <div className="wallet-row-time">
+            {formatTime(entry.timestamp)}
+          </div>
+        </div>
+        <div
+          className={
+            "wallet-row-amount " +
+            (isPlus ? "is-plus" : "is-minus")
+          }
+        >
+          {isPlus ? "+" : "-"}
+          {formatMoney(entry.amount, currency)}
+        </div>
+      </button>
+      {entry.evaluation && (
+        <div className="wallet-eval-row">
+          <span className="wallet-eval-owner">
+            {entry.evaluation.owner}：
+          </span>
+          <span className="wallet-eval-text">
+            {entry.evaluation.text}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 

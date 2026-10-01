@@ -8,6 +8,12 @@ export type WalletEntryType =
   | "save-in"     // 钱包 → 存钱目标（批次 2）
   | "save-out";   // 存钱目标 → 钱包（批次 2）
 
+export type WalletEvaluation = {
+  owner: "Levi" | "Erwin";
+  text: string;
+  createdAt: number;
+};
+
 export type WalletEntry = {
   id: string;
   type: WalletEntryType;
@@ -17,6 +23,8 @@ export type WalletEntry = {
   timestamp: number;
   /** save-in / save-out 关联的目标 id */
   goalId?: string;
+  /** 角色评价（只对支出触发） */
+  evaluation?: WalletEvaluation;
 };
 
 export type SavingGoal = {

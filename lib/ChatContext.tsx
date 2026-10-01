@@ -528,7 +528,7 @@ export function ChatProvider({
           id: createMessageId(),
           sender: "You",
           type: "system",
-          text: `🎯 存钱目标「${detail.goalName}」达成！`,
+          text: `存钱目标「${detail.goalName}」达成`,
           timestamp: Date.now(),
         },
         { threadId: "group" }

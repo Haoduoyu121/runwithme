@@ -107,6 +107,16 @@ export default function WalletDetailPage({
                       {formatMoney(e.amount, wallet.currency)}
                     </div>
                   </button>
+                  {e.evaluation && (
+                    <div className="wallet-eval-row">
+                      <span className="wallet-eval-owner">
+                        {e.evaluation.owner}：
+                      </span>
+                      <span className="wallet-eval-text">
+                        {e.evaluation.text}
+                      </span>
+                    </div>
+                  )}
                 </li>
               );
             })}
