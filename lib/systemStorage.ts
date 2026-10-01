@@ -24,7 +24,8 @@ export type AppId =
   | "fridge"
   | "ai"
   | "tarot"
-  | "games";
+  | "games"
+  | "potato"; 
 export type AppIconState = "custom" | null;
 
 /* ---------- Dock ---------- */
@@ -46,6 +47,8 @@ export type ChatReplySettings = {
   userReplyDelayMax: number;
   autoReplyMin: number;
   autoReplyMax: number;
+  singleAutoReplyMin?: number;   
+  singleAutoReplyMax?: number;  
   quoteChance: number;
 };
 
@@ -127,6 +130,7 @@ const defaultSettings: SystemSettings = {
     ai: null,
     tarot: null,
     games: null,
+    potato: null,
   },
   dockIcons: {
     "slot-1": null,
@@ -168,6 +172,8 @@ const defaultSettings: SystemSettings = {
     userReplyDelayMax: 8,
     autoReplyMin: 3,
     autoReplyMax: 30,
+    singleAutoReplyMin: 5,   
+    singleAutoReplyMax: 30,
     quoteChance: 0.25,
   },
   chatCustomCSS: "",

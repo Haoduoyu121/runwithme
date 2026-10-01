@@ -837,8 +837,8 @@ export function ChatProvider({
     threads.levi.length,
     autoReplyEnabled,
     !!activeCall,
-    cfgReply?.autoReplyMin,
-    cfgReply?.autoReplyMax,
+    cfgReply?.singleAutoReplyMin ?? 5,
+    cfgReply?.singleAutoReplyMax ?? 30,
     generateAutoReply
   );
 
@@ -847,8 +847,8 @@ export function ChatProvider({
     threads.erwin.length,
     autoReplyEnabled,
     !!activeCall,
-    cfgReply?.autoReplyMin,
-    cfgReply?.autoReplyMax,
+    cfgReply?.singleAutoReplyMin ?? 5,
+    cfgReply?.singleAutoReplyMax ?? 30,     
     generateAutoReply
   );
 

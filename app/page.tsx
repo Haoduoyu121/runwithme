@@ -21,6 +21,7 @@ import ReadApp from "@/components/apps/ReadApp";
 import FridgeApp from "@/components/apps/FridgeApp";
 import TarotApp from "@/components/apps/TarotApp";
 import GameHubApp from "@/components/apps/GameHubApp";
+import PotatoApp from "@/components/apps/PotatoApp";
 import { runWorldCompensation } from "@/lib/worldClock";
 import { markAppAllRead } from "@/lib/unreadRegistry";
 
@@ -177,6 +178,12 @@ const apps = [
     name: "Arcade",
     icon: "◉",
     color: "cream",
+  },
+ {
+    id: "potato" as AppId,
+    name: "生姜土豆",
+    icon: "♨",
+    color: "brown",
   },
 ];
 
@@ -765,9 +772,10 @@ function AppWindow({
           onBack={onBack}
         />
       )}
-       {app === "fridge" && <FridgeApp onBack={onBack} />}
-       {app === "tarot" && <TarotApp onBack={onBack} />}
+      {app === "fridge" && <FridgeApp onBack={onBack} />}
+      {app === "tarot" && <TarotApp onBack={onBack} />}
       {app === "games" && <GameHubApp onBack={onBack} />}
+      {app === "potato" && <PotatoApp onBack={onBack} />}
     </div>
   );
 }
