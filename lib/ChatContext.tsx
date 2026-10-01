@@ -38,6 +38,17 @@ import {
 } from "@/lib/avatarSwitcher";
 import type { AvatarLibraryOwner } from "@/data/avatarLibrary";
 
+import { tryRoleSendRedPacket } from "@/lib/roleRedPacketSender";
+import { tryRoleAutoBookkeeping } from "@/lib/roleAutoBookkeeping";
+import {
+  loadWallet,
+  saveWallet,
+} from "@/lib/walletStorage";
+import {
+  createWalletEntryId,
+  type WalletEntry,
+} from "@/data/wallet";
+
 import { getImageFile } from "@/lib/imageFiles";
 import { getStickerFile } from "@/lib/stickerFiles";
 import { getVoiceFile } from "@/lib/voiceFiles";
@@ -179,6 +190,12 @@ type ChatContextValue = {
   updateThreadMessages: (
     threadId: ThreadId,
     updater: (prev: ChatMessage[]) => ChatMessage[]
+  ) => void;
+
+  /* ★ 用户领取角色发的红包 */
+  claimRedPacket: (
+    messageId: string,
+    threadId: ThreadId
   ) => void;
 
   /* ★ 用户请求角色换头像 */
@@ -949,6 +966,103 @@ export function ChatProvider({
     generateAutoReply
   );
 
+  /* =========================================================
+     ★ 角色主动发红包（后台定时器）
+     ========================================================= */
+
+  const roleRedPacketTick = useCallback(() => {
+    const cfg = settingsRef.current.roleRedPacket;
+    if (!cfg.enabled) return;
+    if (Math.random() >= cfg.chance) return;
+
+    const tid = activeThreadIdRef.current;
+    tryRoleSendRedPacket({
+      threadId: tid,
+      addMessage,
+    });
+  }, [addMessage]);
+
+  useEffect(() => {
+    const cfg = settings.roleRedPacket;
+    if (!cfg.enabled) return;
+
+    const minMs = cfg.intervalMin * 60 * 1000;
+    const maxMs = cfg.intervalMax * 60 * 1000;
+
+    let timer: number | null = null;
+    let cancelled = false;
+
+    function schedule() {
+      const delay = randomInteger(minMs, maxMs);
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        try {
+          roleRedPacketTick();
+        } catch (e) {
+          console.error("角色发红包失败:", e);
+        }
+        if (!cancelled) schedule();
+      }, delay);
+    }
+
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [
+    roleRedPacketTick,
+    settings.roleRedPacket.enabled,
+    settings.roleRedPacket.intervalMin,
+    settings.roleRedPacket.intervalMax,
+  ]);
+
+  /* =========================================================
+     ★ 角色自动记账（Levi / Erwin 各一个定时器）
+     ========================================================= */
+
+  useEffect(() => {
+    const cfg = settings.roleBookkeeping;
+    if (!cfg.enabled) return;
+
+    const minMs = cfg.intervalMin * 60 * 1000;
+    const maxMs = cfg.intervalMax * 60 * 1000;
+
+    let timer: number | null = null;
+    let cancelled = false;
+
+    function schedule() {
+      const delay = randomInteger(minMs, maxMs);
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        try {
+          if (Math.random() < cfg.chance) {
+            tryRoleAutoBookkeeping("Levi");
+          }
+          if (Math.random() < cfg.chance) {
+            tryRoleAutoBookkeeping("Erwin");
+          }
+        } catch (e) {
+          console.error("角色记账失败:", e);
+        }
+        if (!cancelled) schedule();
+      }, delay);
+    }
+
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [
+    settings.roleBookkeeping.enabled,
+    settings.roleBookkeeping.intervalMin,
+    settings.roleBookkeeping.intervalMax,
+    settings.roleBookkeeping.chance,
+  ]);
+
   /* ---------- 用户发消息后快速回复 ---------- */
 
   const scheduleAutoReplyAfterUserMessage =
@@ -1000,6 +1114,56 @@ export function ChatProvider({
       }));
     },
     []
+  );
+
+  const claimRedPacket = useCallback(
+    (messageId: string, threadId: ThreadId) => {
+      const list = threadsRef.current[threadId];
+      const msg = list.find((m) => m.id === messageId);
+      if (!msg?.redpacket) return;
+      if (msg.redpacket.claimed) return;
+      if (msg.redpacket.to !== "You") return;
+
+      const from = msg.redpacket.from;
+      const amount = msg.redpacket.amount;
+      const note = msg.redpacket.note;
+
+      /* 加进用户钱包 */
+      const userWallet = loadWallet("user");
+      const userEntry: WalletEntry = {
+        id: createWalletEntryId(),
+        type: "redpacket-in",
+        amount,
+        note: `来自 ${from} 的红包${
+          note ? "：" + note : ""
+        }`,
+        timestamp: Date.now(),
+      };
+      saveWallet(
+        {
+          ...userWallet,
+          entries: [userEntry, ...userWallet.entries],
+        },
+        "user"
+      );
+
+      /* 标记消息为已领取 */
+      updateThreadMessages(threadId, (prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId || !m.redpacket) return m;
+          if (m.redpacket.claimed) return m;
+          return {
+            ...m,
+            redpacket: {
+              ...m.redpacket,
+              claimed: true,
+              claimedAt: Date.now(),
+            },
+          };
+        })
+      );
+    },
+    [updateThreadMessages]
   );
 
   /* ---------- 会话列表 ---------- */
@@ -1228,6 +1392,7 @@ export function ChatProvider({
         scheduleAutoReplyAfterUserMessage,
         forwardMessages,
         updateThreadMessages,
+        claimRedPacket,
         requestAvatarChange,
       }}
     >

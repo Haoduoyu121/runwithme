@@ -90,6 +90,37 @@ export type WalletEvalSettings = {
   /** 冷却（秒） */
   cooldownSec: number;
 };
+
+/* ---------- 角色主动发红包 ---------- */
+
+export type RoleRedPacketSettings = {
+  enabled: boolean;
+  /** 后台间隔（分钟） */
+  intervalMin: number;
+  intervalMax: number;
+  /** 每次掷骰子概率 0~1 */
+  chance: number;
+  /** 金额范围 */
+  amountMin: number;
+  amountMax: number;
+  /** 特殊金额概率 0~1 */
+  specialChance: number;
+  /** 特殊金额列表 */
+  specialAmounts: number[];
+  /** 谁发：随机 / 指定 */
+  targetMode: "random" | "levi" | "erwin";
+};
+
+/* ---------- 角色自动记账 ---------- */
+
+export type RoleBookkeepingSettings = {
+  enabled: boolean;
+  /** 后台间隔（分钟） */
+  intervalMin: number;
+  intervalMax: number;
+  /** 每次掷骰子概率 0~1 */
+  chance: number;
+};
 /* ---------- 角色显示名 ---------- */
 
 export type CharacterNames = {
@@ -133,6 +164,8 @@ export type SystemSettings = {
   avatarSwitch: AvatarSwitchSettings;
 
   walletEval: WalletEvalSettings;
+  roleRedPacket: RoleRedPacketSettings;
+  roleBookkeeping: RoleBookkeepingSettings;
 
   chatCustomCSS: string;
 };
@@ -240,6 +273,23 @@ const defaultSettings: SystemSettings = {
     delayMinSec: 5,
     delayMaxSec: 30,
     cooldownSec: 30,
+  },
+  roleRedPacket: {
+    enabled: true,
+    intervalMin: 60,
+    intervalMax: 240,
+    chance: 0.25,
+    amountMin: 5,
+    amountMax: 50,
+    specialChance: 0.15,
+    specialAmounts: [5.2, 13.14, 52, 131.4, 520],
+    targetMode: "random",
+  },
+  roleBookkeeping: {
+    enabled: true,
+    intervalMin: 60,
+    intervalMax: 240,
+    chance: 0.3,
   },
   chatCustomCSS: "",
 };
@@ -438,6 +488,80 @@ export function loadSystemSettings(): SystemSettings {
           ),
         };
       })(),
+      roleRedPacket: (() => {
+        const r = parsed.roleRedPacket ?? {};
+        const d = defaultSettings.roleRedPacket;
+        return {
+          enabled:
+            typeof r.enabled === "boolean"
+              ? r.enabled
+              : d.enabled,
+          intervalMin: clampNum(
+            r.intervalMin,
+            1,
+            1440,
+            d.intervalMin
+          ),
+          intervalMax: clampNum(
+            r.intervalMax,
+            1,
+            1440,
+            d.intervalMax
+          ),
+          chance: clamp01(r.chance, d.chance),
+          amountMin: clampNum(
+            r.amountMin,
+            0.01,
+            1000000,
+            d.amountMin
+          ),
+          amountMax: clampNum(
+            r.amountMax,
+            0.01,
+            1000000,
+            d.amountMax
+          ),
+          specialChance: clamp01(
+            r.specialChance,
+            d.specialChance
+          ),
+          specialAmounts: Array.isArray(r.specialAmounts)
+            ? r.specialAmounts.filter(
+                (x: unknown): x is number =>
+                  typeof x === "number" && x > 0
+              )
+            : [...d.specialAmounts],
+          targetMode:
+            r.targetMode === "levi" ||
+            r.targetMode === "erwin" ||
+            r.targetMode === "random"
+              ? r.targetMode
+              : d.targetMode,
+        };
+      })(),
+      roleBookkeeping: (() => {
+        const r = parsed.roleBookkeeping ?? {};
+        const d = defaultSettings.roleBookkeeping;
+        return {
+          enabled:
+            typeof r.enabled === "boolean"
+              ? r.enabled
+              : d.enabled,
+          intervalMin: clampNum(
+            r.intervalMin,
+            1,
+            1440,
+            d.intervalMin
+          ),
+          intervalMax: clampNum(
+            r.intervalMax,
+            1,
+            1440,
+            d.intervalMax
+          ),
+          chance: clamp01(r.chance, d.chance),
+        };
+      })(),
       chatCustomCSS:
         typeof parsed.chatCustomCSS === "string"
           ? parsed.chatCustomCSS
@@ -504,6 +628,14 @@ export function updateSystemSettings(
     walletEval: {
       ...current.walletEval,
       ...(updates.walletEval ?? {}),
+    },
+    roleRedPacket: {
+      ...current.roleRedPacket,
+      ...(updates.roleRedPacket ?? {}),
+    },
+    roleBookkeeping: {
+      ...current.roleBookkeeping,
+      ...(updates.roleBookkeeping ?? {}),
     },
   };
 

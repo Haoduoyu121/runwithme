@@ -1385,6 +1385,433 @@ export default function PotatoApp({ onBack }: Props) {
             >
               恢复默认卡池
             </button>
+
+            {/* ---------- 角色主动发红包 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              角色主动发红包
+            </div>
+            <div className="potato-hint">
+              角色在后台自己决定给你发红包。
+              概率很小，不然会很烦。
+            </div>
+
+            <div className="potato-sentence-row">
+              <div className="potato-sentence-label">
+                <strong>启用</strong>
+                <small>关掉后角色不会主动发红包</small>
+              </div>
+              <button
+                type="button"
+                className={
+                  "potato-switch" +
+                  (settings.roleRedPacket.enabled
+                    ? " is-on"
+                    : "")
+                }
+                onClick={() =>
+                  updateSettings({
+                    roleRedPacket: {
+                      ...settings.roleRedPacket,
+                      enabled:
+                        !settings.roleRedPacket.enabled,
+                    },
+                  })
+                }
+                aria-label="开关"
+              />
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                谁发
+              </span>
+              <div className="potato-inline-nums">
+                {(
+                  [
+                    { v: "random" as const, l: "随机" },
+                    { v: "levi" as const, l: "Levi" },
+                    { v: "erwin" as const, l: "Erwin" },
+                  ]
+                ).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    className={
+                      "potato-chip" +
+                      (settings.roleRedPacket.targetMode ===
+                      opt.v
+                        ? " is-on"
+                        : "")
+                    }
+                    onClick={() =>
+                      updateSettings({
+                        roleRedPacket: {
+                          ...settings.roleRedPacket,
+                          targetMode: opt.v,
+                        },
+                      })
+                    }
+                  >
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                触发概率
+              </span>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.roleRedPacket.chance * 100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      roleRedPacket: {
+                        ...settings.roleRedPacket,
+                        chance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">%</span>
+              </label>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                间隔
+              </span>
+              <div className="potato-inline-nums">
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最少
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.roleRedPacket.intervalMin
+                    }
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleRedPacket: {
+                          ...settings.roleRedPacket,
+                          intervalMin: Math.max(
+                            1,
+                            Math.min(
+                              1440,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最多
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.roleRedPacket.intervalMax
+                    }
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleRedPacket: {
+                          ...settings.roleRedPacket,
+                          intervalMax: Math.max(
+                            1,
+                            Math.min(
+                              1440,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                金额范围
+              </span>
+              <div className="potato-inline-nums">
+                <label className="potato-num">
+                  <input
+                    type="number"
+                    value={settings.roleRedPacket.amountMin}
+                    min={0.01}
+                    step={1}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleRedPacket: {
+                          ...settings.roleRedPacket,
+                          amountMin: Math.max(
+                            0.01,
+                            Number(e.target.value) || 0.01
+                          ),
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <span className="potato-num-suffix">
+                  ~
+                </span>
+                <label className="potato-num">
+                  <input
+                    type="number"
+                    value={settings.roleRedPacket.amountMax}
+                    min={0.01}
+                    step={1}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleRedPacket: {
+                          ...settings.roleRedPacket,
+                          amountMax: Math.max(
+                            0.01,
+                            Number(e.target.value) || 0.01
+                          ),
+                        },
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                特殊金额概率
+              </span>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.roleRedPacket.specialChance *
+                      100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      roleRedPacket: {
+                        ...settings.roleRedPacket,
+                        specialChance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">%</span>
+              </label>
+            </div>
+
+            <div className="potato-sentence-col">
+              <span className="potato-sentence-label">
+                特殊金额列表（逗号分隔）
+              </span>
+              <input
+                type="text"
+                className="potato-sentence-input"
+                value={settings.roleRedPacket.specialAmounts.join(
+                  ", "
+                )}
+                onChange={(e) => {
+                  const list = e.target.value
+                    .split(/[,，\s]+/)
+                    .map((s) => parseFloat(s))
+                    .filter(
+                      (n) =>
+                        Number.isFinite(n) && n > 0
+                    );
+                  updateSettings({
+                    roleRedPacket: {
+                      ...settings.roleRedPacket,
+                      specialAmounts: list,
+                    },
+                  });
+                }}
+                placeholder="5.2, 13.14, 52, 131.4"
+              />
+              <div className="potato-hint">
+                触发特殊金额时，从这里随机挑一个
+              </div>
+            </div>
+
+            {/* ---------- 角色自动记账 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              角色自动记账
+            </div>
+            <div className="potato-hint">
+              角色也会在后台偶尔记一笔日常开销或收入，
+              可以在他们的钱包里看到。
+            </div>
+
+            <div className="potato-sentence-row">
+              <div className="potato-sentence-label">
+                <strong>启用</strong>
+                <small>关掉后角色钱包只有红包进出</small>
+              </div>
+              <button
+                type="button"
+                className={
+                  "potato-switch" +
+                  (settings.roleBookkeeping.enabled
+                    ? " is-on"
+                    : "")
+                }
+                onClick={() =>
+                  updateSettings({
+                    roleBookkeeping: {
+                      ...settings.roleBookkeeping,
+                      enabled:
+                        !settings.roleBookkeeping.enabled,
+                    },
+                  })
+                }
+                aria-label="开关"
+              />
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                掷骰子概率
+              </span>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.roleBookkeeping.chance * 100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      roleBookkeeping: {
+                        ...settings.roleBookkeeping,
+                        chance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">%</span>
+              </label>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                间隔
+              </span>
+              <div className="potato-inline-nums">
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最少
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.roleBookkeeping.intervalMin
+                    }
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleBookkeeping: {
+                          ...settings.roleBookkeeping,
+                          intervalMin: Math.max(
+                            1,
+                            Math.min(
+                              1440,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最多
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.roleBookkeeping.intervalMax
+                    }
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleBookkeeping: {
+                          ...settings.roleBookkeeping,
+                          intervalMax: Math.max(
+                            1,
+                            Math.min(
+                              1440,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+              </div>
+            </div>
           </div>
         )}
       </div>

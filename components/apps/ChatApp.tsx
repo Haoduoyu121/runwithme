@@ -871,6 +871,7 @@ function ChatThreadView({
     scheduleAutoReplyAfterUserMessage,
     forwardMessages,
     updateThreadMessages,
+    claimRedPacket,
     requestAvatarChange,
     activeThreadId,
   } = useChat();
@@ -1896,6 +1897,16 @@ function ChatThreadView({
               <RedPacketCard
                 message={message}
                 names={names}
+                onClaim={
+                  message.redpacket?.to === "You" &&
+                  !message.redpacket.claimed
+                    ? () =>
+                        claimRedPacket(
+                          message.id,
+                          activeThreadId
+                        )
+                    : undefined
+                }
               />
             )}
           </div>

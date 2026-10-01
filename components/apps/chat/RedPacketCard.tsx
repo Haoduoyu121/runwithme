@@ -1,16 +1,20 @@
 "use client";
 
+import { Check } from "lucide-react";
+
 import type { ChatMessage } from "@/data/chat";
 import { formatMoney } from "@/data/wallet";
 
 type Props = {
   message: ChatMessage;
   names: { levi: string; erwin: string; you: string };
+  onClaim?: () => void;
 };
 
 export default function RedPacketCard({
   message,
   names,
+  onClaim,
 }: Props) {
   const rp = message.redpacket;
   if (!rp) return null;
@@ -26,21 +30,23 @@ export default function RedPacketCard({
 
   const isOutgoing = rp.from === "You";
 
+  /* 是否可被当前用户领取 */
+  const canClaim =
+    !rp.claimed &&
+    rp.to === "You" &&
+    !!onClaim;
+
+  const title = isOutgoing
+    ? `转账给 ${toName}`
+    : `${rp.from} 的转账`;
+
   return (
-    <div className="redpacket-card">
-      <div className="redpacket-card-top">
-        <div className="redpacket-card-icon">福</div>
-        <div className="redpacket-card-info">
-          <div className="redpacket-card-title">
-            {isOutgoing
-              ? `给 ${toName} 的红包`
-              : `来自 ${rp.from} 的红包`}
-          </div>
-          <div className="redpacket-card-sub">
-            恭喜发财，大吉大利
-          </div>
-        </div>
-      </div>
+    <div
+      className={
+        "redpacket-card" + (rp.claimed ? " is-claimed" : "")
+      }
+    >
+      <div className="redpacket-card-title">{title}</div>
 
       <div className="redpacket-card-amount">
         {formatMoney(rp.amount)}
@@ -54,13 +60,29 @@ export default function RedPacketCard({
 
       <div className="redpacket-card-divider" />
 
-      <div className="redpacket-card-status">
-        {rp.claimed
-          ? `${toName} 已领取`
-          : isOutgoing
-            ? `等待 ${toName} 领取`
-            : "点击领取"}
-      </div>
+      {canClaim ? (
+        <button
+          type="button"
+          className="redpacket-card-claim"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClaim?.();
+          }}
+        >
+          点击领取
+        </button>
+      ) : (
+        <div className="redpacket-card-status">
+          {rp.claimed ? (
+            <>
+              <Check size={13} strokeWidth={3} />
+              <span>已收款</span>
+            </>
+          ) : (
+            <span>待收款</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
