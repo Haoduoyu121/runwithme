@@ -1231,34 +1231,39 @@ export default function Home() {
           />
         ) : (
           <>
-            {currentApp === null && (
-              <HomeScreen
-                wallpaper={homeWallpaper}
-                iconUrls={appIconUrls}
-                dockIconUrls={dockIconUrls}
-                onDockIconError={handleDockIconError}
-                onIconError={handleAppIconError}
-                onOpenApp={(id: AppId) => {
-                  if (id === "ai") {
-                    router.push("/ai");
-                    return;
-                  }
-                  handleOpenApp(id);
-                }}
-                onOpenSettings={() => {
-                  router.push("/studio/settings");
-                }}
-                onOpenHomeStudio={() => {
-                  router.push("/home-studio");
-                }}
-                onOpenCalendar={() => {
-                  setCurrentApp("calendar" as AppId);
-                }}
-                onOpenCards={() => {
-                  setCurrentApp("cards" as AppId);
-                }}
-              />
-            )}
+            <div
+  style={{
+    display: currentApp === null ? undefined : "none",
+  }}
+  aria-hidden={currentApp !== null}
+>
+  <HomeScreen
+    wallpaper={homeWallpaper}
+    iconUrls={appIconUrls}
+    dockIconUrls={dockIconUrls}
+    onDockIconError={handleDockIconError}
+    onIconError={handleAppIconError}
+    onOpenApp={(id: AppId) => {
+      if (id === "ai") {
+        router.push("/ai");
+        return;
+      }
+      handleOpenApp(id);
+    }}
+    onOpenSettings={() => {
+      router.push("/studio/settings");
+    }}
+    onOpenHomeStudio={() => {
+      router.push("/home-studio");
+    }}
+    onOpenCalendar={() => {
+      setCurrentApp("calendar" as AppId);
+    }}
+    onOpenCards={() => {
+      setCurrentApp("cards" as AppId);
+    }}
+  />
+</div>
 
             {mountedApps.map((appId) => (
               <div

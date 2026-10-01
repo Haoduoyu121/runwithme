@@ -145,21 +145,13 @@ export default function PotatoApp({ onBack }: Props) {
     >
       <div className="potato-topbar">
   <button
-    type="button"
-    className="potato-topbar-back"
-    onPointerDown={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onBack();
-    }}
-    onClick={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    }}
-    aria-label="返回"
-  >
-    <ChevronLeft size={26} strokeWidth={2.4} />
-  </button>
+  type="button"
+  className="potato-topbar-back"
+  onClick={onBack}
+  aria-label="返回"
+>
+  <ChevronLeft size={26} strokeWidth={2.4} />
+</button>
 
   <div className="potato-topbar-title">
     生姜土豆
