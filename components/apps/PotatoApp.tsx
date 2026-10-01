@@ -155,29 +155,38 @@ export default function PotatoApp({ onBack }: Props) {
         <div className="potato-header-spacer" />
       </header>
 
-      <div className="potato-tabs">
-        <button
-          type="button"
-          className={tab === "levi" ? "active" : ""}
-          onClick={() => setTab("levi")}
-        >
-          {settings.characterNames.levi}
-        </button>
-        <button
-          type="button"
-          className={tab === "erwin" ? "active" : ""}
-          onClick={() => setTab("erwin")}
-        >
-          {settings.characterNames.erwin}
-        </button>
-        <button
-          type="button"
-          className={tab === "general" ? "active" : ""}
-          onClick={() => setTab("general")}
-        >
-          通用
-        </button>
-      </div>
+     <div className="potato-tabs">
+  <button
+    type="button"
+    className={tab === "levi" ? "active" : ""}
+    onPointerDown={(e) => {
+      e.preventDefault();
+      setTab("levi");
+    }}
+  >
+    {settings.characterNames.levi}
+  </button>
+  <button
+    type="button"
+    className={tab === "erwin" ? "active" : ""}
+    onPointerDown={(e) => {
+      e.preventDefault();
+      setTab("erwin");
+    }}
+  >
+    {settings.characterNames.erwin}
+  </button>
+  <button
+    type="button"
+    className={tab === "general" ? "active" : ""}
+    onPointerDown={(e) => {
+      e.preventDefault();
+      setTab("general");
+    }}
+  >
+    通用
+  </button>
+</div>
 
       <div className="potato-scroll">
         {tab === "levi" && (

@@ -639,17 +639,26 @@ function ChatListView({
     >
       {tab === "messages" ? (
         <>
-          <header className="chat-list-header">
-            <button
-              className="chat-list-back"
-              onClick={onBack}
-              aria-label="返回"
-            >
-              <ChevronLeft size={26} strokeWidth={2.4} />
-            </button>
-            <span className="chat-list-title">消息</span>
-            <span className="chat-list-header-spacer" />
-          </header>
+          <header className="telegram-header">
+  <button
+    className="telegram-back"
+    onClick={onBack}
+    aria-label="返回"
+  >
+    <ChevronLeft size={26} strokeWidth={2.4} />
+  </button>
+
+  <div className="telegram-contact">
+    <div className="telegram-name">消息</div>
+    <div className="telegram-status">
+      {settings.chatName ? "conversations" : ""}
+    </div>
+  </div>
+
+  <span className="telegram-more" style={{ visibility: "hidden" }}>
+    &nbsp;
+  </span>
+</header>
 
           <div className="chat-list-body">
             <ThreadRow

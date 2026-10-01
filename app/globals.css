@@ -67569,3 +67569,42 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   color: var(--text-secondary, #8e8e93);
   padding: 2px 4px 0;
 }
+/* =========================================================
+   生姜土豆 App · 修复 v2
+   ========================================================= */
+
+/* 让 tabs 不被 flex 压缩，并且点击可靠 */
+.potato-header {
+  flex-shrink: 0;
+}
+.potato-tabs {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.potato-tabs button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 11;
+  pointer-events: auto;
+}
+.potato-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  touch-action: pan-y;
+}
+
+/* 消息列表：不再使用 self-made header，改用 telegram-header
+   这两条是给上一批残留的 chat-list-header 补的（现在用不到了，
+   但如果别的地方还引用，也不会出错） */
+.chat-list-header {
+  padding: 0 12px 6px;
+  min-height: 40px;
+}
