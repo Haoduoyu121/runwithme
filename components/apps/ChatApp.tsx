@@ -177,7 +177,7 @@ function MessageQuote({
         )}
       </div>
       <div className="message-quote-text">
-        {truncateQuote(quote.text, 24)}
+        {truncateQuote(quote.text, 15)}
       </div>
     </div>
   );
@@ -623,6 +623,7 @@ function previewText(m: ChatMessage | null): string {
   if (m.type === "pat") return m.text ?? "[拍一拍]";
   if (m.type === "call") return "[通话]";
   if (m.type === "textcard") return "[照片]";
+  if (m.type === "gallery") return "[图片]";
   if (m.type === "forward")
     return `[转发了 ${m.forwardItems?.length ?? 0} 条消息]`;
   if (m.type === "system") return m.text ?? "";
@@ -1835,6 +1836,16 @@ function ChatThreadView({
               )}
 
             {message.type === "image" &&
+              message.mediaUrl && (
+                <div className="chat-image-message">
+                  <img
+                    src={message.mediaUrl}
+                    alt="图片"
+                  />
+                </div>
+              )}
+
+            {message.type === "gallery" &&
               message.mediaUrl && (
                 <div className="chat-image-message">
                   <img

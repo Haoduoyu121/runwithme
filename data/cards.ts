@@ -7,7 +7,8 @@ export type CardType =
   | "voice"
   | "sticker"
   | "pat"
-  | "emoji";
+  | "emoji"
+  | "gallery";
 
 export type CharacterCard = {
   id: string;

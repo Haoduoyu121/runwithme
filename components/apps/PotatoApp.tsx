@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   ChevronLeft,
   ImagePlus,
+  Images,
   Trash2,
 } from "lucide-react";
 
@@ -28,6 +29,16 @@ import {
   type SentenceJoinMode,
 } from "@/data/sentence";
 
+import {
+  loadCardWeights,
+  saveCardWeights,
+  resetCardWeights,
+  type CardWeights,
+} from "@/lib/cardWeightStorage";
+
+import type { GalleryOwner } from "@/data/gallery";
+import GalleryPage from "@/components/apps/potato/GalleryPage";
+
 type Props = { onBack: () => void };
 
 type TabKey = "levi" | "erwin" | "sentence" | "general";
@@ -36,6 +47,8 @@ export default function PotatoApp({ onBack }: Props) {
   const { settings, updateSettings, theme } = useSystem();
 
   const [tab, setTab] = useState<TabKey>("levi");
+  const [galleryOwner, setGalleryOwner] =
+    useState<GalleryOwner | null>(null);
 
   const [avatarPreviews, setAvatarPreviews] = useState<{
     levi: string | null;
@@ -49,14 +62,30 @@ export default function PotatoApp({ onBack }: Props) {
     settings.characterNames.erwin
   );
 
-  /* 造句设置（本地 state，同步到 localStorage） */
+  /* 造句设置 */
   const [sentence, setSentence] = useState<SentenceSettings>(
     loadSentenceSettings
   );
   const [sentenceWordsDraft, setSentenceWordsDraft] =
-    useState(
-      loadSentenceSettings().wordPool.join("\n")
-    );
+    useState(loadSentenceSettings().wordPool.join("\n"));
+
+  /* 抽卡权重 */
+  const [weights, setWeights] = useState<CardWeights>(
+    loadCardWeights
+  );
+
+  function updateWeights(patch: Partial<CardWeights>) {
+    setWeights((prev) => {
+      const next = { ...prev, ...patch };
+      saveCardWeights(next);
+      return next;
+    });
+  }
+
+  function handleResetWeights() {
+    if (!window.confirm("恢复默认抽卡权重？")) return;
+    setWeights(resetCardWeights());
+  }
 
   function updateSentence(patch: Partial<SentenceSettings>) {
     setSentence((prev) => {
@@ -87,7 +116,7 @@ export default function PotatoApp({ onBack }: Props) {
     setNameErwinDraft(settings.characterNames.erwin);
   }, [settings.characterNames]);
 
-  /* 加载角色头像预览 */
+  /* 加载头像预览 */
   useEffect(() => {
     let cancelled = false;
     const created: string[] = [];
@@ -183,6 +212,20 @@ export default function PotatoApp({ onBack }: Props) {
   const themeClass =
     theme === "dark" ? " chat-dark" : " chat-light";
 
+  /* ---------- 图库子页 ---------- */
+  if (galleryOwner) {
+    return (
+      <main
+        className={`phone-screen potato-app${themeClass}`}
+      >
+        <GalleryPage
+          owner={galleryOwner}
+          onBack={() => setGalleryOwner(null)}
+        />
+      </main>
+    );
+  }
+
   return (
     <main
       className={`phone-screen potato-app${themeClass}`}
@@ -251,6 +294,7 @@ export default function PotatoApp({ onBack }: Props) {
               void uploadAvatar("levi", file)
             }
             onRemove={() => void removeAvatar("levi")}
+            onOpenGallery={() => setGalleryOwner("Levi")}
           />
         )}
 
@@ -269,12 +313,12 @@ export default function PotatoApp({ onBack }: Props) {
               void uploadAvatar("erwin", file)
             }
             onRemove={() => void removeAvatar("erwin")}
+            onOpenGallery={() => setGalleryOwner("Erwin")}
           />
         )}
 
         {tab === "sentence" && (
           <div className="potato-sentence">
-            {/* 开关 */}
             <div className="potato-sentence-row">
               <div className="potato-sentence-label">
                 <strong>自由造句</strong>
@@ -297,7 +341,6 @@ export default function PotatoApp({ onBack }: Props) {
               />
             </div>
 
-            {/* 概率 */}
             <div className="potato-sentence-row">
               <span className="potato-sentence-label">
                 造句概率
@@ -325,7 +368,6 @@ export default function PotatoApp({ onBack }: Props) {
               </label>
             </div>
 
-            {/* 抽词数量 */}
             <div className="potato-sentence-row">
               <span className="potato-sentence-label">
                 抽词数量
@@ -378,7 +420,6 @@ export default function PotatoApp({ onBack }: Props) {
               </div>
             </div>
 
-            {/* 拼接方式 */}
             <div className="potato-sentence-col">
               <span className="potato-sentence-label">
                 拼接方式
@@ -412,7 +453,6 @@ export default function PotatoApp({ onBack }: Props) {
               </div>
             </div>
 
-            {/* 标点概率 */}
             {(sentence.joinMode === "punct" ||
               sentence.joinMode === "random") && (
               <div className="potato-sentence-row">
@@ -447,7 +487,6 @@ export default function PotatoApp({ onBack }: Props) {
               </div>
             )}
 
-            {/* 混合整句卡 */}
             <div className="potato-sentence-row">
               <div className="potato-sentence-label">
                 <strong>混合整句卡</strong>
@@ -473,7 +512,6 @@ export default function PotatoApp({ onBack }: Props) {
               />
             </div>
 
-            {/* 字池 */}
             <div className="potato-sentence-col">
               <span className="potato-sentence-label">
                 字池（一行一个）
@@ -495,7 +533,6 @@ export default function PotatoApp({ onBack }: Props) {
               </div>
             </div>
 
-            {/* 重置 */}
             <button
               type="button"
               className="potato-sentence-reset"
@@ -568,6 +605,71 @@ export default function PotatoApp({ onBack }: Props) {
               例：最短 5、最长 30，表示每次随机在
               5~30 分钟之间抽一个时间发消息。
             </div>
+
+            {/* ---------- 抽卡权重 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              抽卡权重
+            </div>
+            <div className="potato-hint">
+              数字越大越容易抽到，系统自动按比例归一化。
+              设为 0 表示永不抽这种类型。
+            </div>
+
+            {(
+              [
+                { key: "text" as const, label: "文本" },
+                {
+                  key: "sticker" as const,
+                  label: "表情包",
+                },
+                { key: "voice" as const, label: "语音" },
+                { key: "pat" as const, label: "拍一拍" },
+                {
+                  key: "gallery" as const,
+                  label: "图库",
+                },
+              ]
+            ).map(({ key, label }) => (
+              <div
+                key={key}
+                className="potato-reply-row"
+              >
+                <span className="potato-reply-label">
+                  {label}
+                </span>
+                <label className="potato-num">
+                  <input
+                    type="number"
+                    value={weights[key]}
+                    min={0}
+                    max={999}
+                    onChange={(e) =>
+                      updateWeights({
+                        [key]: Math.max(
+                          0,
+                          Math.min(
+                            999,
+                            Number(e.target.value) || 0
+                          )
+                        ),
+                      } as Partial<CardWeights>)
+                    }
+                  />
+                </label>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              className="potato-sentence-reset"
+              onClick={handleResetWeights}
+              style={{ marginTop: 4 }}
+            >
+              恢复默认权重
+            </button>
           </div>
         )}
       </div>
@@ -589,6 +691,7 @@ function CharacterPanel({
   onNameSave,
   onUpload,
   onRemove,
+  onOpenGallery,
 }: {
   avatarUrl: string | null;
   avatarClass: string;
@@ -599,6 +702,7 @@ function CharacterPanel({
   onNameSave: () => void;
   onUpload: (file: File) => void;
   onRemove: () => void;
+  onOpenGallery: () => void;
 }) {
   return (
     <div className="potato-character">
@@ -668,6 +772,15 @@ function CharacterPanel({
           只改显示名，卡池归属仍然是 Levi / Erwin。
         </div>
       </div>
+
+      <button
+        type="button"
+        className="potato-gallery-entry"
+        onClick={onOpenGallery}
+      >
+        <Images size={18} strokeWidth={2.2} />
+        <span>打开图库</span>
+      </button>
     </div>
   );
 }

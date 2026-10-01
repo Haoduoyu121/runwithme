@@ -35,6 +35,7 @@ import { generateSentence } from "@/lib/sentenceGenerator";
 import { getImageFile } from "@/lib/imageFiles";
 import { getStickerFile } from "@/lib/stickerFiles";
 import { getVoiceFile } from "@/lib/voiceFiles";
+import { getGalleryFile } from "@/lib/galleryFiles";
 
 import { useCall } from "@/lib/CallContext";
 import { useSystem } from "@/lib/SystemContext";
@@ -367,6 +368,9 @@ export function ChatProvider({
             if (message.type === "voice") {
               file = await getVoiceFile(message.mediaId);
             }
+            if (message.type === "gallery") {
+              file = await getGalleryFile(message.mediaId);
+            }
             if (!file) continue;
 
             const url = URL.createObjectURL(file);
@@ -385,6 +389,10 @@ export function ChatProvider({
               ] = url;
             }
             if (message.type === "voice") {
+              createdMediaUrlsRef.current[message.id] =
+                url;
+            }
+            if (message.type === "gallery") {
               createdMediaUrlsRef.current[message.id] =
                 url;
             }
@@ -447,6 +455,8 @@ export function ChatProvider({
         body = "发来了一个表情";
       else if (msg.type === "image")
         body = "发来了一张图片";
+      else if (msg.type === "gallery")
+        body = "发来了一张图";
       else if (msg.type === "textcard")
         body = "发来了一张照片";
       else if (msg.type === "call") body = "来电";

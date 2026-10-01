@@ -7,6 +7,7 @@ import type { ChatMessage } from "@/data/chat";
 
 import { getStickerFile } from "@/lib/stickerFiles";
 import { getVoiceFile } from "@/lib/voiceFiles";
+import { getGalleryFile } from "@/lib/galleryFiles";
 
 export type ReplyMediaUrl = {
   messageId: string;
@@ -57,6 +58,30 @@ export async function createReplyMessage(
     };
   }
 
+  /* 图库 */
+  if (card.type === "gallery") {
+    if (!card.mediaId) {
+      return { message: null, mediaUrl: null };
+    }
+    const file = await getGalleryFile(card.mediaId);
+    if (!file) {
+      console.warn(`找不到图库图片: ${card.mediaId}`);
+      return { message: null, mediaUrl: null };
+    }
+    const url = URL.createObjectURL(file);
+    return {
+      message: {
+        id: messageId,
+        sender,
+        type: "gallery",
+        mediaId: card.mediaId,
+        mediaUrl: url,
+        timestamp: Date.now(),
+      },
+      mediaUrl: { messageId, url },
+    };
+  }
+
   /* 语音 / 表情包 */
   if (!card.mediaId) {
     console.warn(
@@ -71,9 +96,7 @@ export async function createReplyMessage(
       console.warn(`找不到语音: ${card.mediaId}`);
       return { message: null, mediaUrl: null };
     }
-
     const url = URL.createObjectURL(file);
-
     return {
       message: {
         id: messageId,
@@ -94,9 +117,7 @@ export async function createReplyMessage(
       console.warn(`找不到表情包: ${card.mediaId}`);
       return { message: null, mediaUrl: null };
     }
-
     const url = URL.createObjectURL(file);
-
     return {
       message: {
         id: messageId,

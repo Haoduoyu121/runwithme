@@ -9,7 +9,8 @@ export type ChatMessageType =
   | "pat"
   | "system"
   | "textcard"
-  | "forward";
+  | "forward"
+  | "gallery";
 
 export type ChatSender = "You" | "Levi" | "Erwin";
 
