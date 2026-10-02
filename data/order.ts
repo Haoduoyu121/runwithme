@@ -54,6 +54,8 @@ export type Order = {
   items: OrderItem[];
   totalPrice: number;
   addressId: string | null;
+  /** 角色接受礼物时，从角色地址池抽的地址文本 */
+  addressText?: string;
   status: OrderStatus;
   logistics: LogisticsEvent[];
   review: OrderReview | null;

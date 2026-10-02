@@ -403,8 +403,11 @@ export default function OrderDetail({
         </div>
 
         {/* 收货信息 */}
-        {order.addressId && (
-          <AddressBlock addressId={order.addressId} />
+        {(order.addressId || order.addressText) && (
+          <AddressBlock
+            addressId={order.addressId ?? null}
+            addressText={order.addressText ?? null}
+          />
         )}
 
         {/* 物流时间线 */}
@@ -575,17 +578,51 @@ export default function OrderDetail({
   );
 }
 
-function AddressBlock({ addressId }: { addressId: string }) {
-  const [addr, setAddr] = useState<import("@/data/address").Address | null>(null);
+function AddressBlock({
+  addressId,
+  addressText,
+}: {
+  addressId: string | null;
+  addressText: string | null;
+}) {
+  const [addr, setAddr] = useState<
+    import("@/data/address").Address | null
+  >(null);
+
   useEffect(() => {
+    if (!addressId) {
+      setAddr(null);
+      return;
+    }
     let cancelled = false;
     void (async () => {
-      const { loadAddresses } = await import("@/lib/addressStorage");
+      const { loadAddresses } = await import(
+        "@/lib/addressStorage"
+      );
       if (cancelled) return;
-      setAddr(loadAddresses().find((a) => a.id === addressId) ?? null);
+      setAddr(
+        loadAddresses().find((a) => a.id === addressId) ??
+          null
+      );
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [addressId]);
+
+  /* 文本地址（角色提供） */
+  if (!addr && addressText) {
+    return (
+      <div className="shopv2-order-detail-block">
+        <div className="shopv2-order-detail-block-title">
+          收货信息
+        </div>
+        <div className="shopv2-addr-item-detail">
+          {addressText}
+        </div>
+      </div>
+    );
+  }
 
   if (!addr) return null;
 
@@ -602,7 +639,9 @@ function AddressBlock({ addressId }: { addressId: string }) {
           </span>
         )}
         {addr.isDefault && (
-          <span className="shopv2-addr-item-default">默认</span>
+          <span className="shopv2-addr-item-default">
+            默认
+          </span>
         )}
       </div>
       <div className="shopv2-addr-item-detail">

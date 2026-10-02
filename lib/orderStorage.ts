@@ -232,7 +232,10 @@ export function updateOrderAddress(
  */
 export function acceptOrderGift(
   orderId: string,
-  addressId?: string
+  opts?: {
+    addressId?: string;
+    addressText?: string;
+  }
 ): void {
   const list = loadOrders();
   let accepted: Order | null = null;
@@ -244,7 +247,8 @@ export function acceptOrderGift(
     const updated: Order = {
       ...o,
       giftStatus: "accepted" as const,
-      addressId: addressId ?? o.addressId,
+      addressId: opts?.addressId ?? o.addressId,
+      addressText: opts?.addressText ?? o.addressText,
       createdAt: now,
       updatedAt: now,
       logistics: [{ stage: "placed" as const, at: now }],

@@ -208,7 +208,7 @@ export default function ShopV2App({ onBack }: Props) {
 
   /* 提交订单 */
   function handleCheckoutConfirm(params: {
-    addressId: string;
+    addressId: string | null;
     buyerId: ShopOwnerId;
     receiverId: ShopOwnerId;
     isGift: boolean;
@@ -264,7 +264,7 @@ export default function ShopV2App({ onBack }: Props) {
       shopName,
       items,
       totalPrice,
-      addressId: params.addressId,
+      addressId: params.addressId ?? null,
       status: "active",
       logistics: [
         { stage: "placed", at: Date.now() },

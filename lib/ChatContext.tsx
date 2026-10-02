@@ -1744,14 +1744,28 @@ export function ChatProvider({
       const maxMs = cfg.requestDelayMax * 1000;
       const delay = randomInteger(minMs, maxMs);
 
-      window.setTimeout(() => {
+      window.setTimeout(async () => {
         const cfgNow = settingsRef.current.avatarSwitch;
         /* 复用"用户请求换头像"的答应概率？不，礼物用固定 75% */
         const accepted = Math.random() < 0.75;
 
         if (accepted) {
+          /* ★ 从角色地址池抽一个地址 */
+          let addressText = "";
+          try {
+            const { loadCardPool, pickFromPool } =
+              await import("@/lib/cardPoolsStorage");
+            const pool = loadCardPool("roleAddress");
+            addressText =
+              pickFromPool(pool, receiver) ??
+              "（未填写地址）";
+          } catch (e) {
+            console.warn("抽角色地址失败:", e);
+            addressText = "（未填写地址）";
+          }
+
           /* 更新订单 */
-          acceptOrderGift(order.id);
+          acceptOrderGift(order.id, { addressText });
 
           /* 更新消息状态 */
           updateThreadMessages(targetThreadId, (prev) =>
@@ -1839,7 +1853,7 @@ export function ChatProvider({
       const orderId = msg.gift.orderId;
 
       if (accepted) {
-        acceptOrderGift(orderId, addressId);
+        acceptOrderGift(orderId, { addressId });
 
         updateThreadMessages(tid, (prev) =>
           prev.map((m) => {

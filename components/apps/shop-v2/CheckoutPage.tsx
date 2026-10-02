@@ -25,7 +25,7 @@ type Props = {
   imageUrls: Record<string, string>;
   onBack: () => void;
   onConfirm: (params: {
-    addressId: string;
+    addressId: string | null;
     buyerId: ShopOwnerId;
     receiverId: ShopOwnerId;
     isGift: boolean;
@@ -50,10 +50,15 @@ export default function CheckoutPage({
     useState<ReceiverChoice>("you");
 
   useEffect(() => {
-    const ownerId: ShopOwnerId = receiver;
-    const list = loadAddressesByOwner(ownerId);
+    if (receiver !== "you") {
+      /* 送角色：不用地址 */
+      setAddresses([]);
+      setSelectedAddressId(null);
+      return;
+    }
+    const list = loadAddressesByOwner("you");
     setAddresses(list);
-    const def = getDefaultAddress(ownerId);
+    const def = getDefaultAddress("you");
     setSelectedAddressId(def?.id ?? null);
   }, [receiver]);
 
@@ -127,17 +132,23 @@ export default function CheckoutPage({
             <div className="shopv2-checkout-block-title">
               收货地址
             </div>
-            <button
-              type="button"
-              className="shopv2-checkout-add-addr"
-              onClick={() => setShowAddressPicker(true)}
-            >
-              <MapPin size={14} strokeWidth={2.4} />
-              <span>切换</span>
-            </button>
+            {receiver === "you" && (
+              <button
+                type="button"
+                className="shopv2-checkout-add-addr"
+                onClick={() => setShowAddressPicker(true)}
+              >
+                <MapPin size={14} strokeWidth={2.4} />
+                <span>切换</span>
+              </button>
+            )}
           </div>
 
-          {selectedAddress ? (
+          {receiver !== "you" ? (
+            <div className="shopv2-checkout-hint">
+              收件方会在接受礼物后提供自己的地址
+            </div>
+          ) : selectedAddress ? (
             <div className="shopv2-checkout-addr">
               <div className="shopv2-checkout-addr-name">
                 <span>{selectedAddress.name}</span>
@@ -261,21 +272,26 @@ export default function CheckoutPage({
         <button
           type="button"
           className="shopv2-bottom-btn primary"
-          disabled={!selectedAddressId}
+          disabled={
+            receiver === "you" && !selectedAddressId
+          }
           onClick={() => {
-            if (!selectedAddressId) {
+            if (receiver === "you" && !selectedAddressId) {
               window.alert("请先选择收货地址");
               return;
             }
             onConfirm({
-              addressId: selectedAddressId,
+              addressId:
+                receiver === "you"
+                  ? selectedAddressId
+                  : null,
               buyerId: "you",
               receiverId: receiver,
               isGift: receiver !== "you",
             });
           }}
           style={
-            !selectedAddressId
+            receiver === "you" && !selectedAddressId
               ? { opacity: 0.4, cursor: "not-allowed" }
               : undefined
           }
