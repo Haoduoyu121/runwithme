@@ -883,6 +883,7 @@ function ChatThreadView({
     requestAvatarChange,
     sendAvatarRequest,
     resolveAvatarRequest,
+    resolveRoleGift,
     activeThreadId,
   } = useChat();
 
@@ -2008,7 +2009,6 @@ function ChatThreadView({
                 message={message}
                 names={names}
                 onOpenOrder={(orderId) => {
-                  /* 跳转到 Shop 订单详情 */
                   try {
                     window.dispatchEvent(
                       new CustomEvent(
@@ -2018,6 +2018,20 @@ function ChatThreadView({
                     );
                   } catch {}
                 }}
+                onAccept={
+                  message.gift?.receiver === "You" &&
+                  message.gift?.status === "pending"
+                    ? () =>
+                        resolveRoleGift(message.id, true)
+                    : undefined
+                }
+                onReject={
+                  message.gift?.receiver === "You" &&
+                  message.gift?.status === "pending"
+                    ? () =>
+                        resolveRoleGift(message.id, false)
+                    : undefined
+                }
               />
             )}
           </div>

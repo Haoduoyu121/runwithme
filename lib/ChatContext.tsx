@@ -52,6 +52,7 @@ import {
   rejectOrderGift,
 } from "@/lib/orderStorage";
 import type { Order } from "@/data/order";
+import { tryRoleSendGift } from "@/lib/roleShopping";
 import {
   loadWallet,
   saveWallet,
@@ -252,6 +253,12 @@ type ChatContextValue = {
 
   /* ★ Shop v2 送礼到 Chat */
   sendShopGiftRequest: (order: Order) => Promise<void>;
+
+  /* ★ 用户响应角色礼物 */
+  resolveRoleGift: (
+    messageId: string,
+    accepted: boolean
+  ) => void;
 };
 
 const ChatContext =
@@ -1812,6 +1819,136 @@ export function ChatProvider({
     [addMessage, updateThreadMessages]
   );
 
+  /* =========================================================
+     ★ 用户响应角色礼物
+     ========================================================= */
+
+  const resolveRoleGift = useCallback(
+    (messageId: string, accepted: boolean) => {
+      const tid = activeThreadIdRef.current;
+      const list = threadsRef.current[tid];
+      const msg = list.find((m) => m.id === messageId);
+      if (!msg?.gift?.orderId) return;
+      if (msg.gift.status !== "pending") return;
+
+      const orderId = msg.gift.orderId;
+      const receiver =
+        (msg.gift.buyer as "Levi" | "Erwin") ?? "Levi";
+
+      if (accepted) {
+        acceptOrderGift(orderId);
+
+        updateThreadMessages(tid, (prev) =>
+          prev.map((m) => {
+            if (m.id !== messageId || !m.gift) return m;
+            if (m.gift.status !== "pending") return m;
+            return {
+              ...m,
+              gift: {
+                ...m.gift,
+                status: "accepted",
+                resolvedAt: Date.now(),
+              },
+            };
+          })
+        );
+
+        /* 用户回一句 */
+        addMessage(
+          {
+            id: createMessageId(),
+            sender: "You",
+            type: "text",
+            text: "收下了，谢谢。",
+            timestamp: Date.now(),
+          },
+          { threadId: tid }
+        );
+      } else {
+        rejectOrderGift(orderId);
+
+        updateThreadMessages(tid, (prev) =>
+          prev.map((m) => {
+            if (m.id !== messageId || !m.gift) return m;
+            if (m.gift.status !== "pending") return m;
+            return {
+              ...m,
+              gift: {
+                ...m.gift,
+                status: "rejected",
+                resolvedAt: Date.now(),
+              },
+            };
+          })
+        );
+
+        addMessage(
+          {
+            id: createMessageId(),
+            sender: "You",
+            type: "text",
+            text: "不用了，谢谢。",
+            timestamp: Date.now(),
+          },
+          { threadId: tid }
+        );
+      }
+      void receiver;
+    },
+    [addMessage, updateThreadMessages]
+  );
+
+  /* =========================================================
+     ★ 角色主动送礼（后台定时器）
+     ========================================================= */
+
+  useEffect(() => {
+    const cfg = settings.roleShopping;
+    if (!cfg.enabled) return;
+
+    const minMs = cfg.intervalMin * 60 * 1000;
+    const maxMs = cfg.intervalMax * 60 * 1000;
+
+    let timer: number | null = null;
+    let cancelled = false;
+
+    function schedule() {
+      const delay = randomInteger(minMs, maxMs);
+      timer = window.setTimeout(async () => {
+        if (cancelled) return;
+        const cfgNow = settingsRef.current.roleShopping;
+        if (
+          cfgNow.enabled &&
+          Math.random() < cfgNow.chance
+        ) {
+          try {
+            const { owner, threadId: targetTid } =
+              pickBgOwnerForThread();
+            await tryRoleSendGift(owner, targetTid, {
+              addMessage,
+            });
+          } catch (e) {
+            console.error("角色主动送礼失败:", e);
+          }
+        }
+        if (!cancelled) schedule();
+      }, delay);
+    }
+
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [
+    addMessage,
+    settings.roleShopping.enabled,
+    settings.roleShopping.intervalMin,
+    settings.roleShopping.intervalMax,
+    settings.roleShopping.chance,
+  ]);
+
   return (
     <ChatContext.Provider
       value={{
@@ -1841,6 +1978,7 @@ export function ChatProvider({
         sendAvatarRequest,
         resolveAvatarRequest,
         sendShopGiftRequest,
+        resolveRoleGift,
       }}
     >
       {children}

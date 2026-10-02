@@ -157,6 +157,24 @@ export type ShopDeliverySettings = {
   speed: number;
 };
 
+/* ---------- 角色反向购买 ---------- */
+
+export type RoleShoppingSettings = {
+  enabled: boolean;
+  /** 后台间隔（分钟） */
+  intervalMin: number;
+  intervalMax: number;
+  /** 每次掷骰子概率 0~1 */
+  chance: number;
+  /** 谁买：随机 / 指定 */
+  targetMode: "random" | "levi" | "erwin";
+  /** 用 AI 生成概率（0~1），其余从商品池挑 */
+  aiChance: number;
+  /** 金额范围 */
+  amountMin: number;
+  amountMax: number;
+};
+
 /* ---------- 角色显示名 ---------- */
 
 export type CharacterNames = {
@@ -205,6 +223,7 @@ export type SystemSettings = {
   roleRemark: RoleRemarkSettings;
   userRemarks: UserRemarks;
   shopDelivery: ShopDeliverySettings;
+  roleShopping: RoleShoppingSettings;
 
   chatCustomCSS: string;
 };
@@ -349,6 +368,16 @@ const defaultSettings: SystemSettings = {
   },
   shopDelivery: {
     speed: 5,
+  },
+  roleShopping: {
+    enabled: false,
+    intervalMin: 120,
+    intervalMax: 480,
+    chance: 0.15,
+    targetMode: "random",
+    aiChance: 0.5,
+    amountMin: 50,
+    amountMax: 300,
   },
   chatCustomCSS: "",
 };
@@ -686,6 +715,48 @@ export function loadSystemSettings(): SystemSettings {
               : d.speed,
         };
       })(),
+      roleShopping: (() => {
+        const r = parsed.roleShopping ?? {};
+        const d = defaultSettings.roleShopping;
+        return {
+          enabled:
+            typeof r.enabled === "boolean"
+              ? r.enabled
+              : d.enabled,
+          intervalMin: clampNum(
+            r.intervalMin,
+            1,
+            1440,
+            d.intervalMin
+          ),
+          intervalMax: clampNum(
+            r.intervalMax,
+            1,
+            1440,
+            d.intervalMax
+          ),
+          chance: clamp01(r.chance, d.chance),
+          targetMode:
+            r.targetMode === "levi" ||
+            r.targetMode === "erwin" ||
+            r.targetMode === "random"
+              ? r.targetMode
+              : d.targetMode,
+          aiChance: clamp01(r.aiChance, d.aiChance),
+          amountMin: clampNum(
+            r.amountMin,
+            1,
+            100000,
+            d.amountMin
+          ),
+          amountMax: clampNum(
+            r.amountMax,
+            1,
+            100000,
+            d.amountMax
+          ),
+        };
+      })(),
       chatCustomCSS:
         typeof parsed.chatCustomCSS === "string"
           ? parsed.chatCustomCSS
@@ -772,6 +843,10 @@ export function updateSystemSettings(
     shopDelivery: {
       ...current.shopDelivery,
       ...(updates.shopDelivery ?? {}),
+    },
+    roleShopping: {
+      ...current.roleShopping,
+      ...(updates.roleShopping ?? {}),
     },
   };
 

@@ -2254,6 +2254,270 @@ export default function PotatoApp({ onBack }: Props) {
               恢复默认卡池
             </button>
 
+                        {/* ---------- 角色反向购买 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              角色反向购买
+            </div>
+            <div className="potato-hint">
+              角色会主动给你买礼物 / 点外卖，在 Chat 里发礼物请求。
+              接受后走物流，拒绝后退款回角色钱包。
+            </div>
+
+            <div className="potato-sentence-row">
+              <div className="potato-sentence-label">
+                <strong>启用</strong>
+                <small>默认关闭，避免太频繁</small>
+              </div>
+              <button
+                type="button"
+                className={
+                  "potato-switch" +
+                  (settings.roleShopping.enabled
+                    ? " is-on"
+                    : "")
+                }
+                onClick={() =>
+                  updateSettings({
+                    roleShopping: {
+                      ...settings.roleShopping,
+                      enabled:
+                        !settings.roleShopping.enabled,
+                    },
+                  })
+                }
+                aria-label="开关"
+              />
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                谁买
+              </span>
+              <div className="potato-inline-nums">
+                {(
+                  [
+                    { v: "random" as const, l: "随机" },
+                    { v: "levi" as const, l: "Levi" },
+                    { v: "erwin" as const, l: "Erwin" },
+                  ]
+                ).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    className={
+                      "potato-chip" +
+                      (settings.roleShopping.targetMode ===
+                      opt.v
+                        ? " is-on"
+                        : "")
+                    }
+                    onClick={() =>
+                      updateSettings({
+                        roleShopping: {
+                          ...settings.roleShopping,
+                          targetMode: opt.v,
+                        },
+                      })
+                    }
+                  >
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                触发概率
+              </span>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.roleShopping.chance * 100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      roleShopping: {
+                        ...settings.roleShopping,
+                        chance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">%</span>
+              </label>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                间隔
+              </span>
+              <div className="potato-inline-nums">
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最少
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.roleShopping.intervalMin
+                    }
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleShopping: {
+                          ...settings.roleShopping,
+                          intervalMin: Math.max(
+                            1,
+                            Math.min(
+                              1440,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最多
+                  </span>
+                  <input
+                    type="number"
+                    value={
+                      settings.roleShopping.intervalMax
+                    }
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleShopping: {
+                          ...settings.roleShopping,
+                          intervalMax: Math.max(
+                            1,
+                            Math.min(
+                              1440,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                金额范围
+              </span>
+              <div className="potato-inline-nums">
+                <label className="potato-num">
+                  <input
+                    type="number"
+                    value={
+                      settings.roleShopping.amountMin
+                    }
+                    min={1}
+                    step={10}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleShopping: {
+                          ...settings.roleShopping,
+                          amountMin: Math.max(
+                            1,
+                            Number(e.target.value) || 1
+                          ),
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <span className="potato-num-suffix">
+                  ~
+                </span>
+                <label className="potato-num">
+                  <input
+                    type="number"
+                    value={
+                      settings.roleShopping.amountMax
+                    }
+                    min={1}
+                    step={10}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleShopping: {
+                          ...settings.roleShopping,
+                          amountMax: Math.max(
+                            1,
+                            Number(e.target.value) || 1
+                          ),
+                        },
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="potato-sentence-row">
+              <div className="potato-sentence-label">
+                <strong>AI 生成</strong>
+                <small>
+                  用 AI 生成商品；关掉则从现有商品池挑。
+                  未配置 AI 时自动回退。
+                </small>
+              </div>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.roleShopping.aiChance * 100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      roleShopping: {
+                        ...settings.roleShopping,
+                        aiChance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">%</span>
+              </label>
+            </div>
+
             {(settings.userRemarks.Levi ||
               settings.userRemarks.Erwin) && (
               <div className="potato-sentence-col">

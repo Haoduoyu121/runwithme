@@ -73229,3 +73229,45 @@ html[data-runwithme-theme="dark"] .shopv2-ai-item-desc {
 .shopv2-ai-item-del:active {
   background: rgba(0, 0, 0, 0.06);
 }
+/* =========================================================
+   Shop v2 · 第 6 批（角色反向购买）
+   ========================================================= */
+
+.gift-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.gift-card-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.gift-card-btn:active {
+  transform: scale(0.97);
+}
+.gift-card-btn.accept {
+  background: #111;
+  color: #fff;
+}
+html[data-runwithme-theme="dark"] .gift-card-btn.accept {
+  background: #fff;
+  color: #111;
+}
+.gift-card-btn.reject {
+  background: rgba(0, 0, 0, 0.06);
+  color: #555;
+}
+html[data-runwithme-theme="dark"] .gift-card-btn.reject {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}

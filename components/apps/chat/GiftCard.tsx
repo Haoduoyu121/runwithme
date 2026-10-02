@@ -24,17 +24,22 @@ type Props = {
   message: ChatMessage;
   names: { levi: string; erwin: string; you: string };
   onOpenOrder?: (orderId: string) => void;
+  /** 用户接受角色礼物 */
+  onAccept?: () => void;
+  /** 用户拒绝角色礼物 */
+  onReject?: () => void;
 };
 
 export default function GiftCard({
   message,
   names,
   onOpenOrder,
+  onAccept,
+  onReject,
 }: Props) {
   const g = message.gift;
   const [order, setOrder] = useState<Order | null>(null);
 
-  /* 如果关联了订单，订阅订单变化 */
   useEffect(() => {
     if (!g?.orderId) {
       setOrder(null);
@@ -64,24 +69,37 @@ export default function GiftCard({
           ? names.you
           : g.receiver;
 
+  const fromName =
+    g.buyer === "Levi"
+      ? names.levi
+      : g.buyer === "Erwin"
+        ? names.erwin
+        : names.you;
+
   const isOutgoing = g.buyer === "You";
   const isFood = g.category === "food";
 
   const title = isOutgoing
     ? `送给 ${toName} 的${isFood ? "外卖" : "礼物"}`
-    : `${g.buyer} 送的${isFood ? "外卖" : "礼物"}`;
+    : `${fromName} 送的${isFood ? "外卖" : "礼物"}`;
 
-  /* 订单状态优先 */
   const orderStage: OrderStage | null =
     order && order.logistics.length > 0
       ? currentStage(order)
       : null;
 
-  /* 最终状态 */
   const finalStatus =
     order?.status === "cancelled"
       ? "rejected"
       : g.status;
+
+  /* 可响应：用户是收件人 + pending */
+  const canRespond =
+    !isOutgoing &&
+    g.receiver === "You" &&
+    finalStatus === "pending" &&
+    !!onAccept &&
+    !!onReject;
 
   return (
     <div
@@ -111,21 +129,25 @@ export default function GiftCard({
 
       <div className="gift-card-divider" />
 
-      {/* 状态 */}
       <div className="gift-card-status">
-        {finalStatus === "pending" && (
+        {finalStatus === "pending" && !canRespond && (
           <span>等待 {toName} 接受…</span>
+        )}
+        {finalStatus === "pending" && canRespond && (
+          <span>等待你接受</span>
         )}
         {finalStatus === "accepted" && orderStage && (
           <>
             <Check size={13} strokeWidth={3} />
-            <span>{stageLabel(order?.kind ?? "goods", orderStage)}</span>
+            <span>
+              {stageLabel(order?.kind ?? "goods", orderStage)}
+            </span>
           </>
         )}
         {finalStatus === "accepted" && !orderStage && (
           <>
             <Check size={13} strokeWidth={3} />
-            <span>已收下</span>
+            <span>已接受</span>
           </>
         )}
         {finalStatus === "rejected" && (
@@ -136,7 +158,33 @@ export default function GiftCard({
         )}
       </div>
 
-      {/* 查看订单按钮 */}
+      {canRespond && (
+        <div className="gift-card-actions">
+          <button
+            type="button"
+            className="gift-card-btn reject"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReject?.();
+            }}
+          >
+            <X size={14} strokeWidth={2.6} />
+            <span>拒绝</span>
+          </button>
+          <button
+            type="button"
+            className="gift-card-btn accept"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAccept?.();
+            }}
+          >
+            <Check size={14} strokeWidth={2.6} />
+            <span>接受</span>
+          </button>
+        </div>
+      )}
+
       {order && onOpenOrder && (
         <button
           type="button"
