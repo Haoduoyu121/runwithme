@@ -11,6 +11,11 @@ export type ProductSpec = {
   options: string[]; // ["米白", "粉色"]
 };
 
+export type ProductTopping = {
+  name: string;      // "珍珠"
+  price: number;     // 3
+};
+
 export type ProductReview = {
   id: string;
   authorId: ShopOwnerId;
@@ -32,6 +37,8 @@ export type ShopProduct = {
   price: number;
   originalPrice?: number;
   specs: ProductSpec[];
+  /** ★ 加料（多选） */
+  toppings?: ProductTopping[];
   tags: string[];
   rating: number;
   reviews: ProductReview[];
@@ -62,6 +69,8 @@ export type CartItem = {
   id: string;
   productId: string;
   specSelections: Record<string, string>;
+  /** ★ 选中的加料 name */
+  selectedToppings?: string[];
   quantity: number;
   addedAt: number;
 };
@@ -119,6 +128,23 @@ export function createCartItemId(): string {
   return `cart-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2, 9)}`;
+}
+
+/**
+ * 计算单个商品（含加料）的单价
+ */
+export function calcProductUnitPrice(
+  product: ShopProduct,
+  selectedToppings: string[] | undefined
+): number {
+  let price = product.price;
+  if (product.toppings && selectedToppings) {
+    for (const name of selectedToppings) {
+      const t = product.toppings.find((x) => x.name === name);
+      if (t) price += t.price;
+    }
+  }
+  return price;
 }
 
 /* ---------- 默认数据 ---------- */
@@ -302,6 +328,12 @@ export const DEFAULT_PRODUCTS: ShopProduct[] = [
       { name: "冰量", options: ["正常冰", "少冰", "去冰"] },
       { name: "糖度", options: ["正常", "少糖", "无糖"] },
     ],
+    toppings: [
+      { name: "珍珠", price: 3 },
+      { name: "芋圆", price: 4 },
+      { name: "椰果", price: 3 },
+      { name: "奶盖", price: 5 },
+    ],
     tags: ["果茶"],
     rating: 4.9,
     reviews: [],
@@ -321,6 +353,11 @@ export const DEFAULT_PRODUCTS: ShopProduct[] = [
     specs: [
       { name: "冰量", options: ["正常冰", "少冰", "去冰"] },
       { name: "糖度", options: ["正常", "少糖", "无糖"] },
+    ],
+    toppings: [
+      { name: "珍珠", price: 3 },
+      { name: "芋圆", price: 4 },
+      { name: "椰果", price: 3 },
     ],
     tags: ["芝士", "果茶"],
     rating: 4.8,

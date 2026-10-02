@@ -14,10 +14,11 @@ import {
   upsertAddress,
 } from "@/lib/addressStorage";
 
-import type {
-  Cart,
-  ShopProduct,
-  ShopOwnerId,
+import {
+  calcProductUnitPrice,
+  type Cart,
+  type ShopProduct,
+  type ShopOwnerId,
 } from "@/data/shopV2";
 
 import AddressSheet from "./AddressSheet";
@@ -25,7 +26,7 @@ import AddressSheet from "./AddressSheet";
 type Props = {
   cart: Cart;
   products: ShopProduct[];
-  shopsMap: Record<string, string>; // shopId → shopName
+  shopsMap: Record<string, string>;
   imageUrls: Record<string, string>;
   onBack: () => void;
   onConfirm: (params: {
@@ -41,7 +42,6 @@ type ReceiverChoice = "you" | "levi" | "erwin";
 export default function CheckoutPage({
   cart,
   products,
-  shopsMap,
   imageUrls,
   onBack,
   onConfirm,
@@ -58,7 +58,6 @@ export default function CheckoutPage({
 
   const buyerId: ShopOwnerId = "you";
 
-  /* 加载地址（送给自己 → 用户地址；送角色 → 角色地址） */
   useEffect(() => {
     const ownerId: ShopOwnerId = receiver;
     const list = loadAddressesByOwner(ownerId);
@@ -74,7 +73,12 @@ export default function CheckoutPage({
 
   const total = cart.items.reduce((sum, it) => {
     const p = productMap.get(it.productId);
-    return sum + (p ? p.price * it.quantity : 0);
+    if (!p) return sum;
+    return (
+      sum +
+      calcProductUnitPrice(p, it.selectedToppings) *
+        it.quantity
+    );
   }, 0);
 
   const selectedAddress = addresses.find(
@@ -96,7 +100,6 @@ export default function CheckoutPage({
       </header>
 
       <div className="shopv2-scroll">
-        {/* 收货对象 */}
         <div className="shopv2-checkout-block">
           <div className="shopv2-checkout-block-title">
             送给谁
@@ -129,7 +132,6 @@ export default function CheckoutPage({
           )}
         </div>
 
-        {/* 地址 */}
         <div className="shopv2-checkout-block">
           <div className="shopv2-checkout-block-header">
             <div className="shopv2-checkout-block-title">
@@ -180,8 +182,6 @@ export default function CheckoutPage({
                 className="shopv2-checkout-add-btn"
                 onClick={() => {
                   setEditingAddress(null);
-                  setShowAddressPicker(false);
-                  /* 直接打开新建 sheet */
                   setShowAddressPicker(true);
                 }}
               >
@@ -192,7 +192,6 @@ export default function CheckoutPage({
           )}
         </div>
 
-        {/* 商品清单 */}
         <div className="shopv2-checkout-block">
           <div className="shopv2-checkout-block-title">
             商品清单
@@ -209,6 +208,17 @@ export default function CheckoutPage({
               )
                 .map(([k, v]) => `${k}: ${v}`)
                 .join(" · ");
+              const toppingText =
+                it.selectedToppings &&
+                it.selectedToppings.length > 0
+                  ? `加料：${it.selectedToppings.join(
+                      "、"
+                    )}`
+                  : "";
+              const unitPrice = calcProductUnitPrice(
+                p,
+                it.selectedToppings
+              );
               return (
                 <div
                   key={it.id}
@@ -232,8 +242,13 @@ export default function CheckoutPage({
                         {specText}
                       </div>
                     )}
+                    {toppingText && (
+                      <div className="shopv2-checkout-item-spec">
+                        {toppingText}
+                      </div>
+                    )}
                     <div className="shopv2-checkout-item-price">
-                      ¥{p.price} × {it.quantity}
+                      ¥{unitPrice} × {it.quantity}
                     </div>
                   </div>
                 </div>
@@ -245,7 +260,6 @@ export default function CheckoutPage({
         <div style={{ height: 100 }} />
       </div>
 
-      {/* 底部结算 */}
       <div className="shopv2-bottom-bar">
         <div className="shopv2-bottom-total">
           <span className="shopv2-bottom-total-label">
@@ -291,20 +305,9 @@ export default function CheckoutPage({
             setSelectedAddressId(id);
             setShowAddressPicker(false);
           }}
-          onNew={() => {
-            setEditingAddress(null);
-            setShowAddressPicker(false);
-          }}
-          onEdit={(a) => {
-            setEditingAddress(a);
-            setShowAddressPicker(false);
-          }}
         />
       )}
 
-      {editingAddress !== null || showAddressPicker === false && !addresses.length ? null : null}
-
-      {/* 编辑 / 新建地址 */}
       {editingAddress !== null && (
         <AddressSheet
           ownerId={receiver}
@@ -333,16 +336,12 @@ function AddressPickerSheet({
   selectedId,
   onClose,
   onPick,
-  onNew,
-  onEdit,
 }: {
   ownerId: ShopOwnerId;
   addresses: Address[];
   selectedId: string | null;
   onClose: () => void;
   onPick: (id: string) => void;
-  onNew: () => void;
-  onEdit: (a: Address) => void;
 }) {
   const [showNew, setShowNew] = useState(false);
   const [editTarget, setEditTarget] =

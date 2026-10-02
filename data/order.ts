@@ -24,6 +24,8 @@ export type OrderItem = {
   productEmoji: string;
   productImageId?: string;
   specSelections: Record<string, string>;
+  /** ★ 选中的加料 */
+  selectedToppings?: string[];
   quantity: number;
   price: number;
 };

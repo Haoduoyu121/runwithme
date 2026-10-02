@@ -17,7 +17,10 @@ import type {
   Shop,
 } from "@/data/shopV2";
 
-import { createCartItemId } from "@/data/shopV2";
+import {
+  createCartItemId,
+  calcProductUnitPrice,
+} from "@/data/shopV2";
 import { createOrderId } from "@/data/order";
 
 import {
@@ -145,7 +148,8 @@ export default function ShopV2App({ onBack }: Props) {
   function handleAddToCart(
     productId: string,
     specSelections: Record<string, string>,
-    quantity: number
+    quantity: number,
+    selectedToppings: string[]
   ) {
     const next: Cart = {
       ...cart,
@@ -155,6 +159,10 @@ export default function ShopV2App({ onBack }: Props) {
           id: createCartItemId(),
           productId,
           specSelections,
+          selectedToppings:
+            selectedToppings.length > 0
+              ? selectedToppings
+              : undefined,
           quantity,
           addedAt: Date.now(),
         },
@@ -219,14 +227,19 @@ export default function ShopV2App({ onBack }: Props) {
       .map((it) => {
         const p = productMap.get(it.productId);
         if (!p) return null;
+        const unitPrice = calcProductUnitPrice(
+          p,
+          it.selectedToppings
+        );
         return {
           productId: p.id,
           productName: p.name,
           productEmoji: p.emoji,
           productImageId: p.imageId,
           specSelections: it.specSelections,
+          selectedToppings: it.selectedToppings,
           quantity: it.quantity,
-          price: p.price,
+          price: unitPrice,
         };
       })
       .filter(
@@ -327,8 +340,13 @@ export default function ShopV2App({ onBack }: Props) {
             shopName={shopNameOf(p.shopId)}
             imageUrl={imgUrl}
             onBack={() => setView({ kind: "home" })}
-            onAddToCart={(selections, qty) =>
-              handleAddToCart(p.id, selections, qty)
+            onAddToCart={(selections, qty, toppings) =>
+              handleAddToCart(
+                p.id,
+                selections,
+                qty,
+                toppings
+              )
             }
           />
           {showCart && (

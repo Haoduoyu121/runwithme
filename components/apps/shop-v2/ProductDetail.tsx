@@ -3,13 +3,15 @@
 import { useMemo, useState } from "react";
 import {
   ChevronLeft,
-  Image as ImageIcon,
   Minus,
   Plus,
   ShoppingCart,
 } from "lucide-react";
 
-import type { ShopProduct } from "@/data/shopV2";
+import {
+  calcProductUnitPrice,
+  type ShopProduct,
+} from "@/data/shopV2";
 
 type Props = {
   product: ShopProduct;
@@ -18,7 +20,8 @@ type Props = {
   onBack: () => void;
   onAddToCart: (
     specSelections: Record<string, string>,
-    quantity: number
+    quantity: number,
+    selectedToppings: string[]
   ) => void;
 };
 
@@ -29,7 +32,6 @@ export default function ProductDetail({
   onBack,
   onAddToCart,
 }: Props) {
-  /* 默认选规格第一项 */
   const [selections, setSelections] = useState<
     Record<string, string>
   >(() => {
@@ -41,12 +43,27 @@ export default function ProductDetail({
     }
     return init;
   });
+
+  const [toppings, setToppings] = useState<string[]>([]);
   const [qty, setQty] = useState(1);
 
-  const total = useMemo(
-    () => product.price * qty,
-    [product.price, qty]
+  const unitPrice = useMemo(
+    () => calcProductUnitPrice(product, toppings),
+    [product, toppings]
   );
+
+  const total = useMemo(
+    () => unitPrice * qty,
+    [unitPrice, qty]
+  );
+
+  function toggleTopping(name: string) {
+    setToppings((prev) =>
+      prev.includes(name)
+        ? prev.filter((x) => x !== name)
+        : [...prev, name]
+    );
+  }
 
   return (
     <div className="shopv2-page">
@@ -63,7 +80,6 @@ export default function ProductDetail({
       </header>
 
       <div className="shopv2-scroll">
-        {/* 商品图 */}
         <div className="shopv2-product-hero">
           {imageUrl ? (
             <img src={imageUrl} alt={product.name} />
@@ -74,11 +90,10 @@ export default function ProductDetail({
           )}
         </div>
 
-        {/* 价格块 */}
         <div className="shopv2-product-price-block">
           <div className="shopv2-product-price">
             <span className="shopv2-product-price-current">
-              ¥{product.price}
+              ¥{unitPrice}
             </span>
             {product.originalPrice &&
               product.originalPrice > product.price && (
@@ -102,7 +117,6 @@ export default function ProductDetail({
           </div>
         </div>
 
-        {/* 规格 */}
         {product.specs.map((sp) => (
           <div
             key={sp.name}
@@ -136,7 +150,38 @@ export default function ProductDetail({
           </div>
         ))}
 
-        {/* 数量 */}
+        {/* ★ 加料 */}
+        {product.toppings && product.toppings.length > 0 && (
+          <div className="shopv2-product-spec">
+            <div className="shopv2-product-spec-title">
+              加料（可多选）
+            </div>
+            <div className="shopv2-product-spec-options">
+              {product.toppings.map((t) => {
+                const active = toppings.includes(t.name);
+                return (
+                  <button
+                    key={t.name}
+                    type="button"
+                    className={
+                      "shopv2-spec-chip" +
+                      (active ? " active" : "")
+                    }
+                    onClick={() => toggleTopping(t.name)}
+                  >
+                    {t.name}
+                    {t.price > 0 && (
+                      <span className="shopv2-topping-price">
+                        +¥{t.price}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="shopv2-product-spec">
           <div className="shopv2-product-spec-title">
             数量
@@ -155,14 +200,15 @@ export default function ProductDetail({
             <button
               type="button"
               className="shopv2-qty-btn"
-              onClick={() => setQty((q) => Math.min(99, q + 1))}
+              onClick={() =>
+                setQty((q) => Math.min(99, q + 1))
+              }
             >
               <Plus size={14} strokeWidth={2.6} />
             </button>
           </div>
         </div>
 
-        {/* 标签 */}
         {product.tags.length > 0 && (
           <div className="shopv2-product-tags">
             {product.tags.map((t) => (
@@ -176,7 +222,6 @@ export default function ProductDetail({
         <div style={{ height: 90 }} />
       </div>
 
-      {/* 底部操作栏 */}
       <div className="shopv2-bottom-bar">
         <div className="shopv2-bottom-total">
           <span className="shopv2-bottom-total-label">
@@ -189,7 +234,9 @@ export default function ProductDetail({
         <button
           type="button"
           className="shopv2-bottom-btn primary"
-          onClick={() => onAddToCart(selections, qty)}
+          onClick={() =>
+            onAddToCart(selections, qty, toppings)
+          }
         >
           <ShoppingCart size={16} strokeWidth={2.4} />
           <span>加入购物车</span>

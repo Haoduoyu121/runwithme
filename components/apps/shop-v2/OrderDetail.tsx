@@ -176,6 +176,13 @@ export default function OrderDetail({
             )
               .map(([k, v]) => `${k}: ${v}`)
               .join(" · ");
+            const toppingText =
+              it.selectedToppings &&
+              it.selectedToppings.length > 0
+                ? `加料：${it.selectedToppings.join(
+                    "、"
+                  )}`
+                : "";
             return (
               <div
                 key={idx}
@@ -197,6 +204,11 @@ export default function OrderDetail({
                   {specText && (
                     <div className="shopv2-order-detail-item-spec">
                       {specText}
+                    </div>
+                  )}
+                  {toppingText && (
+                    <div className="shopv2-order-detail-item-spec">
+                      {toppingText}
                     </div>
                   )}
                   <div className="shopv2-order-detail-item-price">

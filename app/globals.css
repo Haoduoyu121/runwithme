@@ -73019,3 +73019,14 @@ html[data-runwithme-theme="dark"] .gift-card-view-order {
   );
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
+/* =========================================================
+   Shop v2 · 第 4 批（加料）
+   ========================================================= */
+
+.shopv2-topping-price {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.75;
+}

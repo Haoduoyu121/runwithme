@@ -1249,7 +1249,16 @@ function ChatThreadView({
       });
     }
 
-      /* ★ 从礼物卡片跳转 Shop 订单 */
+    window.addEventListener("runwithme:kb-change", onKb);
+    return () => {
+      window.removeEventListener(
+        "runwithme:kb-change",
+        onKb
+      );
+    };
+  }, []);
+
+  /* ★ 从礼物卡片跳转 Shop 订单 */
   useEffect(() => {
     function onOpenOrder(e: Event) {
       const detail = (
@@ -1274,15 +1283,6 @@ function ChatThreadView({
       window.removeEventListener(
         "runwithme:open-shop-order",
         onOpenOrder
-      );
-    };
-  }, []);
-
-    window.addEventListener("runwithme:kb-change", onKb);
-    return () => {
-      window.removeEventListener(
-        "runwithme:kb-change",
-        onKb
       );
     };
   }, []);

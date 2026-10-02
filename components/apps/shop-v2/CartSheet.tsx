@@ -1,10 +1,16 @@
 "use client";
 
-import { Check, ShoppingBag, Trash2, X } from "lucide-react";
+import {
+  Check,
+  ShoppingBag,
+  Trash2,
+  X,
+} from "lucide-react";
 
-import type {
-  Cart,
-  ShopProduct,
+import {
+  calcProductUnitPrice,
+  type Cart,
+  type ShopProduct,
 } from "@/data/shopV2";
 
 type Props = {
@@ -29,6 +35,16 @@ export default function CartSheet({
   onCheckout,
 }: Props) {
   const productMap = new Map(products.map((p) => [p.id, p]));
+
+  const total = cart.items.reduce((sum, it) => {
+    const p = productMap.get(it.productId);
+    if (!p) return sum;
+    return (
+      sum +
+      calcProductUnitPrice(p, it.selectedToppings) *
+        it.quantity
+    );
+  }, 0);
 
   return (
     <div
@@ -77,6 +93,17 @@ export default function CartSheet({
               )
                 .map(([k, v]) => `${k}: ${v}`)
                 .join(" · ");
+              const toppingText =
+                item.selectedToppings &&
+                item.selectedToppings.length > 0
+                  ? `加料：${item.selectedToppings.join(
+                      "、"
+                    )}`
+                  : "";
+              const unitPrice = calcProductUnitPrice(
+                p,
+                item.selectedToppings
+              );
 
               return (
                 <div
@@ -115,8 +142,13 @@ export default function CartSheet({
                         {specText}
                       </div>
                     )}
+                    {toppingText && (
+                      <div className="shopv2-cart-spec">
+                        {toppingText}
+                      </div>
+                    )}
                     <div className="shopv2-cart-price">
-                      ¥{p.price}
+                      ¥{unitPrice}
                     </div>
                   </div>
 
@@ -162,18 +194,13 @@ export default function CartSheet({
           </div>
         )}
 
-        {/* 底部结算条 */}
         <div className="shopv2-cart-bottom">
           <div className="shopv2-cart-total">
             <span className="shopv2-cart-total-label">
               合计
             </span>
             <span className="shopv2-cart-total-amount">
-              ¥
-              {cart.items.reduce((sum, it) => {
-                const p = productMap.get(it.productId);
-                return sum + (p ? p.price * it.quantity : 0);
-              }, 0)}
+              ¥{total}
             </span>
           </div>
           <button
