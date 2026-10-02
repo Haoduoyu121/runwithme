@@ -1108,8 +1108,7 @@ export function ChatProvider({
           Math.random() < cfgNow.chance
         ) {
           try {
-            const owner =
-              Math.random() < 0.5 ? "Levi" : "Erwin";
+            const { owner } = pickBgOwnerForThread();
             const { roleRemarkUser } = await import(
               "@/lib/remarkScheduler"
             );
@@ -1400,13 +1399,18 @@ export function ChatProvider({
           Math.random() < cfgNow.userAvatarChance
         ) {
           try {
-            const owner =
-              Math.random() < 0.5 ? "Levi" : "Erwin";
-            await sendAvatarRequestFromRole({
-              owner,
-              threadId: "group",
-              addMessage,
-            });
+            const { owner, threadId: targetTid } =
+              pickBgOwnerForThread();
+
+            if (hasPendingAvatarRequest(targetTid)) {
+              /* 已有一条待处理，跳过 */
+            } else {
+              await sendAvatarRequestFromRole({
+                owner,
+                threadId: targetTid,
+                addMessage,
+              });
+            }
           } catch (e) {
             console.error("角色请求用户换头像失败:", e);
           }
@@ -1453,6 +1457,8 @@ export function ChatProvider({
           ? settingsNow.characterNames.levi
           : settingsNow.characterNames.erwin;
 
+      const tid = activeThreadIdRef.current;
+
       addMessage(
         {
           id: createMessageId(),
@@ -1461,7 +1467,7 @@ export function ChatProvider({
           text: `${ownerName} 把你的备注改成了「${result.text}」`,
           timestamp: Date.now(),
         },
-        { threadId: "group" }
+        { threadId: tid }
       );
     },
     [addMessage]
@@ -1491,6 +1497,37 @@ export function ChatProvider({
       );
     };
   }, [applyRemarkResult]);
+
+    /* =========================================================
+     ★ 后台触发的角色：跟随 active thread
+     ========================================================= */
+
+  function pickBgOwnerForThread(): {
+    owner: "Levi" | "Erwin";
+    threadId: ThreadId;
+  } {
+    const tid = activeThreadIdRef.current;
+    if (tid === "levi")
+      return { owner: "Levi", threadId: "levi" };
+    if (tid === "erwin")
+      return { owner: "Erwin", threadId: "erwin" };
+    return {
+      owner: Math.random() < 0.5 ? "Levi" : "Erwin",
+      threadId: "group",
+    };
+  }
+
+  function hasPendingAvatarRequest(
+    threadId: ThreadId
+  ): boolean {
+    const list = threadsRef.current[threadId];
+    return list.some(
+      (m) =>
+        m.type === "avatar-request" &&
+        m.avatarRequest?.to === "You" &&
+        m.avatarRequest.status === "pending"
+    );
+  }
 
   /* =========================================================
      ★ 用户请求角色换头像
