@@ -2621,9 +2621,25 @@ function ChatThreadView({
                 : null
           }
           onClose={() => setShowAvatarRequest(false)}
-          onConfirm={(requests) =>
-            requestAvatarChange(requests)
-          }
+          onConfirm={(requests) => {
+            /* 分开处理：给自己换 = 直接换；给角色换 = 走请求 */
+            void (async () => {
+              const { writeAvatar } = await import(
+                "@/lib/avatarSwitcher"
+              );
+              for (const req of requests) {
+                if (req.owner === "You") {
+                  await writeAvatar(
+                    "chat",
+                    "You",
+                    req.blob
+                  );
+                } else {
+                  requestAvatarChange([req]);
+                }
+              }
+            })();
+          }}
         />
       )}
 

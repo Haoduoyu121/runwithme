@@ -58,7 +58,7 @@ export default function AvatarRequestSheet({
       const owners: AvatarLibraryOwner[] =
         target === "Both"
           ? ["Levi", "Erwin"]
-          : [target];
+          : [target as AvatarLibraryOwner];
 
       const next: { id: string; url: string }[] = [];
       for (const o of owners) {
@@ -190,6 +190,12 @@ export default function AvatarRequestSheet({
             >
               两个都换
             </button>
+            <button
+              type="button"
+              onClick={() => handlePickOwner("You")}
+            >
+              我自己
+            </button>
           </div>
         )}
 
@@ -259,11 +265,13 @@ export default function AvatarRequestSheet({
 
             {target !== null && (
               <div className="avatar-req-hint">
-                目标：
-                {target === "Both"
-                  ? "Levi & Erwin"
-                  : target}
-                {" · "}他们会在稍后考虑是否接受
+                {target === "You"
+                  ? "直接应用到你的头像"
+                  : `目标：${
+                      target === "Both"
+                        ? "Levi & Erwin"
+                        : target
+                    } · 他们会在稍后考虑是否接受`}
               </div>
             )}
           </>

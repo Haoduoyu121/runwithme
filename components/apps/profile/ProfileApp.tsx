@@ -26,12 +26,14 @@ import {
 import WalletPage from "./WalletPage";
 import WalletDetailPage from "./WalletDetailPage";
 import SavingGoalsPage from "./SavingGoalsPage";
+import AvatarLibraryPage from "@/components/apps/potato/AvatarLibraryPage";
 
 type View =
   | { kind: "home" }
   | { kind: "wallet" }
   | { kind: "detail" }
-  | { kind: "goals" };
+  | { kind: "goals" }
+  | { kind: "avatarLib" };
 
 type Props = {
   onSubpageChange?: (isSub: boolean) => void;
@@ -169,6 +171,15 @@ export default function ProfileApp({
     );
   }
 
+  if (view.kind === "avatarLib") {
+    return (
+      <AvatarLibraryPage
+        owner="You"
+        onBack={() => setView({ kind: "home" })}
+      />
+    );
+  }
+
   /* ---------- 主页 ---------- */
 
   const balance = computeBalance(wallet);
@@ -218,6 +229,14 @@ export default function ProfileApp({
             maxLength={16}
             placeholder={names.you}
           />
+
+          <button
+            type="button"
+            className="profile-avatar-lib-btn"
+            onClick={() => setView({ kind: "avatarLib" })}
+          >
+            我的头像库
+          </button>
         </div>
 
         {/* 钱包卡片 */}

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { useSystem } from "@/lib/SystemContext";
+import { loadSystemSettings } from "@/lib/systemStorage";
 
 import {
   saveChatFile,
@@ -93,6 +94,12 @@ export default function PotatoApp({ onBack }: Props) {
   const [evalPool, setEvalPool] = useState(
     loadWalletEvalPool
   );
+    /* 特殊金额草稿 */
+  const [specialAmountsDraft, setSpecialAmountsDraft] =
+    useState<string>(() =>
+      loadSystemSettings()
+        .roleRedPacket.specialAmounts.join(", ")
+    );
   const [evalLeviDraft, setEvalLeviDraft] = useState(
     loadWalletEvalPool().Levi.join("\n")
   );
@@ -1650,17 +1657,19 @@ export default function PotatoApp({ onBack }: Props) {
               <input
                 type="text"
                 className="potato-sentence-input"
-                value={settings.roleRedPacket.specialAmounts.join(
-                  ", "
-                )}
-                onChange={(e) => {
-                  const list = e.target.value
-                    .split(/[,，\s]+/)
-                    .map((s) => parseFloat(s))
-                    .filter(
-                      (n) =>
-                        Number.isFinite(n) && n > 0
-                    );
+                value={specialAmountsDraft}
+                onChange={(e) =>
+                  setSpecialAmountsDraft(e.target.value)
+                }
+                onBlur={() => {
+                  const list: number[] =
+                    specialAmountsDraft
+                      .split(/[,，\s]+/)
+                      .map((s: string) => parseFloat(s))
+                      .filter(
+                        (n: number) =>
+                          Number.isFinite(n) && n > 0
+                      );
                   updateSettings({
                     roleRedPacket: {
                       ...settings.roleRedPacket,
@@ -1811,6 +1820,78 @@ export default function PotatoApp({ onBack }: Props) {
                   </span>
                 </label>
               </div>
+            </div>
+
+            {/* ---------- 角色给用户换头像 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              角色给用户换头像
+            </div>
+            <div className="potato-hint">
+              角色会主动从「我的头像库」里挑一张，
+              帮你换上。间隔用上面「头像自动切换」的间隔。
+            </div>
+
+            <div className="potato-sentence-row">
+              <div className="potato-sentence-label">
+                <strong>启用</strong>
+                <small>关掉后角色不会主动帮你换</small>
+              </div>
+              <button
+                type="button"
+                className={
+                  "potato-switch" +
+                  (settings.avatarSwitch.userAvatarEnabled
+                    ? " is-on"
+                    : "")
+                }
+                onClick={() =>
+                  updateSettings({
+                    avatarSwitch: {
+                      ...settings.avatarSwitch,
+                      userAvatarEnabled:
+                        !settings.avatarSwitch
+                          .userAvatarEnabled,
+                    },
+                  })
+                }
+                aria-label="开关"
+              />
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                触发概率
+              </span>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.avatarSwitch.userAvatarChance *
+                      100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      avatarSwitch: {
+                        ...settings.avatarSwitch,
+                        userAvatarChance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">%</span>
+              </label>
             </div>
           </div>
         )}

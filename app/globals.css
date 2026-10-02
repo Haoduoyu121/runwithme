@@ -69742,7 +69742,7 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
 }
 
-/* ---- 转账卡片（跟聊天气泡同款底色） ---- */
+/* ---- 转账卡片（实色） ---- */
 .redpacket-card {
   display: flex;
   flex-direction: column;
@@ -69751,17 +69751,17 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   max-width: 100%;
   padding: 14px 16px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.9);
+  background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.06);
   color: #222;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   transition: opacity 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 .chat-dark .redpacket-card {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: #2c2c30;
+  border-color: rgba(255, 255, 255, 0.08);
   color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* 已收款状态：稍微淡化 */
@@ -70146,4 +70146,29 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
 }
 .potato-sentence-input:focus {
   border-color: rgba(167, 139, 250, 0.6);
+}
+/* =========================================================
+   用户头像库入口 + 需求 3
+   ========================================================= */
+
+.profile-avatar-lib-btn {
+  margin-top: 6px;
+  padding: 8px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(167, 139, 250, 0.1);
+  color: #6d5bd0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.chat-dark .profile-avatar-lib-btn {
+  border-color: rgba(167, 139, 250, 0.4);
+  background: rgba(167, 139, 250, 0.16);
+  color: #c4b5fd;
+}
+.profile-avatar-lib-btn:active {
+  transform: scale(0.97);
+  background: rgba(167, 139, 250, 0.2);
 }

@@ -35,6 +35,7 @@ import {
   maybeSwitchICityAvatar,
   writeAvatar,
   pickRandomAndWrite,
+  roleSwitchUserAvatar,
 } from "@/lib/avatarSwitcher";
 import type { AvatarLibraryOwner } from "@/data/avatarLibrary";
 
@@ -1301,6 +1302,64 @@ export function ChatProvider({
   ]);
 
   /* =========================================================
+     ★ 角色主动给用户换头像（后台定时器）
+     ========================================================= */
+
+  useEffect(() => {
+    const cfg = settingsRef.current.avatarSwitch;
+    if (!cfg.userAvatarEnabled) return;
+
+    const minMs = cfg.backgroundIntervalMin * 60 * 1000;
+    const maxMs = cfg.backgroundIntervalMax * 60 * 1000;
+
+    let timer: number | null = null;
+    let cancelled = false;
+
+    function schedule() {
+      const delay = randomInteger(minMs, maxMs);
+      timer = window.setTimeout(async () => {
+        if (cancelled) return;
+        const cfgNow = settingsRef.current.avatarSwitch;
+        if (
+          cfgNow.userAvatarEnabled &&
+          Math.random() < cfgNow.userAvatarChance
+        ) {
+          try {
+            const ok = await roleSwitchUserAvatar();
+            if (ok) {
+              addMessage(
+                {
+                  id: createMessageId(),
+                  sender: "You",
+                  type: "system",
+                  text: "他们帮你换了张头像",
+                  timestamp: Date.now(),
+                },
+                { threadId: "group" }
+              );
+            }
+          } catch (e) {
+            console.error("角色给用户换头像失败:", e);
+          }
+        }
+        if (!cancelled) schedule();
+      }, delay);
+    }
+
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [
+    addMessage,
+    settings.avatarSwitch.userAvatarEnabled,
+    settings.avatarSwitch.backgroundIntervalMin,
+    settings.avatarSwitch.backgroundIntervalMax,
+  ]);
+
+  /* =========================================================
      ★ 用户请求角色换头像
      ========================================================= */
 
@@ -1349,6 +1408,30 @@ export function ChatProvider({
                 },
                 { threadId: tid }
               );
+
+              /* ★ 回礼：20% 概率角色反过来给用户换头像 */
+              if (
+                req.owner !== "You" &&
+                Math.random() < 0.2
+              ) {
+                const giftDelay =
+                  randomInteger(3000, 12000);
+                window.setTimeout(async () => {
+                  const gifted =
+                    await roleSwitchUserAvatar();
+                  if (!gifted) return;
+                  addMessage(
+                    {
+                      id: createMessageId(),
+                      sender: "You",
+                      type: "system",
+                      text: `${ownerName} 帮你换了张头像`,
+                      timestamp: Date.now(),
+                    },
+                    { threadId: tid }
+                  );
+                }, giftDelay);
+              }
             }
           } else {
             addMessage(

@@ -76,6 +76,10 @@ export type AvatarSwitchSettings = {
   /* —— iCity 头像（角色发帖时触发） —— */
   icityChanceLevi: number;
   icityChanceErwin: number;
+
+  /* —— 角色给用户换头像 —— */
+  userAvatarEnabled: boolean;
+  userAvatarChance: number;
 };
 
 /* ---------- 钱包评价 ---------- */
@@ -266,6 +270,9 @@ const defaultSettings: SystemSettings = {
 
     icityChanceLevi: 0.02,
     icityChanceErwin: 0.02,
+
+    userAvatarEnabled: false,
+    userAvatarChance: 0.15,
   },
   walletEval: {
     enabled: true,
@@ -456,6 +463,14 @@ export function loadSystemSettings(): SystemSettings {
           icityChanceErwin: clamp01(
             a.icityChanceErwin,
             d.icityChanceErwin
+          ),
+          userAvatarEnabled:
+            typeof a.userAvatarEnabled === "boolean"
+              ? a.userAvatarEnabled
+              : d.userAvatarEnabled,
+          userAvatarChance: clamp01(
+            a.userAvatarChance,
+            d.userAvatarChance
           ),
         };
       })(),

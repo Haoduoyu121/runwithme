@@ -107,3 +107,19 @@ export async function maybeSwitchICityAvatar(
   if (Math.random() >= chance) return false;
   return pickRandomAndWrite("icity", owner);
 }
+
+/**
+ * 角色从「用户头像库」里随机挑一张，给用户换上。
+ */
+export async function roleSwitchUserAvatar(): Promise<boolean> {
+  const pool = loadAvatarLibraryByOwner("You", "chat").filter(
+    (a) => a.enabled
+  );
+  if (pool.length === 0) return false;
+
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const blob = await getAvatarLibraryFile(pick.id);
+  if (!blob) return false;
+
+  return writeAvatar("chat", "You", blob);
+}

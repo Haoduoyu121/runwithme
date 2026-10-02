@@ -1,4 +1,4 @@
-export type AvatarLibraryOwner = "Levi" | "Erwin";
+export type AvatarLibraryOwner = "Levi" | "Erwin" | "You";
 export type AvatarLibraryScope = "chat" | "icity";
 
 export type AvatarLibraryItem = {
