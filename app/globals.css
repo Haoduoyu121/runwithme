@@ -70390,3 +70390,411 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
 .chat-dark .avatar-req-bubble.is-rejected .avatar-req-bubble-status {
   color: #ff453a;
 }
+/* =========================================================
+   购物 App（第一批）
+   ========================================================= */
+
+.shop-app {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  padding-top: env(safe-area-inset-top, 44px) !important;
+  box-sizing: border-box !important;
+  background: #f2f2f7;
+  overflow: hidden;
+}
+.chat-dark .shop-app {
+  background: #000;
+}
+
+.shop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.shop-back,
+.shop-action {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #111;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.chat-dark .shop-back,
+.chat-dark .shop-action {
+  color: #fff;
+}
+.shop-back:active,
+.shop-action:active {
+  background: rgba(0, 0, 0, 0.06);
+}
+.chat-dark .shop-back:active,
+.chat-dark .shop-action:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+.shop-title {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+}
+.chat-dark .shop-title {
+  color: #fff;
+}
+
+.shop-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 6px 16px 12px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+}
+.chat-dark .shop-tabs {
+  background: rgba(255, 255, 255, 0.08);
+}
+.shop-tabs button {
+  flex: 1;
+  padding: 9px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #6b6b70;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.chat-dark .shop-tabs button {
+  color: rgba(255, 255, 255, 0.6);
+}
+.shop-tabs button.active {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.chat-dark .shop-tabs button.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: none;
+}
+
+.shop-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 16px 60px;
+}
+
+.shop-manage-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.shop-manage-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  background: rgba(167, 139, 250, 0.1);
+  color: #6d5bd0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chat-dark .shop-manage-btn {
+  border-color: rgba(167, 139, 250, 0.35);
+  background: rgba(167, 139, 250, 0.16);
+  color: #c4b5fd;
+}
+.shop-manage-btn.ghost {
+  background: transparent;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #6b6b70;
+}
+.chat-dark .shop-manage-btn.ghost {
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.shop-empty {
+  padding: 80px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.shop-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111;
+}
+.chat-dark .shop-empty-title {
+  color: #fff;
+}
+.shop-empty-desc {
+  font-size: 13px;
+  color: #8e8e93;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.shop-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 8px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.chat-dark .shop-item {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+}
+.shop-item:active {
+  transform: scale(0.97);
+}
+.shop-item-emoji {
+  font-size: 40px;
+  line-height: 1;
+}
+.shop-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.chat-dark .shop-item-name {
+  color: #fff;
+}
+.shop-item-price {
+  font-size: 12px;
+  color: #8e8e93;
+}
+
+/* 添加商品 emoji 选择 */
+.shop-add-emoji-pick {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.shop-add-emoji-btn {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 20px;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.chat-dark .shop-add-emoji-btn {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+.shop-add-emoji-btn.active {
+  border-color: rgba(167, 139, 250, 0.6);
+  background: rgba(167, 139, 250, 0.2);
+}
+.shop-add-emoji-btn:active {
+  transform: scale(0.94);
+}
+
+/* 下单 sheet 里的商品预览 */
+.shop-send-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+.chat-dark .shop-send-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.shop-send-item-emoji {
+  font-size: 42px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.shop-send-item-info {
+  flex: 1;
+  min-width: 0;
+}
+.shop-send-item-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 4px;
+}
+.chat-dark .shop-send-item-name {
+  color: #fff;
+}
+.shop-send-item-price {
+  font-size: 14px;
+  color: #6d5bd0;
+  font-weight: 600;
+}
+.chat-dark .shop-send-item-price {
+  color: #c4b5fd;
+}
+
+/* =========================================================
+   礼物卡片（聊天里）
+   ========================================================= */
+
+.gift-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 170px;
+  max-width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: #222;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.chat-dark .gift-card {
+  background: #2c2c30;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.gift-card-title {
+  font-size: 12px;
+  color: #8e8e93;
+  letter-spacing: 0.2px;
+}
+.chat-dark .gift-card-title {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.gift-card-emoji {
+  font-size: 44px;
+  text-align: center;
+  line-height: 1.2;
+  padding: 4px 0;
+}
+
+.gift-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  color: #111;
+}
+.chat-dark .gift-card-name {
+  color: #fff;
+}
+
+.gift-card-price {
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  color: #6d5bd0;
+}
+.chat-dark .gift-card-price {
+  color: #c4b5fd;
+}
+
+.gift-card-note {
+  font-size: 12px;
+  color: #555;
+  text-align: center;
+  line-height: 1.5;
+  margin-top: 2px;
+  word-break: break-word;
+}
+.chat-dark .gift-card-note {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.gift-card-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+  margin: 6px 0 2px;
+}
+.chat-dark .gift-card-divider {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.gift-card-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #8e8e93;
+}
+.chat-dark .gift-card-status {
+  color: rgba(255, 255, 255, 0.55);
+}
+.gift-card.is-accepted .gift-card-status {
+  color: #34c759;
+}
+.chat-dark .gift-card.is-accepted .gift-card-status {
+  color: #30d158;
+}
+.gift-card.is-rejected .gift-card-status {
+  color: #ff3b30;
+}
+.chat-dark .gift-card.is-rejected .gift-card-status {
+  color: #ff453a;
+}
+
+/* Chat + 菜单里的购物图标 */
+.chat-plus-shop-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: linear-gradient(
+    135deg,
+    #f472b6 0%,
+    #db2777 100%
+  );
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* 从 Chat 里打开 ShopApp 时的覆盖层 */
+.chat-shop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: #f2f2f7;
+}
+.chat-dark .chat-shop-overlay {
+  background: #000;
+}

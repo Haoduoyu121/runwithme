@@ -12,7 +12,8 @@ export type ChatMessageType =
   | "forward"
   | "gallery"
   | "redpacket"
-  | "avatar-request";
+  | "avatar-request"
+  | "gift";
 
 export type ChatSender = "You" | "Levi" | "Erwin";
 
@@ -105,6 +106,20 @@ export type ChatMessage = {
     to: ChatSender;
     /** IDB 里的文件 id */
     avatarFileId: string;
+    status: "pending" | "accepted" | "rejected";
+    resolvedAt?: number;
+  };
+
+  /* ★ 礼物 / 外卖 */
+  gift?: {
+    itemId: string;
+    itemName: string;
+    itemEmoji: string;
+    price: number;
+    category: "goods" | "food";
+    buyer: ChatSender;
+    receiver: ChatSender;
+    note?: string;
     status: "pending" | "accepted" | "rejected";
     resolvedAt?: number;
   };

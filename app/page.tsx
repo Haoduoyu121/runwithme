@@ -18,10 +18,10 @@ import MemoryApp from "@/components/apps/MemoryApp";
 import RandomApp from "@/components/apps/RandomApp";
 import SearchApp from "@/components/apps/SearchApp";
 import ReadApp from "@/components/apps/ReadApp";
-import FridgeApp from "@/components/apps/FridgeApp";
 import TarotApp from "@/components/apps/TarotApp";
 import GameHubApp from "@/components/apps/GameHubApp";
 import PotatoApp from "@/components/apps/PotatoApp";
+import ShopApp from "@/components/apps/shop/ShopApp";
 import { runWorldCompensation } from "@/lib/worldClock";
 import { markAppAllRead } from "@/lib/unreadRegistry";
 
@@ -156,10 +156,10 @@ const apps = [
     color: "brown",
   },
   {
-    id: "fridge" as AppId,
-    name: "Fridge",
-    icon: "❄",
-    color: "cream",
+    id: "shop" as AppId,
+    name: "购物",
+    icon: "🛍️",
+    color: "pink",
   },
   {
     id: "ai" as AppId,
@@ -772,7 +772,7 @@ function AppWindow({
           onBack={onBack}
         />
       )}
-      {app === "fridge" && <FridgeApp onBack={onBack} />}
+      {app === "shop" && <ShopApp onBack={onBack} />}
       {app === "tarot" && <TarotApp onBack={onBack} />}
       {app === "games" && <GameHubApp onBack={onBack} />}
       {app === "potato" && <PotatoApp onBack={onBack} />}

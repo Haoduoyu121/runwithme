@@ -62,7 +62,10 @@ import ProfileApp from "@/components/apps/profile/ProfileApp";
 import RedPacketSheet from "@/components/apps/chat/RedPacketSheet";
 import RedPacketCard from "@/components/apps/chat/RedPacketCard";
 import AvatarRequestBubble from "@/components/apps/chat/AvatarRequestBubble";
+import GiftCard from "@/components/apps/chat/GiftCard";
 import { sendRedPacketToRoles } from "@/lib/redPacket";
+import { sendGiftToRole } from "@/lib/shopDelivery";
+import ShopApp from "@/components/apps/shop/ShopApp";
 
 import type { CharacterNames } from "@/lib/systemStorage";
 
@@ -634,6 +637,8 @@ function previewText(m: ChatMessage | null): string {
     return `[红包] ${m.redpacket?.amount ?? 0}`;
   if (m.type === "avatar-request")
     return "[换头像请求]";
+  if (m.type === "gift")
+    return `[礼物] ${m.gift?.itemName ?? ""}`;
   if (m.type === "forward")
     return `[转发了 ${m.forwardItems?.length ?? 0} 条消息]`;
   if (m.type === "system") return m.text ?? "";
@@ -984,6 +989,9 @@ function ChatThreadView({
   /* ★ 红包 sheet */
   const [showRedPacketSheet, setShowRedPacketSheet] =
     useState(false);
+
+  /* ★ 购物 App */
+  const [showShop, setShowShop] = useState(false);
   const [expandedForwardIds, setExpandedForwardIds] =
     useState<Set<string>>(new Set());
 
@@ -1584,6 +1592,29 @@ function ChatThreadView({
     setShowStickerPanel(true);
   }
 
+  /* ★ 购物 App 下单 */
+  async function handleSendGift(
+    item: import("@/data/shop").ShopItem,
+    receiver: "Levi" | "Erwin",
+    note: string
+  ) {
+    const result = await sendGiftToRole({
+      item,
+      receiver,
+      note,
+      threadId: activeThreadId,
+      addMessage,
+      updateThreadMessages,
+    });
+    if (!result.ok) {
+      if (result.reason === "insufficient") {
+        window.alert("余额不足，先去钱包记点收入吧");
+      } else {
+        window.alert("商品信息无效");
+      }
+    }
+  }
+
   function handleStartCall(
     target: "Levi" | "Erwin" | "Both"
   ) {
@@ -1941,6 +1972,10 @@ function ChatThreadView({
                 }
               />
             )}
+
+            {message.type === "gift" && (
+              <GiftCard message={message} names={names} />
+            )}
           </div>
 
           {isGroupEnd && !selectionMode && (
@@ -2270,6 +2305,20 @@ function ChatThreadView({
                   </span>
                 </span>
                 <small>红包</small>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowPlusMenu(false);
+                  setShowShop(true);
+                }}
+              >
+                <span>
+                  <span className="chat-plus-shop-icon">
+                    🛍️
+                  </span>
+                </span>
+                <small>购物</small>
               </button>
             </div>
           )}
@@ -2642,6 +2691,16 @@ function ChatThreadView({
           </div>
         </div>
       )}
+
+      {showShop && (
+        <div className="chat-shop-overlay">
+          <ShopApp
+            onBack={() => setShowShop(false)}
+            onSendGift={handleSendGift}
+          />
+        </div>
+      )}
+
 
       {showAvatarRequest && (
         <AvatarRequestSheet

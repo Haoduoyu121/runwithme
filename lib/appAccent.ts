@@ -24,6 +24,7 @@ export const APP_ACCENT: Record<AppId, string> = {
   tarot: "#a78bfa",
   games: "#a3a380",
   potato: "#8b6a5b",
+  shop: "#f472b6",
 };
 
 export function getAppAccent(id: AppId): string {
