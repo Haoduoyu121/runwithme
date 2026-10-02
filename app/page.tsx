@@ -21,7 +21,7 @@ import ReadApp from "@/components/apps/ReadApp";
 import TarotApp from "@/components/apps/TarotApp";
 import GameHubApp from "@/components/apps/GameHubApp";
 import PotatoApp from "@/components/apps/PotatoApp";
-import ShopApp from "@/components/apps/shop/ShopApp";
+import ShopV2App from "@/components/apps/shop-v2/ShopV2App";
 import { runWorldCompensation } from "@/lib/worldClock";
 import { markAppAllRead } from "@/lib/unreadRegistry";
 
@@ -772,7 +772,7 @@ function AppWindow({
           onBack={onBack}
         />
       )}
-      {app === "shop" && <ShopApp onBack={onBack} />}
+      {app === "shop" && <ShopV2App onBack={onBack} />}
       {app === "tarot" && <TarotApp onBack={onBack} />}
       {app === "games" && <GameHubApp onBack={onBack} />}
       {app === "potato" && <PotatoApp onBack={onBack} />}
