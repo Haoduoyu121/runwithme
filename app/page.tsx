@@ -22,6 +22,10 @@ import TarotApp from "@/components/apps/TarotApp";
 import GameHubApp from "@/components/apps/GameHubApp";
 import PotatoApp from "@/components/apps/PotatoApp";
 import ShopV2App from "@/components/apps/shop-v2/ShopV2App";
+import {
+  pullRemoteEvents,
+  syncCardsFromLocal,
+} from "@/lib/remoteEvents";
 import { runWorldCompensation } from "@/lib/worldClock";
 import { markAppAllRead } from "@/lib/unreadRegistry";
 
@@ -869,6 +873,39 @@ export default function Home() {
       created.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [systemSettings]);
+
+    /* ★ 服务器事件同步 + 字卡上传 */
+  useEffect(() => {
+    /* 启动时：拉事件 + 上传字卡 */
+    void pullRemoteEvents();
+    void syncCardsFromLocal();
+
+    /* 回到前台时再拉一次 */
+    let lastHiddenAt = 0;
+    function onVis() {
+      if (document.visibilityState === "hidden") {
+        lastHiddenAt = Date.now();
+        return;
+      }
+      /* 只在前台停留超过 30 秒后重新回到前台时拉 */
+      if (
+        lastHiddenAt > 0 &&
+        Date.now() - lastHiddenAt > 30_000
+      ) {
+        void pullRemoteEvents();
+        /* 顺便检查字卡是否有变化 */
+        void syncCardsFromLocal();
+      }
+    }
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        onVis
+      );
+    };
+  }, []);
+
 
     /* ★ Step 9a：世界在转 —— 启动 + 从后台切回前台时触发补偿 */
   useEffect(() => {
