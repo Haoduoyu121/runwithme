@@ -46,6 +46,7 @@ import AvatarLibraryPage from "@/components/apps/potato/AvatarLibraryPage";
 import RoleWalletPage from "@/components/apps/potato/RoleWalletPage";
 
 import CardPoolsPage from "@/components/apps/potato/CardPoolsPage";
+import PushSettingsCard from "@/components/apps/potato/PushSettingsCard";
 
 import {
   loadRemarkPool,
@@ -698,6 +699,18 @@ export default function PotatoApp({ onBack }: Props) {
         {tab === "general" && (
           <div className="potato-general">
             <div className="potato-section-title">
+              系统推送
+            </div>
+            <div className="potato-hint">
+              开启后，角色在后台做的事（换头像、发红包、
+              购物、改备注等）会通过 iPhone 的系统通知推送给你。
+            </div>
+            <PushSettingsCard />
+
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
               单聊回复间隔
             </div>
             <div className="potato-hint">

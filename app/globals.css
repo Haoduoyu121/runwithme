@@ -73427,3 +73427,106 @@ html[data-runwithme-theme="dark"] .shopv2-ai-shop-desc {
   flex-direction: column;
   gap: 14px;
 }
+/* =========================================================
+   Shop v2 / Potato · Web Push 设置卡
+   ========================================================= */
+
+.potato-push-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+.chat-dark .potato-push-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.potato-push-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.potato-push-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    #a78bfa 0%,
+    #7c3aed 100%
+  );
+  color: #fff;
+  flex-shrink: 0;
+}
+.potato-push-info {
+  flex: 1;
+  min-width: 0;
+}
+.potato-push-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 3px;
+}
+.chat-dark .potato-push-title {
+  color: #fff;
+}
+.potato-push-desc {
+  font-size: 12px;
+  color: #6b6b70;
+  line-height: 1.5;
+}
+.chat-dark .potato-push-desc {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.potato-push-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(
+    135deg,
+    #f472b6 0%,
+    #db2777 100%
+  );
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(219, 39, 119, 0.25);
+  transition: transform 0.12s ease;
+}
+.potato-push-btn.is-on {
+  background: linear-gradient(
+    135deg,
+    #34c759 0%,
+    #248a3d 100%
+  );
+  box-shadow: 0 3px 10px rgba(52, 199, 89, 0.25);
+}
+.potato-push-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.potato-push-hint {
+  font-size: 11px;
+  color: #8e8e93;
+  line-height: 1.55;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 200, 0, 0.1);
+}
+.chat-dark .potato-push-hint {
+  background: rgba(255, 200, 0, 0.08);
+}
