@@ -15,6 +15,18 @@ export type ChatMessageType =
   | "avatar-request"
   | "gift";
 
+/* ★ 物流阶段 */
+export type DeliveryStage =
+  | "placed"       // 已下单
+  | "accepted"     // 外卖：商家已接单
+  | "shipped"      // 商场：商家已发货
+  | "picked"       // 外卖：骑手已取餐
+  | "in-transit"   // 商场：运输中
+  | "delivering"   // 派送中
+  | "delivered"    // 已送达（等待角色接受/拒绝）
+  | "signed"       // 已签收（角色接受）
+  | "returned";    // 已退回（角色拒绝）
+
 export type ChatSender = "You" | "Levi" | "Erwin";
 
 export type CallCharacter = "Levi" | "Erwin" | "Both";
@@ -122,6 +134,17 @@ export type ChatMessage = {
     note?: string;
     status: "pending" | "accepted" | "rejected";
     resolvedAt?: number;
+
+    /* ★ 物流 */
+    delivery?: {
+      stage: DeliveryStage;
+      trackingNo: string;
+      history: { stage: DeliveryStage; at: number }[];
+      /** 用户给快递/外卖的评价 1~5 */
+      rating?: number;
+      ratingComment?: string;
+      ratedAt?: number;
+    };
   };
 };
 

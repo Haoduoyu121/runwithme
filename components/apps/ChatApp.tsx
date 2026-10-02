@@ -1975,7 +1975,23 @@ function ChatThreadView({
             )}
 
             {message.type === "gift" && (
-              <GiftCard message={message} names={names} />
+              <GiftCard
+                message={message}
+                names={names}
+                onRate={(messageId, rating, comment) => {
+                  void import("@/lib/shopDelivery").then(
+                    ({ rateGift }) => {
+                      rateGift(
+                        messageId,
+                        activeThreadId,
+                        rating,
+                        comment,
+                        updateThreadMessages
+                      );
+                    }
+                  );
+                }}
+              />
             )}
           </div>
 

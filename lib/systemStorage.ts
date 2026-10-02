@@ -149,6 +149,14 @@ export type UserRemarks = {
   Levi: string | null;
   Erwin: string | null;
 };
+
+/* ---------- 购物物流 ---------- */
+
+export type ShopDeliverySettings = {
+  /** 速度倍率：1 = 正常，10 = 10 倍速 */
+  speed: number;
+};
+
 /* ---------- 角色显示名 ---------- */
 
 export type CharacterNames = {
@@ -196,6 +204,7 @@ export type SystemSettings = {
   roleBookkeeping: RoleBookkeepingSettings;
   roleRemark: RoleRemarkSettings;
   userRemarks: UserRemarks;
+  shopDelivery: ShopDeliverySettings;
 
   chatCustomCSS: string;
 };
@@ -337,6 +346,9 @@ const defaultSettings: SystemSettings = {
   userRemarks: {
     Levi: null,
     Erwin: null,
+  },
+  shopDelivery: {
+    speed: 5,
   },
   chatCustomCSS: "",
 };
@@ -662,6 +674,18 @@ export function loadSystemSettings(): SystemSettings {
               : null,
         };
       })(),
+      shopDelivery: (() => {
+        const s = parsed.shopDelivery ?? {};
+        const d = defaultSettings.shopDelivery;
+        return {
+          speed:
+            typeof s.speed === "number" &&
+            Number.isFinite(s.speed) &&
+            s.speed > 0
+              ? Math.min(100, Math.max(0.1, s.speed))
+              : d.speed,
+        };
+      })(),
       chatCustomCSS:
         typeof parsed.chatCustomCSS === "string"
           ? parsed.chatCustomCSS
@@ -744,6 +768,10 @@ export function updateSystemSettings(
     userRemarks: {
       ...current.userRemarks,
       ...(updates.userRemarks ?? {}),
+    },
+    shopDelivery: {
+      ...current.shopDelivery,
+      ...(updates.shopDelivery ?? {}),
     },
   };
 

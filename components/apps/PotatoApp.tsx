@@ -2201,6 +2201,51 @@ export default function PotatoApp({ onBack }: Props) {
               />
             </div>
 
+            
+
+
+            {/* ---------- 物流速度 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              物流速度
+            </div>
+            <div className="potato-hint">
+              1 = 真实速度（商场约 90 秒，外卖约 55 秒）。
+              数字越大越快，方便测试。
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                倍率
+              </span>
+              <div className="potato-inline-nums">
+                {[1, 5, 10, 30].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={
+                      "potato-chip" +
+                      (settings.shopDelivery.speed === v
+                        ? " is-on"
+                        : "")
+                    }
+                    onClick={() =>
+                      updateSettings({
+                        shopDelivery: {
+                          ...settings.shopDelivery,
+                          speed: v,
+                        },
+                      })
+                    }
+                  >
+                    {v}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button
               type="button"
               className="potato-sentence-reset"
