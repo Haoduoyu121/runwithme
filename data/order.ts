@@ -36,6 +36,8 @@ export type LogisticsEvent = {
 };
 
 export type OrderReview = {
+  /** 谁写的评价（旧数据无此字段 → 视为 you） */
+  authorId?: "you" | "levi" | "erwin";
   rating: number;
   comment: string;
   createdAt: number;

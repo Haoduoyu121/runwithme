@@ -73361,3 +73361,69 @@ html[data-runwithme-theme="dark"] .shopv2-ai-shop-desc {
   font-size: 11px;
   color: #8e8e93;
 }
+/* =========================================================
+   Shop v2 · 第 7.2 批（统一卡池页）
+   ========================================================= */
+
+.cardpools-page {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  width: 100%;
+  overflow: hidden;
+}
+
+.cardpools-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 4px 16px 10px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cardpools-tabs::-webkit-scrollbar {
+  display: none;
+}
+.chat-dark .cardpools-tabs {
+  background: rgba(255, 255, 255, 0.08);
+}
+.cardpools-tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #6b6b70;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+.chat-dark .cardpools-tab {
+  color: rgba(255, 255, 255, 0.6);
+}
+.cardpools-tab.active {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.chat-dark .cardpools-tab.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: none;
+}
+
+.cardpools-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

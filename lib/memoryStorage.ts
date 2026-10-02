@@ -26,7 +26,8 @@ export type MemorySourceApp =
   | "random"
   | "checkin"
   | "questionnaire"
-  | "wishlist";
+  | "wishlist"
+  | "shop";
 
 export type MemoryType =
   | "text"

@@ -7,8 +7,10 @@ import type {
 } from "@/data/wallet";
 
 import { loadSystemSettings } from "@/lib/systemStorage";
-import { loadWalletEvalPool } from "@/lib/walletEvalStorage";
-import { pickEvalText } from "@/lib/walletEvalStorage";
+import {
+  loadCardPool,
+  pickFromPool,
+} from "@/lib/cardPoolsStorage";
 
 /* 模块级冷却时间戳 */
 let lastEvalAt = 0;
@@ -55,8 +57,8 @@ export async function evaluateExpense(
     ];
 
   /* 抽卡 */
-  const pool = loadWalletEvalPool();
-  const text = pickEvalText(pool, owner);
+  const pool = loadCardPool("walletEval");
+  const text = pickFromPool(pool, owner);
   if (!text) return null;
 
   /* 延迟 */

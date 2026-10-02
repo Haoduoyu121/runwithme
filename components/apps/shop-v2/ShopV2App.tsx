@@ -290,6 +290,13 @@ export default function ShopV2App({ onBack }: Props) {
       void sendShopGiftRequest(order);
     }
 
+    /* Memory 联动 */
+    void import("@/lib/shopMemory").then(
+      ({ memoryOrderPlaced }) => {
+        memoryOrderPlaced(order);
+      }
+    );
+
     /* 跳订单详情 */
     setView({ kind: "order", orderId: order.id });
   }

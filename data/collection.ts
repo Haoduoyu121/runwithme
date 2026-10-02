@@ -17,7 +17,8 @@ export type CollectionSource =
   | "music"
   | "daily-sentence"
   | "read"
-  | "lyric";
+  | "lyric"
+  | "shop";
 
 export type CollectionSender = string;
 
@@ -70,6 +71,7 @@ export const SOURCE_LABELS: Record<CollectionSource, string> = {
   "daily-sentence": "每日一句",
   "read": "Read",
   "lyric": "歌词",
+  shop: "购物",
 };
 
 export const SOURCE_ICONS: Record<CollectionSource, string> = {
@@ -85,6 +87,7 @@ export const SOURCE_ICONS: Record<CollectionSource, string> = {
   "daily-sentence": "❝",
   "read": "▤",
   "lyric": "❞",
+  shop: "▦",
 };
 
 export const OWNER_LABELS: Record<CollectionOwner, string> = {

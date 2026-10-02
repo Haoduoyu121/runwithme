@@ -24,6 +24,66 @@ import { loadSystemSettings } from "@/lib/systemStorage";
 
 import type { ShopProduct } from "@/data/shopV2";
 
+/**
+ * 监听全局收藏事件，转发给 CollectionContext。
+ * 因为 OrderDetail 不在 CollectionProvider 的同一棵 React 树
+ * （Shop 是独立 App），用事件桥接。
+ */
+function useShopCollectBridge() {
+  useEffect(() => {
+    function onCollect(e: Event) {
+      const d = (
+        e as CustomEvent<{
+          orderId: string;
+          title: string;
+          preview: string;
+        }>
+      ).detail;
+      if (!d?.orderId) return;
+      void import("@/lib/collectionStorage").then(
+        async ({ createCollectionId, loadCollections, saveCollections }) => {
+          const list = loadCollections();
+          if (
+            list.some(
+              (it) =>
+                it.source === "shop" &&
+                it.sourceId === d.orderId
+            )
+          ) {
+            window.alert("这条订单已经收藏过了");
+            return;
+          }
+          const item = {
+            id: createCollectionId(),
+            owner: "user" as const,
+            source: "shop" as const,
+            sourceId: d.orderId,
+            content: d.title,
+            note: "",
+            tags: [],
+            createdAt: Date.now(),
+            originalAt: Date.now(),
+            sender: null,
+            meta: { preview: d.preview },
+          };
+          saveCollections([item, ...list]);
+          window.alert("已收藏到 Collection");
+        }
+      );
+    }
+    window.addEventListener(
+      "runwithme:collect-shop-order",
+      onCollect
+    );
+    return () => {
+      window.removeEventListener(
+        "runwithme:collect-shop-order",
+        onCollect
+      );
+    };
+  }, []);
+}
+
 type Props = {
   orderId: string;
   products: ShopProduct[];
@@ -39,6 +99,7 @@ export default function OrderDetail({
   onBack,
   onReviewed,
 }: Props) {
+  useShopCollectBridge();
   const [order, setOrder] = useState<Order | null>(null);
   const [showRate, setShowRate] = useState(false);
   const [ratingDraft, setRatingDraft] = useState(5);
@@ -48,10 +109,27 @@ export default function OrderDetail({
     const speed =
       loadSystemSettings().shopDelivery.speed || 5;
 
+    let deliveredNotified = false;
+
     const reload = () => {
       advanceAllOrders(speed);
       const o = loadOrders().find((x) => x.id === orderId);
       setOrder(o ?? null);
+
+      /* 送达事件写 Memory（只写一次） */
+      if (
+        o &&
+        !deliveredNotified &&
+        (o.status === "delivered" ||
+          o.status === "reviewed")
+      ) {
+        deliveredNotified = true;
+        void import("@/lib/shopMemory").then(
+          ({ memoryOrderDelivered }) => {
+            memoryOrderDelivered(o);
+          }
+        );
+      }
     };
 
     reload();
@@ -95,7 +173,7 @@ export default function OrderDetail({
   );
 
   const isReviewed =
-    order.status === "reviewed" && order.review;
+    !!order.review && order.status === "reviewed";
 
   /* 礼物待接受 */
   const isGiftPending =
@@ -107,6 +185,7 @@ export default function OrderDetail({
 
   /* 已送达且未评价 → 可评价 */
   const canReview =
+    order.buyerId === "you" &&
     !isGiftPending &&
     !isGiftRejected &&
     !isReviewed &&
@@ -124,27 +203,62 @@ export default function OrderDetail({
           <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
         <div className="shopv2-topbar-title">订单详情</div>
-        <button
-          type="button"
-          className="shopv2-topbar-iconbtn"
-          onClick={() => {
-            if (
-              window.confirm(
-                "删除这个订单？不影响已扣除的钱（除非是待接受的礼物）"
-              )
-            ) {
-              void import("@/lib/orderStorage").then(
-                ({ deleteOrder }) => {
-                  deleteOrder(order.id);
-                  onBack();
+        <div className="shopv2-topbar-actions">
+          <button
+            type="button"
+            className="shopv2-topbar-iconbtn"
+            onClick={() => {
+              void import("@/lib/shopMemory").then(
+                async () => {
+                  const { useCollection: _u } =
+                    await import("@/lib/CollectionContext");
+                  /* 用 window 事件避免 hook 依赖 */
+                  try {
+                    window.dispatchEvent(
+                      new CustomEvent(
+                        "runwithme:collect-shop-order",
+                        {
+                          detail: {
+                            orderId: order.id,
+                            title: `订单：${
+                              order.items[0]?.productName ??
+                              "商品"
+                            }`,
+                            preview: `${order.shopName} · ¥${order.totalPrice}`,
+                          },
+                        }
+                      )
+                    );
+                  } catch {}
                 }
               );
-            }
-          }}
-          aria-label="删除订单"
-        >
-          <Trash2 size={20} strokeWidth={2.2} />
-        </button>
+            }}
+            aria-label="收藏订单"
+          >
+            <Star size={20} strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            className="shopv2-topbar-iconbtn"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "删除这个订单？不影响已扣除的钱（除非是待接受的礼物）"
+                )
+              ) {
+                void import("@/lib/orderStorage").then(
+                  ({ deleteOrder }) => {
+                    deleteOrder(order.id);
+                    onBack();
+                  }
+                );
+              }
+            }}
+            aria-label="删除订单"
+          >
+            <Trash2 size={20} strokeWidth={2.2} />
+          </button>
+        </div>
       </header>
 
       <div className="shopv2-scroll">
@@ -327,10 +441,15 @@ export default function OrderDetail({
         )}
 
         {/* 评价（已评价时） */}
-        {isReviewed && order.review && (
+        {order.review && (
           <div className="shopv2-order-detail-block">
             <div className="shopv2-order-detail-block-title">
-              我的评价
+              {!order.review.authorId ||
+              order.review.authorId === "you"
+                ? "我的评价"
+                : order.review.authorId === "levi"
+                  ? "Levi 的评价"
+                  : "Erwin 的评价"}
             </div>
             <div className="shopv2-order-detail-review">
               <div className="shopv2-order-detail-review-stars">
@@ -415,22 +534,36 @@ export default function OrderDetail({
                 const { loadOrders, saveOrders } =
                   await import("@/lib/orderStorage");
                 const list = loadOrders();
-                const next = list.map((o) =>
-                  o.id === order.id
-                    ? {
-                        ...o,
-                        status: "reviewed" as const,
-                        review: {
-                          rating: ratingDraft,
-                          comment: commentDraft.trim(),
-                          createdAt: Date.now(),
-                        },
-                      }
-                    : o
-                );
+                let reviewed: typeof order | null = null;
+                const next = list.map((o) => {
+                  if (o.id !== order.id) return o;
+                  const updated = {
+                    ...o,
+                    status: "reviewed" as const,
+                    review: {
+                      rating: ratingDraft,
+                      comment: commentDraft.trim(),
+                      createdAt: Date.now(),
+                    },
+                  };
+                  reviewed = updated;
+                  return updated;
+                });
                 saveOrders(next);
                 setShowRate(false);
                 onReviewed();
+
+                if (reviewed) {
+                  void import("@/lib/shopMemory").then(
+                    ({ memoryOrderReviewed }) => {
+                      memoryOrderReviewed(
+                        reviewed!,
+                        ratingDraft,
+                        commentDraft.trim()
+                      );
+                    }
+                  );
+                }
               }}
             >
               提交

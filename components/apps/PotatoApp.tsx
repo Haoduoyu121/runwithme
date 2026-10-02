@@ -45,11 +45,7 @@ import type { AvatarLibraryOwner } from "@/data/avatarLibrary";
 import AvatarLibraryPage from "@/components/apps/potato/AvatarLibraryPage";
 import RoleWalletPage from "@/components/apps/potato/RoleWalletPage";
 
-import {
-  loadWalletEvalPool,
-  saveWalletEvalPool,
-  resetWalletEvalPool,
-} from "@/lib/walletEvalStorage";
+import CardPoolsPage from "@/components/apps/potato/CardPoolsPage";
 
 import {
   loadRemarkPool,
@@ -75,6 +71,7 @@ export default function PotatoApp({ onBack }: Props) {
     useState<AvatarLibraryOwner | null>(null);
   const [roleWalletOwner, setRoleWalletOwner] =
     useState<"Levi" | "Erwin" | null>(null);
+  const [showCardPools, setShowCardPools] = useState(false);
 
   const [avatarPreviews, setAvatarPreviews] = useState<{
     levi: string | null;
@@ -100,10 +97,6 @@ export default function PotatoApp({ onBack }: Props) {
     loadCardWeights
   );
 
-  /* 钱包评价卡池 */
-  const [evalPool, setEvalPool] = useState(
-    loadWalletEvalPool
-  );
 
   /* 备注卡池 */
   const [remarkPool, setRemarkPool] = useState(
@@ -119,12 +112,6 @@ export default function PotatoApp({ onBack }: Props) {
       loadSystemSettings()
         .roleRedPacket.specialAmounts.join(", ")
     );
-  const [evalLeviDraft, setEvalLeviDraft] = useState(
-    loadWalletEvalPool().Levi.join("\n")
-  );
-  const [evalErwinDraft, setEvalErwinDraft] = useState(
-    loadWalletEvalPool().Erwin.join("\n")
-  );
 
   function updateWeights(patch: Partial<CardWeights>) {
     setWeights((prev) => {
@@ -139,33 +126,6 @@ export default function PotatoApp({ onBack }: Props) {
     setWeights(resetCardWeights());
   }
 
-  function saveEvalLevi() {
-    const list = evalLeviDraft
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const next = { ...evalPool, Levi: list };
-    saveWalletEvalPool(next);
-    setEvalPool(next);
-  }
-
-  function saveEvalErwin() {
-    const list = evalErwinDraft
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const next = { ...evalPool, Erwin: list };
-    saveWalletEvalPool(next);
-    setEvalPool(next);
-  }
-
-  function handleResetEvalPool() {
-    if (!window.confirm("恢复默认评价卡池？")) return;
-    const d = resetWalletEvalPool();
-    setEvalPool(d);
-    setEvalLeviDraft(d.Levi.join("\n"));
-    setEvalErwinDraft(d.Erwin.join("\n"));
-  }
 
   function saveRemarkLevi() {
     const list = remarkLeviDraft
@@ -366,6 +326,19 @@ export default function PotatoApp({ onBack }: Props) {
         <AvatarLibraryPage
           owner={avatarLibOwner}
           onBack={() => setAvatarLibOwner(null)}
+        />
+      </main>
+    );
+  }
+
+  /* ---------- 卡池管理子页 ---------- */
+  if (showCardPools) {
+    return (
+      <main
+        className={`phone-screen potato-app${themeClass}`}
+      >
+        <CardPoolsPage
+          onBack={() => setShowCardPools(false)}
         />
       </main>
     );
@@ -1248,219 +1221,24 @@ export default function PotatoApp({ onBack }: Props) {
               </div>
             ))}
 
-            {/* ---------- 钱包评价 ---------- */}
+            {/* ---------- 统一卡池管理入口 ---------- */}
             <div
               className="potato-section-title"
               style={{ marginTop: 18 }}
             >
-              钱包评价
+              卡池管理
             </div>
             <div className="potato-hint">
-              记支出时，有存钱目标的监督角色会偶尔评价一句，
-              显示在那笔记录底下。
+              花钱评价 / 收礼评价 / 送礼备注 / 角色地址。
+              统一在独立页面里编辑。
             </div>
-
-            <div className="potato-sentence-row">
-              <div className="potato-sentence-label">
-                <strong>启用</strong>
-                <small>关掉后永不评价</small>
-              </div>
-              <button
-                type="button"
-                className={
-                  "potato-switch" +
-                  (settings.walletEval.enabled
-                    ? " is-on"
-                    : "")
-                }
-                onClick={() =>
-                  updateSettings({
-                    walletEval: {
-                      ...settings.walletEval,
-                      enabled:
-                        !settings.walletEval.enabled,
-                    },
-                  })
-                }
-                aria-label="开关"
-              />
-            </div>
-
-            <div className="potato-sentence-row">
-              <span className="potato-sentence-label">
-                触发概率
-              </span>
-              <label className="potato-num">
-                <input
-                  type="number"
-                  value={Math.round(
-                    settings.walletEval.chance * 100
-                  )}
-                  min={0}
-                  max={100}
-                  onChange={(e) =>
-                    updateSettings({
-                      walletEval: {
-                        ...settings.walletEval,
-                        chance:
-                          Math.max(
-                            0,
-                            Math.min(
-                              100,
-                              Number(e.target.value) || 0
-                            )
-                          ) / 100,
-                      },
-                    })
-                  }
-                />
-                <span className="potato-num-suffix">
-                  %
-                </span>
-              </label>
-            </div>
-
-            <div className="potato-sentence-row">
-              <span className="potato-sentence-label">
-                延迟
-              </span>
-              <div className="potato-inline-nums">
-                <label className="potato-num">
-                  <span className="potato-num-suffix">
-                    最少
-                  </span>
-                  <input
-                    type="number"
-                    value={
-                      settings.walletEval.delayMinSec
-                    }
-                    min={0}
-                    max={3600}
-                    onChange={(e) =>
-                      updateSettings({
-                        walletEval: {
-                          ...settings.walletEval,
-                          delayMinSec: Math.max(
-                            0,
-                            Math.min(
-                              3600,
-                              Number(e.target.value) || 0
-                            )
-                          ),
-                        },
-                      })
-                    }
-                  />
-                  <span className="potato-num-suffix">
-                    秒
-                  </span>
-                </label>
-                <label className="potato-num">
-                  <span className="potato-num-suffix">
-                    最多
-                  </span>
-                  <input
-                    type="number"
-                    value={
-                      settings.walletEval.delayMaxSec
-                    }
-                    min={0}
-                    max={3600}
-                    onChange={(e) =>
-                      updateSettings({
-                        walletEval: {
-                          ...settings.walletEval,
-                          delayMaxSec: Math.max(
-                            0,
-                            Math.min(
-                              3600,
-                              Number(e.target.value) || 0
-                            )
-                          ),
-                        },
-                      })
-                    }
-                  />
-                  <span className="potato-num-suffix">
-                    秒
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <div className="potato-sentence-row">
-              <span className="potato-sentence-label">
-                冷却
-              </span>
-              <label className="potato-num">
-                <input
-                  type="number"
-                  value={
-                    settings.walletEval.cooldownSec
-                  }
-                  min={0}
-                  max={3600}
-                  onChange={(e) =>
-                    updateSettings({
-                      walletEval: {
-                        ...settings.walletEval,
-                        cooldownSec: Math.max(
-                          0,
-                          Math.min(
-                            3600,
-                            Number(e.target.value) || 0
-                          )
-                        ),
-                      },
-                    })
-                  }
-                />
-                <span className="potato-num-suffix">
-                  秒
-                </span>
-              </label>
-            </div>
-
-            <div className="potato-sentence-col">
-              <span className="potato-sentence-label">
-                {settings.characterNames.levi} 的卡池
-                （一行一条）
-              </span>
-              <textarea
-                className="potato-sentence-textarea"
-                value={evalLeviDraft}
-                onChange={(e) =>
-                  setEvalLeviDraft(e.target.value)
-                }
-                onBlur={saveEvalLevi}
-                rows={6}
-                spellCheck={false}
-              />
-            </div>
-
-            <div className="potato-sentence-col">
-              <span className="potato-sentence-label">
-                {settings.characterNames.erwin} 的卡池
-                （一行一条）
-              </span>
-              <textarea
-                className="potato-sentence-textarea"
-                value={evalErwinDraft}
-                onChange={(e) =>
-                  setEvalErwinDraft(e.target.value)
-                }
-                onBlur={saveEvalErwin}
-                rows={6}
-                spellCheck={false}
-              />
-            </div>
-
             <button
               type="button"
-              className="potato-sentence-reset"
-              onClick={handleResetEvalPool}
+              className="potato-gallery-entry"
+              style={{ alignSelf: "stretch" }}
+              onClick={() => setShowCardPools(true)}
             >
-              恢复默认卡池
+              <span>打开卡池管理</span>
             </button>
 
             {/* ---------- 角色主动发红包 ---------- */}

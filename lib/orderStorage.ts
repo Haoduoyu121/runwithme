@@ -5,9 +5,14 @@ import {
   STAGE_DELAYS,
   type Order,
   type OrderStage,
+  type OrderReview,
   type LogisticsEvent,
 } from "@/data/order";
 import type { ShopOwnerId } from "@/data/shopV2";
+import {
+  loadCardPool,
+  pickFromPool,
+} from "@/lib/cardPoolsStorage";
 
 const KEY = "runwithme_orders_v1";
 const EVT = "runwithme:orders-updated";
@@ -138,13 +143,43 @@ export function advanceOrder(
 /**
  * 扫描所有订单，推进并保存有变化的。
  */
+function generateRoleReview(
+  buyerId: "levi" | "erwin"
+): OrderReview | null {
+  const owner = buyerId === "levi" ? "Levi" : "Erwin";
+  const pool = loadCardPool("roleOrderReview");
+  const comment = pickFromPool(pool, owner);
+  if (!comment) return null;
+  const rating = 4 + Math.floor(Math.random() * 2);
+  return {
+    authorId: buyerId,
+    rating,
+    comment,
+    createdAt: Date.now(),
+  };
+}
+
 export function advanceAllOrders(speed: number): Order[] {
   const list = loadOrders();
   let changed = false;
   const next = list.map((o) => {
-    const updated = advanceOrder(o, speed);
-    if (updated !== o) changed = true;
-    return updated;
+    let final = advanceOrder(o, speed);
+
+    /* 角色买家的订单送达时，自动写角色评价 */
+    if (
+      final !== o &&
+      final.status === "delivered" &&
+      !final.review &&
+      final.buyerId !== "you"
+    ) {
+      const r = generateRoleReview(final.buyerId);
+      if (r) {
+        final = { ...final, review: r };
+      }
+    }
+
+    if (final !== o) changed = true;
+    return final;
   });
   if (changed) saveOrders(next);
   return next;
@@ -200,11 +235,13 @@ export function acceptOrderGift(
   addressId?: string
 ): void {
   const list = loadOrders();
+  let accepted: Order | null = null;
+
   const next = list.map((o) => {
     if (o.id !== orderId) return o;
     if (o.giftStatus !== "pending") return o;
     const now = Date.now();
-    return {
+    const updated: Order = {
       ...o,
       giftStatus: "accepted" as const,
       addressId: addressId ?? o.addressId,
@@ -212,8 +249,27 @@ export function acceptOrderGift(
       updatedAt: now,
       logistics: [{ stage: "placed" as const, at: now }],
     };
+    accepted = updated;
+    return updated;
   });
   saveOrders(next);
+
+  if (accepted) {
+    /* 动态 import 避免循环依赖 */
+    void import("@/lib/shopMemory").then(
+      ({
+        memoryGiftAccepted,
+        memoryRoleGiftAccepted,
+      }) => {
+        const o = accepted as Order;
+        if (o.buyerId === "you") {
+          memoryGiftAccepted(o);
+        } else {
+          memoryRoleGiftAccepted(o);
+        }
+      }
+    );
+  }
 }
 
 /**
@@ -239,6 +295,20 @@ export function rejectOrderGift(orderId: string): void {
       : o
   );
   saveOrders(next);
+
+  /* 动态 import 避免循环依赖 */
+  void import("@/lib/shopMemory").then(
+    ({
+      memoryGiftRejected,
+      memoryRoleGiftRejected,
+    }) => {
+      if (target.buyerId === "you") {
+        memoryGiftRejected(target);
+      } else {
+        memoryRoleGiftRejected(target);
+      }
+    }
+  );
 }
 
 /**

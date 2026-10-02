@@ -17,6 +17,10 @@ import { loadWallet, saveWallet } from "@/lib/walletStorage";
 import { createOrderId, type Order } from "@/data/order";
 import { upsertOrder } from "@/lib/orderStorage";
 import { loadSystemSettings } from "@/lib/systemStorage";
+import {
+  loadCardPool,
+  pickFromPool,
+} from "@/lib/cardPoolsStorage";
 
 import type {
   Shop,
@@ -37,18 +41,9 @@ import {
   generateShopBundle,
 } from "@/lib/aiProductGenerator";
 
-const ROLE_GIFT_NOTES = [
-  "看到这个，觉得你会喜欢。",
-  "随手买的。",
-  "不要多想。",
-  "给你。",
-  "",
-];
-
-function pickNote(): string {
-  return ROLE_GIFT_NOTES[
-    Math.floor(Math.random() * ROLE_GIFT_NOTES.length)
-  ];
+function pickNote(owner: "Levi" | "Erwin"): string {
+  const pool = loadCardPool("roleGiftNote");
+  return pickFromPool(pool, owner) ?? "";
 }
 
 type Deps = {
@@ -256,7 +251,7 @@ export async function tryRoleSendGift(
         category: kind,
         buyer: owner as ChatSender,
         receiver: "You",
-        note: pickNote(),
+        note: pickNote(owner),
         status: "pending",
       },
     },
