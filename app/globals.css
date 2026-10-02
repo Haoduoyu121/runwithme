@@ -72982,3 +72982,40 @@ html[data-runwithme-theme="dark"] .shopv2-rate-textarea {
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(219, 39, 119, 0.3);
 }
+/* =========================================================
+   Shop v2 · 第 3 批（礼物请求）
+   ========================================================= */
+
+.gift-card-view-order {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(167, 139, 250, 0.15);
+  color: #6d5bd0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+html[data-runwithme-theme="dark"] .gift-card-view-order {
+  background: rgba(167, 139, 250, 0.22);
+  color: #c4b5fd;
+}
+.gift-card-view-order:active {
+  transform: scale(0.97);
+}
+
+/* 订单已取消状态 */
+.shopv2-order-detail-status.is-cancelled {
+  background: linear-gradient(
+    135deg,
+    #6b6b70 0%,
+    #4a4a50 100%
+  );
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}

@@ -124,6 +124,8 @@ export type ChatMessage = {
 
   /* ★ 礼物 / 外卖 */
   gift?: {
+    /** ★ 关联订单 id（Shop v2 使用） */
+    orderId?: string;
     itemId: string;
     itemName: string;
     itemEmoji: string;

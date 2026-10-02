@@ -45,6 +45,13 @@ import {
   sendAvatarRequestFromRole,
   resolveAvatarRequestAsUser,
 } from "@/lib/avatarRequest";
+
+import {
+  loadOrders,
+  acceptOrderGift,
+  rejectOrderGift,
+} from "@/lib/orderStorage";
+import type { Order } from "@/data/order";
 import {
   loadWallet,
   saveWallet,
@@ -133,6 +140,31 @@ function pickTextCardSnapshotFor(
     mood: card.mood,
   };
 }
+const GIFT_ACCEPT_LINES = [
+  "收下了。",
+  "谢谢。",
+  "嗯，我收下。",
+  "……挺好的。",
+];
+
+const GIFT_REJECT_LINES = [
+  "不用了。",
+  "先放着吧。",
+  "心意收到了。",
+  "下次吧。",
+];
+
+function pickGiftAcceptLine(): string {
+  return GIFT_ACCEPT_LINES[
+    Math.floor(Math.random() * GIFT_ACCEPT_LINES.length)
+  ];
+}
+
+function pickGiftRejectLine(): string {
+  return GIFT_REJECT_LINES[
+    Math.floor(Math.random() * GIFT_REJECT_LINES.length)
+  ];
+}
 
 function pickCardForThread(
   cards: ReturnType<typeof loadCards>,
@@ -217,6 +249,9 @@ type ChatContextValue = {
     messageId: string,
     accepted: boolean
   ) => Promise<void>;
+
+  /* ★ Shop v2 送礼到 Chat */
+  sendShopGiftRequest: (order: Order) => Promise<void>;
 };
 
 const ChatContext =
@@ -1644,6 +1679,139 @@ export function ChatProvider({
     [addMessage, updateThreadMessages]
   );
 
+  /* =========================================================
+     ★ Shop v2 送礼到 Chat
+     ========================================================= */
+
+  const sendShopGiftRequest = useCallback(
+    async (order: Order) => {
+      if (
+        order.receiverId !== "levi" &&
+        order.receiverId !== "erwin"
+      ) {
+        return;
+      }
+
+      const receiver: "Levi" | "Erwin" =
+        order.receiverId === "levi" ? "Levi" : "Erwin";
+
+      /* 单聊 thread */
+      const targetThreadId: ThreadId =
+        receiver === "Levi" ? "levi" : "erwin";
+
+      const firstItem = order.items[0];
+      const messageId = createMessageId();
+
+      /* 发消息 */
+      addMessage(
+        {
+          id: messageId,
+          sender: "You",
+          type: "gift",
+          timestamp: Date.now(),
+          gift: {
+            orderId: order.id,
+            itemId: firstItem?.productId ?? "",
+            itemName:
+              order.items.length > 1
+                ? `${firstItem?.productName ?? "商品"} 等 ${
+                    order.items.length
+                  } 件`
+                : firstItem?.productName ?? "商品",
+            itemEmoji: firstItem?.productEmoji ?? "🎁",
+            price: order.totalPrice,
+            category: order.kind,
+            buyer: "You",
+            receiver: receiver as ChatSender,
+            note: "",
+            status: "pending",
+          },
+        },
+        { threadId: targetThreadId }
+      );
+
+      /* 延迟 → 角色决定 */
+      const cfg = settingsRef.current.avatarSwitch;
+      const minMs = cfg.requestDelayMin * 1000;
+      const maxMs = cfg.requestDelayMax * 1000;
+      const delay = randomInteger(minMs, maxMs);
+
+      window.setTimeout(() => {
+        const cfgNow = settingsRef.current.avatarSwitch;
+        /* 复用"用户请求换头像"的答应概率？不，礼物用固定 75% */
+        const accepted = Math.random() < 0.75;
+
+        if (accepted) {
+          /* 更新订单 */
+          acceptOrderGift(order.id);
+
+          /* 更新消息状态 */
+          updateThreadMessages(targetThreadId, (prev) =>
+            prev.map((m) => {
+              if (m.id !== messageId || !m.gift) return m;
+              if (m.gift.status !== "pending") return m;
+              return {
+                ...m,
+                gift: {
+                  ...m.gift,
+                  status: "accepted",
+                  resolvedAt: Date.now(),
+                },
+              };
+            })
+          );
+
+          /* 角色回一句话 */
+          const name =
+            settingsRef.current.characterNames[
+              receiver === "Levi" ? "levi" : "erwin"
+            ];
+          addMessage(
+            {
+              id: createMessageId(),
+              sender: receiver as ChatSender,
+              type: "text",
+              text: pickGiftAcceptLine(),
+              timestamp: Date.now(),
+            },
+            { threadId: targetThreadId }
+          );
+          void name;
+        } else {
+          /* 更新订单 + 退款 */
+          rejectOrderGift(order.id);
+
+          updateThreadMessages(targetThreadId, (prev) =>
+            prev.map((m) => {
+              if (m.id !== messageId || !m.gift) return m;
+              if (m.gift.status !== "pending") return m;
+              return {
+                ...m,
+                gift: {
+                  ...m.gift,
+                  status: "rejected",
+                  resolvedAt: Date.now(),
+                },
+              };
+            })
+          );
+
+          addMessage(
+            {
+              id: createMessageId(),
+              sender: receiver as ChatSender,
+              type: "text",
+              text: pickGiftRejectLine(),
+              timestamp: Date.now(),
+            },
+            { threadId: targetThreadId }
+          );
+        }
+      }, delay);
+    },
+    [addMessage, updateThreadMessages]
+  );
+
   return (
     <ChatContext.Provider
       value={{
@@ -1672,6 +1840,7 @@ export function ChatProvider({
         requestAvatarChange,
         sendAvatarRequest,
         resolveAvatarRequest,
+        sendShopGiftRequest,
       }}
     >
       {children}

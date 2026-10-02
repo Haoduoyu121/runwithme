@@ -36,6 +36,8 @@ import { loadSystemSettings } from "@/lib/systemStorage";
 import type { Order } from "@/data/order";
 import { upsertOrder } from "@/lib/orderStorage";
 
+import { useChat } from "@/lib/ChatContext";
+
 import ShopHome from "./ShopHome";
 import ShopDetail from "./ShopDetail";
 import ProductDetail from "./ProductDetail";
@@ -55,6 +57,7 @@ type View =
   | { kind: "order"; orderId: string };
 
 export default function ShopV2App({ onBack }: Props) {
+  const { sendShopGiftRequest } = useChat();
   const [topTab, setTopTab] = useState<TopTab>("shopping");
   const [ownerId, setOwnerId] =
     useState<ShopOwnerId>("you");
@@ -261,6 +264,15 @@ export default function ShopV2App({ onBack }: Props) {
     const nextCart: Cart = { ...cart, items: [] };
     setCart(nextCart);
     setCartState(nextCart);
+
+    /* 送礼 → 通知 Chat */
+    if (
+      params.isGift &&
+      (params.receiverId === "levi" ||
+        params.receiverId === "erwin")
+    ) {
+      void sendShopGiftRequest(order);
+    }
 
     /* 跳订单详情 */
     setView({ kind: "order", orderId: order.id });

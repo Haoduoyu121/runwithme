@@ -96,8 +96,18 @@ export default function OrderDetail({
   const isReviewed =
     order.status === "reviewed" && order.review;
 
+  /* 礼物待接受 */
+  const isGiftPending =
+    order.giftStatus === "pending" &&
+    order.logistics.length === 0;
+
+  /* 礼物被拒 */
+  const isGiftRejected = order.giftStatus === "rejected";
+
   /* 已送达且未评价 → 可评价 */
   const canReview =
+    !isGiftPending &&
+    !isGiftRejected &&
     !isReviewed &&
     (stage === "delivered" ||
       order.status === "delivered");
@@ -118,17 +128,34 @@ export default function OrderDetail({
 
       <div className="shopv2-scroll">
         {/* 状态 */}
-        <div className="shopv2-order-detail-status">
+        <div
+          className={
+            "shopv2-order-detail-status" +
+            (isGiftRejected ? " is-cancelled" : "")
+          }
+        >
           <div className="shopv2-order-detail-status-label">
-            {order.status === "reviewed"
-              ? "已完成"
-              : stageLabel(order.kind, stage)}
+            {isGiftRejected
+              ? "礼物已被拒绝 · 已退款"
+              : isGiftPending
+                ? "等待对方接受"
+                : order.status === "reviewed"
+                  ? "已完成"
+                  : order.status === "cancelled"
+                    ? "已取消"
+                    : stageLabel(order.kind, stage)}
           </div>
-          {order.status === "active" && (
+          {isGiftPending && (
             <div className="shopv2-order-detail-status-hint">
-              物流进行中，稍后自动更新
+              对方在 Chat 里接受后才会开始发货
             </div>
           )}
+          {order.status === "active" &&
+            !isGiftPending && (
+              <div className="shopv2-order-detail-status-hint">
+                物流进行中，稍后自动更新
+              </div>
+            )}
         </div>
 
         {/* 商品清单 */}
@@ -188,6 +215,7 @@ export default function OrderDetail({
         </div>
 
         {/* 物流时间线 */}
+        {order.logistics.length > 0 && (
         <div className="shopv2-order-detail-block">
           <div className="shopv2-order-detail-block-title">
             物流信息
@@ -217,6 +245,7 @@ export default function OrderDetail({
             })}
           </div>
         </div>
+        )}
 
         {/* 评价（已评价时） */}
         {isReviewed && order.review && (

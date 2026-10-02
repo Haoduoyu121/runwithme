@@ -1249,6 +1249,35 @@ function ChatThreadView({
       });
     }
 
+      /* ★ 从礼物卡片跳转 Shop 订单 */
+  useEffect(() => {
+    function onOpenOrder(e: Event) {
+      const detail = (
+        e as CustomEvent<{ orderId: string }>
+      ).detail;
+      if (!detail?.orderId) return;
+      try {
+        sessionStorage.setItem(
+          "runwithme_open_shop_order",
+          detail.orderId
+        );
+      } catch {}
+      window.alert(
+        "订单 ID 已记录，请打开主屏的「购物」App 查看"
+      );
+    }
+    window.addEventListener(
+      "runwithme:open-shop-order",
+      onOpenOrder
+    );
+    return () => {
+      window.removeEventListener(
+        "runwithme:open-shop-order",
+        onOpenOrder
+      );
+    };
+  }, []);
+
     window.addEventListener("runwithme:kb-change", onKb);
     return () => {
       window.removeEventListener(
@@ -1978,18 +2007,16 @@ function ChatThreadView({
               <GiftCard
                 message={message}
                 names={names}
-                onRate={(messageId, rating, comment) => {
-                  void import("@/lib/shopDelivery").then(
-                    ({ rateGift }) => {
-                      rateGift(
-                        messageId,
-                        activeThreadId,
-                        rating,
-                        comment,
-                        updateThreadMessages
-                      );
-                    }
-                  );
+                onOpenOrder={(orderId) => {
+                  /* 跳转到 Shop 订单详情 */
+                  try {
+                    window.dispatchEvent(
+                      new CustomEvent(
+                        "runwithme:open-shop-order",
+                        { detail: { orderId } }
+                      )
+                    );
+                  } catch {}
                 }}
               />
             )}
