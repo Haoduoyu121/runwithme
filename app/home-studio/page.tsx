@@ -59,10 +59,11 @@ const APP_ENTRIES: AppEntry[] = [
   { id: "random", name: "Random", icon: "⁂" },
   { id: "search", name: "Search", icon: "⌕" },
   { id: "read", name: "Read", icon: "▤" },
-  { id: "fridge", name: "Fridge", icon: "❄" },
+  { id: "shop", name: "Shop", icon: "▦" },
   { id: "ai", name: "Beyond", icon: "✦" },
   { id: "tarot", name: "Tarot", icon: "☽" },
   { id: "games", name: "Arcade", icon: "◉" },
+  { id: "potato", name: "Char", icon: "♨" },
 ];
 
 type DockEntry = {
