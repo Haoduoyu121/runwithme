@@ -17,7 +17,9 @@ export function loadAvatarLibrary(): AvatarLibraryItem[] {
       (a): a is AvatarLibraryItem =>
         a &&
         typeof a.id === "string" &&
-        (a.owner === "Levi" || a.owner === "Erwin") &&
+        (a.owner === "Levi" ||
+          a.owner === "Erwin" ||
+          a.owner === "You") &&
         (a.scope === "chat" || a.scope === "icity") &&
         typeof a.fileName === "string"
     );
