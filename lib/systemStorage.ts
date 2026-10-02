@@ -125,6 +125,26 @@ export type RoleBookkeepingSettings = {
   /** 每次掷骰子概率 0~1 */
   chance: number;
 };
+
+/* ---------- 角色改用户备注 ---------- */
+
+export type RoleRemarkSettings = {
+  enabled: boolean;
+  /** 后台间隔（分钟） */
+  intervalMin: number;
+  intervalMax: number;
+  /** 每次掷骰子概率 0~1 */
+  chance: number;
+  /** 用户改角色名字后，角色"回礼"改用户备注的概率 0~1 */
+  retaliateChance: number;
+};
+
+/* ---------- 用户备注（角色给的） ---------- */
+
+export type UserRemarks = {
+  Levi: string | null;
+  Erwin: string | null;
+};
 /* ---------- 角色显示名 ---------- */
 
 export type CharacterNames = {
@@ -170,6 +190,8 @@ export type SystemSettings = {
   walletEval: WalletEvalSettings;
   roleRedPacket: RoleRedPacketSettings;
   roleBookkeeping: RoleBookkeepingSettings;
+  roleRemark: RoleRemarkSettings;
+  userRemarks: UserRemarks;
 
   chatCustomCSS: string;
 };
@@ -297,6 +319,17 @@ const defaultSettings: SystemSettings = {
     intervalMin: 60,
     intervalMax: 240,
     chance: 0.3,
+  },
+  roleRemark: {
+    enabled: false,
+    intervalMin: 60,
+    intervalMax: 240,
+    chance: 0.15,
+    retaliateChance: 0.3,
+  },
+  userRemarks: {
+    Levi: null,
+    Erwin: null,
   },
   chatCustomCSS: "",
 };
@@ -577,6 +610,47 @@ export function loadSystemSettings(): SystemSettings {
           chance: clamp01(r.chance, d.chance),
         };
       })(),
+      roleRemark: (() => {
+        const r = parsed.roleRemark ?? {};
+        const d = defaultSettings.roleRemark;
+        return {
+          enabled:
+            typeof r.enabled === "boolean"
+              ? r.enabled
+              : d.enabled,
+          intervalMin: clampNum(
+            r.intervalMin,
+            1,
+            1440,
+            d.intervalMin
+          ),
+          intervalMax: clampNum(
+            r.intervalMax,
+            1,
+            1440,
+            d.intervalMax
+          ),
+          chance: clamp01(r.chance, d.chance),
+          retaliateChance: clamp01(
+            r.retaliateChance,
+            d.retaliateChance
+          ),
+        };
+      })(),
+      userRemarks: (() => {
+        const r = parsed.userRemarks ?? {};
+        return {
+          Levi:
+            typeof r.Levi === "string" && r.Levi.length > 0
+              ? r.Levi
+              : null,
+          Erwin:
+            typeof r.Erwin === "string" &&
+            r.Erwin.length > 0
+              ? r.Erwin
+              : null,
+        };
+      })(),
       chatCustomCSS:
         typeof parsed.chatCustomCSS === "string"
           ? parsed.chatCustomCSS
@@ -651,6 +725,14 @@ export function updateSystemSettings(
     roleBookkeeping: {
       ...current.roleBookkeeping,
       ...(updates.roleBookkeeping ?? {}),
+    },
+    roleRemark: {
+      ...current.roleRemark,
+      ...(updates.roleRemark ?? {}),
+    },
+    userRemarks: {
+      ...current.userRemarks,
+      ...(updates.userRemarks ?? {}),
     },
   };
 

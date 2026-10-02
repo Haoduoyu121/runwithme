@@ -237,6 +237,33 @@ export default function ProfileApp({
           >
             我的头像库
           </button>
+
+          {/* 角色给的备注 */}
+          {(settings.userRemarks.Levi ||
+            settings.userRemarks.Erwin) && (
+            <div className="profile-remarks">
+              {settings.userRemarks.Levi && (
+                <div className="profile-remark-item">
+                  <span className="profile-remark-owner">
+                    {names.levi}：
+                  </span>
+                  <span className="profile-remark-text">
+                    「{settings.userRemarks.Levi}」
+                  </span>
+                </div>
+              )}
+              {settings.userRemarks.Erwin && (
+                <div className="profile-remark-item">
+                  <span className="profile-remark-owner">
+                    {names.erwin}：
+                  </span>
+                  <span className="profile-remark-text">
+                    「{settings.userRemarks.Erwin}」
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 钱包卡片 */}

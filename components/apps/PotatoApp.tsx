@@ -51,6 +51,14 @@ import {
   resetWalletEvalPool,
 } from "@/lib/walletEvalStorage";
 
+import {
+  loadRemarkPool,
+  saveRemarkPool,
+  resetRemarkPool,
+} from "@/lib/remarkStorage";
+
+import { roleRemarkUser } from "@/lib/remarkScheduler";
+
 type Props = { onBack: () => void };
 
 type TabKey = "levi" | "erwin" | "sentence" | "general";
@@ -94,6 +102,15 @@ export default function PotatoApp({ onBack }: Props) {
   const [evalPool, setEvalPool] = useState(
     loadWalletEvalPool
   );
+
+  /* 备注卡池 */
+  const [remarkPool, setRemarkPool] = useState(
+    loadRemarkPool
+  );
+  const [remarkLeviDraft, setRemarkLeviDraft] =
+    useState(loadRemarkPool().Levi.join("\n"));
+  const [remarkErwinDraft, setRemarkErwinDraft] =
+    useState(loadRemarkPool().Erwin.join("\n"));
     /* 特殊金额草稿 */
   const [specialAmountsDraft, setSpecialAmountsDraft] =
     useState<string>(() =>
@@ -146,6 +163,34 @@ export default function PotatoApp({ onBack }: Props) {
     setEvalPool(d);
     setEvalLeviDraft(d.Levi.join("\n"));
     setEvalErwinDraft(d.Erwin.join("\n"));
+  }
+
+  function saveRemarkLevi() {
+    const list = remarkLeviDraft
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const next = { ...remarkPool, Levi: list };
+    saveRemarkPool(next);
+    setRemarkPool(next);
+  }
+
+  function saveRemarkErwin() {
+    const list = remarkErwinDraft
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const next = { ...remarkPool, Erwin: list };
+    saveRemarkPool(next);
+    setRemarkPool(next);
+  }
+
+  function handleResetRemarkPool() {
+    if (!window.confirm("恢复默认备注卡池？")) return;
+    const d = resetRemarkPool();
+    setRemarkPool(d);
+    setRemarkLeviDraft(d.Levi.join("\n"));
+    setRemarkErwinDraft(d.Erwin.join("\n"));
   }
 
   function updateSentence(patch: Partial<SentenceSettings>) {
@@ -237,12 +282,35 @@ export default function PotatoApp({ onBack }: Props) {
       key === "levi" ? nameLeviDraft : nameErwinDraft;
     const trimmed = draft.trim();
     if (!trimmed) return;
+
+    const oldName = settings.characterNames[key];
+    if (trimmed === oldName) return;
+
     updateSettings({
       characterNames: {
         ...settings.characterNames,
         [key]: trimmed,
       },
     });
+
+    /* ★ 回礼：改了角色名字，角色偶尔改用户备注 */
+    const cfg = settings.roleRemark;
+    if (!cfg.enabled) return;
+    if (Math.random() >= cfg.retaliateChance) return;
+
+    const owner = key === "levi" ? "Levi" : "Erwin";
+    const delay = 5000 + Math.random() * 15000;
+    window.setTimeout(async () => {
+      const result = await roleRemarkUser(owner);
+      if (!result) return;
+      try {
+        window.dispatchEvent(
+          new CustomEvent("runwithme:remark-changed", {
+            detail: result,
+          })
+        );
+      } catch {}
+    }, delay);
   }
 
   /* 单聊回复时限 */
@@ -1821,6 +1889,7 @@ export default function PotatoApp({ onBack }: Props) {
                 </label>
               </div>
             </div>
+            
 
             {/* ---------- 角色给用户换头像 ---------- */}
             <div
@@ -1861,7 +1930,7 @@ export default function PotatoApp({ onBack }: Props) {
               />
             </div>
 
-            <div className="potato-sentence-row">
+                       <div className="potato-sentence-row">
               <span className="potato-sentence-label">
                 触发概率
               </span>
@@ -1893,6 +1962,267 @@ export default function PotatoApp({ onBack }: Props) {
                 <span className="potato-num-suffix">%</span>
               </label>
             </div>
+
+            {/* ---------- 改备注 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              改备注
+            </div>
+            <div className="potato-hint">
+              角色偶尔会给你改一个备注，显示在「我的」名字下面。
+              你改了角色名字后，他们也会偶尔"回礼"。
+            </div>
+
+            <div className="potato-sentence-row">
+              <div className="potato-sentence-label">
+                <strong>启用</strong>
+                <small>关掉后角色不会改你备注</small>
+              </div>
+              <button
+                type="button"
+                className={
+                  "potato-switch" +
+                  (settings.roleRemark.enabled
+                    ? " is-on"
+                    : "")
+                }
+                onClick={() =>
+                  updateSettings({
+                    roleRemark: {
+                      ...settings.roleRemark,
+                      enabled: !settings.roleRemark.enabled,
+                    },
+                  })
+                }
+                aria-label="开关"
+              />
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                触发概率
+              </span>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.roleRemark.chance * 100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      roleRemark: {
+                        ...settings.roleRemark,
+                        chance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">%</span>
+              </label>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                间隔
+              </span>
+              <div className="potato-inline-nums">
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最少
+                  </span>
+                  <input
+                    type="number"
+                    value={settings.roleRemark.intervalMin}
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleRemark: {
+                          ...settings.roleRemark,
+                          intervalMin: Math.max(
+                            1,
+                            Math.min(
+                              1440,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+                <label className="potato-num">
+                  <span className="potato-num-suffix">
+                    最多
+                  </span>
+                  <input
+                    type="number"
+                    value={settings.roleRemark.intervalMax}
+                    min={1}
+                    max={1440}
+                    onChange={(e) =>
+                      updateSettings({
+                        roleRemark: {
+                          ...settings.roleRemark,
+                          intervalMax: Math.max(
+                            1,
+                            Math.min(
+                              1440,
+                              Number(e.target.value) || 1
+                            )
+                          ),
+                        },
+                      })
+                    }
+                  />
+                  <span className="potato-num-suffix">
+                    分
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="potato-sentence-row">
+              <span className="potato-sentence-label">
+                回礼概率
+              </span>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    settings.roleRemark.retaliateChance *
+                      100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      roleRemark: {
+                        ...settings.roleRemark,
+                        retaliateChance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">%</span>
+              </label>
+            </div>
+
+            <div className="potato-sentence-col">
+              <span className="potato-sentence-label">
+                {settings.characterNames.levi} 的备选名
+                （一行一条）
+              </span>
+              <textarea
+                className="potato-sentence-textarea"
+                value={remarkLeviDraft}
+                onChange={(e) =>
+                  setRemarkLeviDraft(e.target.value)
+                }
+                onBlur={saveRemarkLevi}
+                rows={6}
+                spellCheck={false}
+              />
+            </div>
+
+            <div className="potato-sentence-col">
+              <span className="potato-sentence-label">
+                {settings.characterNames.erwin} 的备选名
+                （一行一条）
+              </span>
+              <textarea
+                className="potato-sentence-textarea"
+                value={remarkErwinDraft}
+                onChange={(e) =>
+                  setRemarkErwinDraft(e.target.value)
+                }
+                onBlur={saveRemarkErwin}
+                rows={6}
+                spellCheck={false}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="potato-sentence-reset"
+              onClick={handleResetRemarkPool}
+            >
+              恢复默认卡池
+            </button>
+
+            {(settings.userRemarks.Levi ||
+              settings.userRemarks.Erwin) && (
+              <div className="potato-sentence-col">
+                <span className="potato-sentence-label">
+                  当前备注
+                </span>
+                <div className="potato-remark-current">
+                  {settings.userRemarks.Levi && (
+                    <div className="potato-remark-current-item">
+                      <span>
+                        {settings.characterNames.levi}：
+                        {settings.userRemarks.Levi}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateSettings({
+                            userRemarks: {
+                              ...settings.userRemarks,
+                              Levi: null,
+                            },
+                          })
+                        }
+                      >
+                        清除
+                      </button>
+                    </div>
+                  )}
+                  {settings.userRemarks.Erwin && (
+                    <div className="potato-remark-current-item">
+                      <span>
+                        {settings.characterNames.erwin}：
+                        {settings.userRemarks.Erwin}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateSettings({
+                            userRemarks: {
+                              ...settings.userRemarks,
+                              Erwin: null,
+                            },
+                          })
+                        }
+                      >
+                        清除
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

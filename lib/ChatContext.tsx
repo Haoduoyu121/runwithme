@@ -1064,6 +1064,76 @@ export function ChatProvider({
     settings.roleBookkeeping.chance,
   ]);
 
+  /* =========================================================
+     ★ 角色改用户备注（后台定时器）
+     ========================================================= */
+
+  useEffect(() => {
+    const cfg = settings.roleRemark;
+    if (!cfg.enabled) return;
+
+    const minMs = cfg.intervalMin * 60 * 1000;
+    const maxMs = cfg.intervalMax * 60 * 1000;
+
+    let timer: number | null = null;
+    let cancelled = false;
+
+    function schedule() {
+      const delay = randomInteger(minMs, maxMs);
+      timer = window.setTimeout(async () => {
+        if (cancelled) return;
+        const cfgNow =
+          settingsRef.current.roleRemark;
+        if (
+          cfgNow.enabled &&
+          Math.random() < cfgNow.chance
+        ) {
+          try {
+            const owner =
+              Math.random() < 0.5 ? "Levi" : "Erwin";
+            const { roleRemarkUser } = await import(
+              "@/lib/remarkScheduler"
+            );
+            const result = await roleRemarkUser(owner);
+            if (result) {
+              const ownerName =
+                result.owner === "Levi"
+                  ? settingsRef.current.characterNames.levi
+                  : settingsRef.current.characterNames
+                      .erwin;
+              addMessage(
+                {
+                  id: createMessageId(),
+                  sender: "You",
+                  type: "system",
+                  text: `${ownerName} 把你的备注改成了「${result.text}」`,
+                  timestamp: Date.now(),
+                },
+                { threadId: "group" }
+              );
+            }
+          } catch (e) {
+            console.error("角色改备注失败:", e);
+          }
+        }
+        if (!cancelled) schedule();
+      }, delay);
+    }
+
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [
+    addMessage,
+    settings.roleRemark.enabled,
+    settings.roleRemark.intervalMin,
+    settings.roleRemark.intervalMax,
+    settings.roleRemark.chance,
+  ]);
+
   /* ---------- 用户发消息后快速回复 ---------- */
 
   const scheduleAutoReplyAfterUserMessage =

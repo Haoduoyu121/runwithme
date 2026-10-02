@@ -70172,3 +70172,99 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
   transform: scale(0.97);
   background: rgba(167, 139, 250, 0.2);
 }
+/* =========================================================
+   修复：头像库 / 钱包 在「我的」tab 里顶栏顶到状态栏
+   ========================================================= */
+
+/* 默认给 gallery-page 加状态栏空间 */
+.gallery-page {
+  padding-top: env(safe-area-inset-top, 44px) !important;
+  box-sizing: border-box !important;
+}
+
+/* 但在 potato-app 里已经有 padding，不重复 */
+.potato-app .gallery-page {
+  padding-top: 0 !important;
+}
+
+/* wallet-page 同理（角色钱包也用这个类） */
+.potato-app .wallet-page {
+  padding-top: 0 !important;
+}
+
+/* 兜底：非 iOS 无 safe-area 时，最少留 24px */
+@supports not (padding: env(safe-area-inset-top)) {
+  .gallery-page {
+    padding-top: 24px !important;
+  }
+  .potato-app .gallery-page {
+    padding-top: 0 !important;
+  }
+}
+/* =========================================================
+   用户备注显示（需求 4）
+   ========================================================= */
+
+.profile-remarks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 0 16px;
+}
+.profile-remark-item {
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  color: #8e8e93;
+}
+.chat-dark .profile-remark-item {
+  color: rgba(255, 255, 255, 0.55);
+}
+.profile-remark-owner {
+  font-weight: 600;
+  color: #6d5bd0;
+  margin-right: 2px;
+}
+.chat-dark .profile-remark-owner {
+  color: #c4b5fd;
+}
+.profile-remark-text {
+  color: #555;
+}
+.chat-dark .profile-remark-text {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Potato 里"当前备注"的展示 */
+.potato-remark-current {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.potato-remark-current-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(167, 139, 250, 0.1);
+  font-size: 14px;
+  color: #6d5bd0;
+}
+.chat-dark .potato-remark-current-item {
+  background: rgba(167, 139, 250, 0.16);
+  color: #c4b5fd;
+}
+.potato-remark-current-item button {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
