@@ -11,7 +11,8 @@ export type ChatMessageType =
   | "textcard"
   | "forward"
   | "gallery"
-  | "redpacket";
+  | "redpacket"
+  | "avatar-request";
 
 export type ChatSender = "You" | "Levi" | "Erwin";
 
@@ -96,6 +97,16 @@ export type ChatMessage = {
     claimed: boolean;
     claimedAt?: number;
     note?: string;
+  };
+
+  /* ★ 换头像请求 */
+  avatarRequest?: {
+    from: ChatSender;
+    to: ChatSender;
+    /** IDB 里的文件 id */
+    avatarFileId: string;
+    status: "pending" | "accepted" | "rejected";
+    resolvedAt?: number;
   };
 };
 

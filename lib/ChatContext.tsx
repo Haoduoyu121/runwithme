@@ -35,12 +35,16 @@ import {
   maybeSwitchICityAvatar,
   writeAvatar,
   pickRandomAndWrite,
-  roleSwitchUserAvatar,
 } from "@/lib/avatarSwitcher";
 import type { AvatarLibraryOwner } from "@/data/avatarLibrary";
 
 import { tryRoleSendRedPacket } from "@/lib/roleRedPacketSender";
 import { tryRoleAutoBookkeeping } from "@/lib/roleAutoBookkeeping";
+import {
+  sendAvatarRequestFromUser,
+  sendAvatarRequestFromRole,
+  resolveAvatarRequestAsUser,
+} from "@/lib/avatarRequest";
 import {
   loadWallet,
   saveWallet,
@@ -203,6 +207,16 @@ type ChatContextValue = {
   requestAvatarChange: (
     requests: AvatarChangeRequest[]
   ) => void;
+
+  /* ★ 换头像气泡对话 */
+  sendAvatarRequest: (
+    owner: "Levi" | "Erwin",
+    blob: Blob
+  ) => Promise<void>;
+  resolveAvatarRequest: (
+    messageId: string,
+    accepted: boolean
+  ) => Promise<void>;
 };
 
 const ChatContext =
@@ -1386,21 +1400,15 @@ export function ChatProvider({
           Math.random() < cfgNow.userAvatarChance
         ) {
           try {
-            const ok = await roleSwitchUserAvatar();
-            if (ok) {
-              addMessage(
-                {
-                  id: createMessageId(),
-                  sender: "You",
-                  type: "system",
-                  text: "他们帮你换了张头像",
-                  timestamp: Date.now(),
-                },
-                { threadId: "group" }
-              );
-            }
+            const owner =
+              Math.random() < 0.5 ? "Levi" : "Erwin";
+            await sendAvatarRequestFromRole({
+              owner,
+              threadId: "group",
+              addMessage,
+            });
           } catch (e) {
-            console.error("角色给用户换头像失败:", e);
+            console.error("角色请求用户换头像失败:", e);
           }
         }
         if (!cancelled) schedule();
@@ -1534,7 +1542,7 @@ export function ChatProvider({
                 { threadId: tid }
               );
 
-              /* ★ 回礼：角色反过来给用户换头像 */
+              /* ★ 回礼：角色反过来请求用户换头像 */
               const giftBackChance =
                 settingsRef.current.avatarSwitch
                   .giftBackChance ?? 0.2;
@@ -1545,19 +1553,11 @@ export function ChatProvider({
                 const giftDelay =
                   randomInteger(3000, 12000);
                 window.setTimeout(async () => {
-                  const gifted =
-                    await roleSwitchUserAvatar();
-                  if (!gifted) return;
-                  addMessage(
-                    {
-                      id: createMessageId(),
-                      sender: "You",
-                      type: "system",
-                      text: `${ownerName} 帮你换了张头像`,
-                      timestamp: Date.now(),
-                    },
-                    { threadId: tid }
-                  );
+                  await sendAvatarRequestFromRole({
+                    owner: req.owner as "Levi" | "Erwin",
+                    threadId: tid,
+                    addMessage,
+                  });
                 }, giftDelay);
               }
             }
@@ -1577,6 +1577,34 @@ export function ChatProvider({
       }
     },
     [addMessage]
+  );
+
+  /* ---------- 换头像气泡（新） ---------- */
+
+  const sendAvatarRequest = useCallback(
+    async (owner: "Levi" | "Erwin", blob: Blob) => {
+      await sendAvatarRequestFromUser({
+        owner,
+        blob,
+        threadId: activeThreadIdRef.current,
+        addMessage,
+        updateThreadMessages,
+      });
+    },
+    [addMessage, updateThreadMessages]
+  );
+
+  const resolveAvatarRequest = useCallback(
+    async (messageId: string, accepted: boolean) => {
+      await resolveAvatarRequestAsUser({
+        messageId,
+        accepted,
+        threadId: activeThreadIdRef.current,
+        addMessage,
+        updateThreadMessages,
+      });
+    },
+    [addMessage, updateThreadMessages]
   );
 
   return (
@@ -1605,6 +1633,8 @@ export function ChatProvider({
         updateThreadMessages,
         claimRedPacket,
         requestAvatarChange,
+        sendAvatarRequest,
+        resolveAvatarRequest,
       }}
     >
       {children}

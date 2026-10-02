@@ -61,6 +61,7 @@ import AvatarRequestSheet from "@/components/apps/chat/AvatarRequestSheet";
 import ProfileApp from "@/components/apps/profile/ProfileApp";
 import RedPacketSheet from "@/components/apps/chat/RedPacketSheet";
 import RedPacketCard from "@/components/apps/chat/RedPacketCard";
+import AvatarRequestBubble from "@/components/apps/chat/AvatarRequestBubble";
 import { sendRedPacketToRoles } from "@/lib/redPacket";
 
 import type { CharacterNames } from "@/lib/systemStorage";
@@ -631,6 +632,8 @@ function previewText(m: ChatMessage | null): string {
   if (m.type === "gallery") return "[图片]";
   if (m.type === "redpacket")
     return `[红包] ${m.redpacket?.amount ?? 0}`;
+  if (m.type === "avatar-request")
+    return "[换头像请求]";
   if (m.type === "forward")
     return `[转发了 ${m.forwardItems?.length ?? 0} 条消息]`;
   if (m.type === "system") return m.text ?? "";
@@ -873,6 +876,8 @@ function ChatThreadView({
     updateThreadMessages,
     claimRedPacket,
     requestAvatarChange,
+    sendAvatarRequest,
+    resolveAvatarRequest,
     activeThreadId,
   } = useChat();
 
@@ -1909,6 +1914,33 @@ function ChatThreadView({
                 }
               />
             )}
+
+            {message.type === "avatar-request" && (
+              <AvatarRequestBubble
+                message={message}
+                names={names}
+                onAccept={
+                  message.avatarRequest?.to === "You" &&
+                  message.avatarRequest?.status === "pending"
+                    ? () =>
+                        void resolveAvatarRequest(
+                          message.id,
+                          true
+                        )
+                    : undefined
+                }
+                onReject={
+                  message.avatarRequest?.to === "You" &&
+                  message.avatarRequest?.status === "pending"
+                    ? () =>
+                        void resolveAvatarRequest(
+                          message.id,
+                          false
+                        )
+                    : undefined
+                }
+              />
+            )}
           </div>
 
           {isGroupEnd && !selectionMode && (
@@ -2622,7 +2654,6 @@ function ChatThreadView({
           }
           onClose={() => setShowAvatarRequest(false)}
           onConfirm={(requests) => {
-            /* 分开处理：给自己换 = 直接换；给角色换 = 走请求 */
             void (async () => {
               const { writeAvatar } = await import(
                 "@/lib/avatarSwitcher"
@@ -2635,7 +2666,11 @@ function ChatThreadView({
                     req.blob
                   );
                 } else {
-                  requestAvatarChange([req]);
+                  /* 走气泡对话 */
+                  await sendAvatarRequest(
+                    req.owner as "Levi" | "Erwin",
+                    req.blob
+                  );
                 }
               }
             })();
