@@ -131,6 +131,24 @@ export async function sendAvatarRequestFromUser(params: {
         },
         { threadId }
       );
+
+      /* ★ 回礼：角色接受后，偶尔反过来请求用户换头像 */
+      const giftBackChance =
+        loadSystemSettings().avatarSwitch.giftBackChance ?? 0.2;
+      if (Math.random() < giftBackChance) {
+        const giftDelay = randomInt(3000, 12000);
+        window.setTimeout(async () => {
+          try {
+            await sendAvatarRequestFromRole({
+              owner,
+              threadId,
+              addMessage,
+            });
+          } catch (e) {
+            console.error("角色回礼请求失败:", e);
+          }
+        }, giftDelay);
+      }
     } else {
       updateThreadMessages(threadId, (prev) =>
         prev.map((m) => {
