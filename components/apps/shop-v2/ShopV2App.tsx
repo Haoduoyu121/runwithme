@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   ChevronLeft,
+  Settings2,
   ShoppingBag,
   ShoppingCart,
   Utensils,
@@ -48,6 +49,7 @@ import CartSheet from "./CartSheet";
 import CheckoutPage from "./CheckoutPage";
 import OrdersTab from "./OrdersTab";
 import OrderDetail from "./OrderDetail";
+import ManagePage from "./ManagePage";
 
 type Props = { onBack: () => void };
 
@@ -57,7 +59,8 @@ type View =
   | { kind: "shop"; shopId: string }
   | { kind: "product"; productId: string }
   | { kind: "checkout" }
-  | { kind: "order"; orderId: string };
+  | { kind: "order"; orderId: string }
+  | { kind: "manage" };
 
 export default function ShopV2App({ onBack }: Props) {
   const { sendShopGiftRequest } = useChat();
@@ -293,6 +296,17 @@ export default function ShopV2App({ onBack }: Props) {
 
   /* ---------- 二级视图 ---------- */
 
+  if (view.kind === "manage") {
+    return (
+      <main className="phone-screen shopv2-app">
+        <ManagePage
+          kind={currentKind}
+          onBack={() => setView({ kind: "home" })}
+        />
+      </main>
+    );
+  }
+
   if (view.kind === "order") {
     return (
       <main className="phone-screen shopv2-app">
@@ -425,19 +439,29 @@ export default function ShopV2App({ onBack }: Props) {
           <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
         <div className="shopv2-topbar-title">购物</div>
-        <button
-          type="button"
-          className="shopv2-topbar-cart"
-          onClick={() => setShowCart(true)}
-          aria-label="购物车"
-        >
-          <ShoppingCart size={22} strokeWidth={2.2} />
-          {cartCount > 0 && (
-            <span className="shopv2-cart-badge">
-              {cartCount > 99 ? "99+" : cartCount}
-            </span>
-          )}
-        </button>
+        <div className="shopv2-topbar-actions">
+          <button
+            type="button"
+            className="shopv2-topbar-iconbtn"
+            onClick={() => setView({ kind: "manage" })}
+            aria-label="管理"
+          >
+            <Settings2 size={20} strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            className="shopv2-topbar-cart"
+            onClick={() => setShowCart(true)}
+            aria-label="购物车"
+          >
+            <ShoppingCart size={22} strokeWidth={2.2} />
+            {cartCount > 0 && (
+              <span className="shopv2-cart-badge">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       <div className="shopv2-top-tabs">

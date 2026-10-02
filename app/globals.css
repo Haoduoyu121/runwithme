@@ -73030,3 +73030,202 @@ html[data-runwithme-theme="dark"] .gift-card-view-order {
   font-weight: 500;
   opacity: 0.75;
 }
+/* =========================================================
+   Shop v2 · 第 5 批（管理 + AI 生成）
+   ========================================================= */
+
+.shopv2-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.shopv2-topbar-iconbtn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #111;
+  cursor: pointer;
+  border-radius: 50%;
+}
+html[data-runwithme-theme="dark"] .shopv2-topbar-iconbtn {
+  color: #fff;
+}
+.shopv2-topbar-iconbtn:active {
+  background: rgba(0, 0, 0, 0.06);
+}
+html[data-runwithme-theme="dark"] .shopv2-topbar-iconbtn:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* 管理页 */
+.shopv2-manage-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.shopv2-manage-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+  color: #333;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+html[data-runwithme-theme="dark"] .shopv2-manage-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+.shopv2-manage-btn.primary {
+  border-color: transparent;
+  background: linear-gradient(
+    135deg,
+    #a78bfa 0%,
+    #7c3aed 100%
+  );
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(124, 58, 237, 0.25);
+}
+.shopv2-manage-btn:active {
+  transform: scale(0.98);
+}
+
+.shopv2-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.shopv2-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+html[data-runwithme-theme="dark"] .shopv2-manage-row {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.shopv2-manage-row:active {
+  transform: scale(0.99);
+}
+.shopv2-manage-row-emoji {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+html[data-runwithme-theme="dark"] .shopv2-manage-row-emoji {
+  background: rgba(255, 255, 255, 0.06);
+}
+.shopv2-manage-row-info {
+  flex: 1;
+  min-width: 0;
+}
+.shopv2-manage-row-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+  margin-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-runwithme-theme="dark"] .shopv2-manage-row-name {
+  color: #fff;
+}
+.shopv2-manage-row-sub {
+  font-size: 11.5px;
+  color: #8e8e93;
+}
+
+/* AI 生成列表 */
+.shopv2-ai-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.shopv2-ai-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+}
+html[data-runwithme-theme="dark"] .shopv2-ai-item {
+  background: rgba(255, 255, 255, 0.06);
+}
+.shopv2-ai-item-emoji {
+  font-size: 26px;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.shopv2-ai-item-info {
+  flex: 1;
+  min-width: 0;
+}
+.shopv2-ai-item-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 3px;
+}
+html[data-runwithme-theme="dark"] .shopv2-ai-item-name {
+  color: #fff;
+}
+.shopv2-ai-item-desc {
+  font-size: 11.5px;
+  color: #6b6b70;
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+html[data-runwithme-theme="dark"] .shopv2-ai-item-desc {
+  color: rgba(255, 255, 255, 0.6);
+}
+.shopv2-ai-item-meta {
+  font-size: 11px;
+  color: #ec4899;
+  font-weight: 600;
+}
+.shopv2-ai-item-del {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #8e8e93;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.shopv2-ai-item-del:active {
+  background: rgba(0, 0, 0, 0.06);
+}

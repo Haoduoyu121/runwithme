@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   ChevronLeft,
   Star,
+  Trash2,
 } from "lucide-react";
 
 import type { Order } from "@/data/order";
@@ -123,7 +124,27 @@ export default function OrderDetail({
           <ChevronLeft size={26} strokeWidth={2.4} />
         </button>
         <div className="shopv2-topbar-title">订单详情</div>
-        <div className="shopv2-topbar-spacer" />
+        <button
+          type="button"
+          className="shopv2-topbar-iconbtn"
+          onClick={() => {
+            if (
+              window.confirm(
+                "删除这个订单？不影响已扣除的钱（除非是待接受的礼物）"
+              )
+            ) {
+              void import("@/lib/orderStorage").then(
+                ({ deleteOrder }) => {
+                  deleteOrder(order.id);
+                  onBack();
+                }
+              );
+            }
+          }}
+          aria-label="删除订单"
+        >
+          <Trash2 size={20} strokeWidth={2.2} />
+        </button>
       </header>
 
       <div className="shopv2-scroll">

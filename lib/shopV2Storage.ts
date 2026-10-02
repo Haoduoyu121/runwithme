@@ -181,3 +181,41 @@ export function resetShopV2(): void {
 }
 
 export const SHOP_V2_EVENT = EVT;
+
+/* =========================================================
+   商品 / 店铺 / 订单 增删改
+   ========================================================= */
+
+export function upsertProduct(p: ShopProduct): void {
+  const list = loadProducts();
+  const idx = list.findIndex((x) => x.id === p.id);
+  const next =
+    idx >= 0
+      ? list.map((x) => (x.id === p.id ? p : x))
+      : [...list, p];
+  saveProducts(next);
+}
+
+export function deleteProduct(id: string): void {
+  saveProducts(
+    loadProducts().filter((p) => p.id !== id)
+  );
+}
+
+export function upsertShop(s: Shop): void {
+  const list = loadShops();
+  const idx = list.findIndex((x) => x.id === s.id);
+  const next =
+    idx >= 0
+      ? list.map((x) => (x.id === s.id ? s : x))
+      : [...list, s];
+  saveShops(next);
+}
+
+export function deleteShop(id: string): void {
+  saveShops(loadShops().filter((s) => s.id !== id));
+  /* 顺便删掉该店铺的所有商品 */
+  saveProducts(
+    loadProducts().filter((p) => p.shopId !== id)
+  );
+}

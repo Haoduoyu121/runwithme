@@ -170,6 +170,11 @@ export function stageProgress(
 
 export const ORDER_EVENT = EVT;
 
+export function deleteOrder(orderId: string): void {
+  const list = loadOrders();
+  saveOrders(list.filter((o) => o.id !== orderId));
+}
+
 /* =========================================================
    礼物订单状态
    ========================================================= */
