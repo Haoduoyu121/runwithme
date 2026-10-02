@@ -47,6 +47,7 @@ const APP_LABEL: Record<MemorySourceApp, string> = {
   checkin: "Check-in",
   questionnaire: "Q&A",
   wishlist: "Wishlist",
+  shop: "Shop",
 };
 
 function getAppIcon(app: MemorySourceApp) {

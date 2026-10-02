@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   Music2,
   RefreshCw,
+  ShoppingBag,
   Sparkles,
 } from "lucide-react";
 
@@ -19,12 +20,20 @@ import {
   loadMemory,
   type MemoryEntry,
 } from "@/lib/memoryStorage";
+import {
+  loadProducts,
+  loadShops,
+} from "@/lib/shopV2Storage";
+import type {
+  Shop,
+  ShopProduct,
+} from "@/data/shopV2";
 
 type RandomAppProps = { onBack: () => void };
 
 type RandomCard = {
   id: string;
-  sourceApp: "memory" | "music";
+  sourceApp: "memory" | "music" | "shop";
   title: string;
   body?: string;
   meta?: string;
@@ -58,6 +67,31 @@ function cardFromMusic(item: {
     meta: "Music · 播放列表",
   };
 }
+function cardFromProduct(p: ShopProduct): RandomCard {
+  return {
+    id: `shop-prod-${p.id}`,
+    sourceApp: "shop",
+    title: p.name,
+    body: p.description || `¥${p.price}`,
+    meta:
+      p.kind === "food"
+        ? "外卖 · 随机推荐"
+        : "购物 · 随机推荐",
+  };
+}
+
+function cardFromShop(s: Shop): RandomCard {
+  return {
+    id: `shop-shop-${s.id}`,
+    sourceApp: "shop",
+    title: s.name,
+    body: s.description || s.category,
+    meta:
+      s.kind === "food"
+        ? "外卖店铺 · 随机"
+        : "购物店铺 · 随机",
+  };
+}
 
 export default function RandomApp({ onBack }: RandomAppProps) {
   const { music } = useMusic();
@@ -65,9 +99,17 @@ export default function RandomApp({ onBack }: RandomAppProps) {
   const [memory, setMemory] = useState<MemoryEntry[]>([]);
   const [card, setCard] = useState<RandomCard | null>(null);
   const [spinning, setSpinning] = useState(false);
+  const [shopProducts, setShopProducts] = useState<
+    ShopProduct[]
+  >([]);
+  const [shopShops, setShopShops] = useState<Shop[]>([]);
 
   useEffect(() => {
     setMemory(loadMemory());
+    setShopProducts(
+      loadProducts().filter((p) => p.enabled)
+    );
+    setShopShops(loadShops().filter((s) => s.enabled));
   }, []);
 
   /* ★ 按数据源均分随机池：先随机 source，再随机 item */
@@ -80,9 +122,19 @@ export default function RandomApp({ onBack }: RandomAppProps) {
     if (music.length > 0) {
       result.push(() => cardFromMusic(pickRandom(music)!));
     }
+    if (shopProducts.length > 0) {
+      result.push(() =>
+        cardFromProduct(pickRandom(shopProducts)!)
+      );
+    }
+    if (shopShops.length > 0) {
+      result.push(() =>
+        cardFromShop(pickRandom(shopShops)!)
+      );
+    }
 
     return result;
-  }, [memory, music]);
+  }, [memory, music, shopProducts, shopShops]);
 
   const draw = useCallback(() => {
     if (pools.length === 0) {
@@ -155,6 +207,8 @@ export default function RandomApp({ onBack }: RandomAppProps) {
             <div className="random-card-icon">
               {card.sourceApp === "music" ? (
                 <Music2 size={26} strokeWidth={1.8} />
+              ) : card.sourceApp === "shop" ? (
+                <ShoppingBag size={26} strokeWidth={1.8} />
               ) : (
                 <Sparkles size={26} strokeWidth={1.8} />
               )}

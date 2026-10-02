@@ -14,7 +14,8 @@ export type SearchSourceApp =
   | "notes"
   | "wishlist"
   | "chat"
-  | "letter";
+  | "letter"
+  | "shop";
 
 export type IndexedItem = {
   /** 全局唯一 key：`${sourceApp}:${sourceId}` */
@@ -179,6 +180,66 @@ const SOURCES: SourceDef[] = [
           asNumber(raw.timestamp) ??
           0,
         sourceId,
+      };
+    },
+  },
+  /* ★ Shop v2 · 商品 */
+  {
+    app: "shop",
+    key: "runwithme_shop_v2_products",
+    map: (raw) => {
+      if (raw.enabled === false) return null;
+      const sourceId = asString(raw.id);
+      const title = asString(raw.name);
+      if (!sourceId || !title) return null;
+
+      const parts: string[] = [];
+      const desc = asString(raw.description);
+      if (desc) parts.push(desc);
+      const cat = asString(raw.category);
+      if (cat) parts.push(cat);
+      if (Array.isArray(raw.tags)) {
+        const tags = (raw.tags as unknown[]).filter(
+          (x): x is string => typeof x === "string"
+        );
+        if (tags.length > 0) parts.push(tags.join(" "));
+      }
+
+      return {
+        title,
+        body: parts.join(" · ") || undefined,
+        timestamp: asNumber(raw.createdAt) ?? 0,
+        sourceId: `prod-${sourceId}`,
+      };
+    },
+  },
+  /* ★ Shop v2 · 店铺 */
+  {
+    app: "shop",
+    key: "runwithme_shop_v2_shops",
+    map: (raw) => {
+      if (raw.enabled === false) return null;
+      const sourceId = asString(raw.id);
+      const title = asString(raw.name);
+      if (!sourceId || !title) return null;
+
+      const parts: string[] = [];
+      const desc = asString(raw.description);
+      if (desc) parts.push(desc);
+      const cat = asString(raw.category);
+      if (cat) parts.push(cat);
+      if (Array.isArray(raw.tags)) {
+        const tags = (raw.tags as unknown[]).filter(
+          (x): x is string => typeof x === "string"
+        );
+        if (tags.length > 0) parts.push(tags.join(" "));
+      }
+
+      return {
+        title,
+        body: parts.join(" · ") || undefined,
+        timestamp: asNumber(raw.createdAt) ?? 0,
+        sourceId: `shop-${sourceId}`,
       };
     },
   },

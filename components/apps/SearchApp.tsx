@@ -14,6 +14,7 @@ import {
   MessageCircle,
   Music2,
   Search as SearchIcon,
+  ShoppingBag,
   Sparkles,
   StickyNote,
   X,
@@ -34,6 +35,7 @@ const SOURCE_LABEL: Record<SearchSourceApp, string> = {
   wishlist: "Wishlist",
   chat: "Chat",
   letter: "Letter",
+  shop: "Shop",
 };
 
 function sourceIcon(app: SearchSourceApp) {
@@ -54,6 +56,8 @@ function sourceIcon(app: SearchSourceApp) {
       );
     case "letter":
       return <Mail size={size} strokeWidth={sw} />;
+    case "shop":
+      return <ShoppingBag size={size} strokeWidth={sw} />;
     default:
       return <SearchIcon size={size} strokeWidth={sw} />;
   }
@@ -244,7 +248,7 @@ export default function SearchApp({ onBack }: SearchAppProps) {
             </div>
             <div className="search-app-hint-desc">
               Chat · Letter · Notes · Wishlist ·
-              Music · Memory
+              Music · Memory · shop
             </div>
           </div>
         ) : results.length === 0 ? (
