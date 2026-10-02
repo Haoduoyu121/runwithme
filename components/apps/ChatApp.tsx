@@ -1596,13 +1596,14 @@ function ChatThreadView({
   async function handleSendGift(
     item: import("@/data/shop").ShopItem,
     receiver: "Levi" | "Erwin",
+    threadId: import("@/data/chat").ThreadId,
     note: string
   ) {
     const result = await sendGiftToRole({
       item,
       receiver,
       note,
-      threadId: activeThreadId,
+      threadId,
       addMessage,
       updateThreadMessages,
     });
@@ -2315,7 +2316,7 @@ function ChatThreadView({
               >
                 <span>
                   <span className="chat-plus-shop-icon">
-                    🛍️
+                    ▦
                   </span>
                 </span>
                 <small>购物</small>

@@ -158,7 +158,7 @@ const apps = [
   {
     id: "shop" as AppId,
     name: "购物",
-    icon: "🛍️",
+    icon: "▦",
     color: "pink",
   },
   {

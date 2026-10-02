@@ -1,19 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { ImagePlus, X } from "lucide-react";
 
 import {
   createShopItemId,
+  defaultGroupFor,
+  groupsFor,
   type ShopItem,
   type ShopCategory,
 } from "@/data/shop";
+
+import { saveShopImage } from "@/lib/shopItemImages";
+import { compressImage } from "@/lib/imageCompress";
 
 type Props = {
   category: ShopCategory;
   onClose: () => void;
   onSave: (item: ShopItem) => void;
 };
+
+const EMOJI_PRESETS = [
+  "🎁",
+  "🌹",
+  "🧸",
+  "🍰",
+  "☕",
+  "👕",
+  "📚",
+  "💍",
+  "🍜",
+  "🧋",
+  "🍗",
+  "🍣",
+];
 
 export default function ShopAddSheet({
   category,
@@ -23,8 +43,26 @@ export default function ShopAddSheet({
   const [emoji, setEmoji] = useState("🎁");
   const [name, setName] = useState("");
   const [priceStr, setPriceStr] = useState("");
+  const [group, setGroup] = useState(
+    defaultGroupFor(category)
+  );
+  const [imageBlob, setImageBlob] = useState<Blob | null>(
+    null
+  );
+  const [imagePreview, setImagePreview] = useState<
+    string | null
+  >(null);
 
-  function handleSave() {
+  const groups = groupsFor(category);
+
+  async function handlePickImage(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    const compressed = await compressImage(file, 800, 0.85);
+    setImageBlob(compressed);
+    setImagePreview(URL.createObjectURL(compressed));
+  }
+
+  async function handleSave() {
     const price = parseFloat(priceStr);
     if (!name.trim()) {
       window.alert("请输入商品名");
@@ -34,11 +72,22 @@ export default function ShopAddSheet({
       window.alert("请输入有效价格");
       return;
     }
+
+    const id = createShopItemId();
+    let imageId: string | undefined;
+
+    if (imageBlob) {
+      imageId = `shopimg-${id}`;
+      await saveShopImage(imageId, imageBlob);
+    }
+
     onSave({
-      id: createShopItemId(),
+      id,
       category,
+      group,
       name: name.trim(),
       emoji: emoji.trim() || "🎁",
+      imageId,
       price,
       enabled: true,
       custom: true,
@@ -65,38 +114,87 @@ export default function ShopAddSheet({
           </button>
         </header>
 
-        <div className="shop-add-emoji-pick">
-          {[
-            "🎁",
-            "🌹",
-            "🧸",
-            "🍰",
-            "☕",
-            "👕",
-            "📚",
-            "💍",
-            "🍜",
-            "🧋",
-            "🍗",
-            "🍣",
-          ].map((e) => (
-            <button
-              key={e}
-              type="button"
-              className={
-                "shop-add-emoji-btn" +
-                (emoji === e ? " active" : "")
-              }
-              onClick={() => setEmoji(e)}
-            >
-              {e}
-            </button>
-          ))}
+        {/* 图片上传 */}
+        <div className="shop-add-image-row">
+          <label className="shop-add-image-preview">
+            {imagePreview ? (
+              <img src={imagePreview} alt="" />
+            ) : (
+              <div className="shop-add-image-placeholder">
+                <ImagePlus size={24} strokeWidth={1.8} />
+                <span>上传图片</span>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              className="ios-file-input"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handlePickImage(file);
+                e.target.value = "";
+              }}
+            />
+          </label>
+
+          <div className="shop-add-image-hint">
+            <div>不传图片时，用 emoji 当占位</div>
+            {imagePreview && (
+              <button
+                type="button"
+                className="shop-add-image-clear"
+                onClick={() => {
+                  setImageBlob(null);
+                  if (imagePreview)
+                    URL.revokeObjectURL(imagePreview);
+                  setImagePreview(null);
+                }}
+              >
+                移除图片
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* 分类 */}
+        <div className="wallet-sheet-field">
+          <div className="wallet-sheet-label">分类</div>
+          <div className="shop-add-group-wrap">
+            {groups.map((g) => (
+              <button
+                key={g}
+                type="button"
+                className={
+                  "shop-add-group-chip" +
+                  (group === g ? " active" : "")
+                }
+                onClick={() => setGroup(g)}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Emoji */}
         <div className="wallet-sheet-field">
           <div className="wallet-sheet-label">
             Emoji（也可以手输）
+          </div>
+          <div className="shop-add-emoji-pick">
+            {EMOJI_PRESETS.map((e) => (
+              <button
+                key={e}
+                type="button"
+                className={
+                  "shop-add-emoji-btn" +
+                  (emoji === e ? " active" : "")
+                }
+                onClick={() => setEmoji(e)}
+              >
+                {e}
+              </button>
+            ))}
           </div>
           <input
             type="text"
@@ -104,7 +202,11 @@ export default function ShopAddSheet({
             value={emoji}
             onChange={(e) => setEmoji(e.target.value)}
             maxLength={4}
-            style={{ fontSize: 22, textAlign: "center" }}
+            style={{
+              fontSize: 22,
+              textAlign: "center",
+              marginTop: 8,
+            }}
           />
         </div>
 
@@ -117,7 +219,6 @@ export default function ShopAddSheet({
             onChange={(e) => setName(e.target.value)}
             placeholder="比如：围巾"
             maxLength={20}
-            autoFocus
           />
         </div>
 
@@ -142,7 +243,7 @@ export default function ShopAddSheet({
           <button
             type="button"
             className="wallet-sheet-btn primary"
-            onClick={handleSave}
+            onClick={() => void handleSave()}
           >
             添加
           </button>

@@ -70798,3 +70798,170 @@ html[data-runwithme-theme="dark"] .lyrics-action-btn:active {
 .chat-dark .chat-shop-overlay {
   background: #000;
 }
+/* =========================================================
+   购物 · 分组 + 商品图
+   ========================================================= */
+
+.shop-group {
+  margin-bottom: 18px;
+}
+.shop-group-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b6b70;
+  padding: 4px 4px 10px;
+  letter-spacing: 0.3px;
+}
+.chat-dark .shop-group-title {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.shop-item-image {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+.chat-dark .shop-item-image {
+  background: rgba(255, 255, 255, 0.06);
+}
+.shop-item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.shop-item-image .shop-item-emoji {
+  font-size: 36px;
+  line-height: 1;
+}
+
+/* 添加商品图片上传 */
+.shop-add-image-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.shop-add-image-preview {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.chat-dark .shop-add-image-preview {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.shop-add-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.shop-add-image-preview .ios-file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.shop-add-image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #8e8e93;
+  font-size: 11px;
+}
+.shop-add-image-hint {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: #8e8e93;
+  line-height: 1.5;
+}
+.shop-add-image-clear {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 59, 48, 0.12);
+  color: #ff3b30;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 添加商品分类选择 */
+.shop-add-group-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.shop-add-group-chip {
+  padding: 8px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.03);
+  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chat-dark .shop-add-group-chip {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+}
+.shop-add-group-chip.active {
+  border-color: rgba(167, 139, 250, 0.5);
+  background: rgba(167, 139, 250, 0.18);
+  color: #6d5bd0;
+}
+.chat-dark .shop-add-group-chip.active {
+  color: #c4b5fd;
+}
+.shop-add-group-chip:active {
+  transform: scale(0.97);
+}
+
+/* 下单 sheet 里的图片 */
+.shop-send-item-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chat-dark .shop-send-item-preview {
+  background: rgba(255, 255, 255, 0.06);
+}
+.shop-send-item-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.shop-send-item-preview .shop-send-item-emoji {
+  font-size: 34px;
+  line-height: 1;
+}

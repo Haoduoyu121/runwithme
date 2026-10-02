@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   ChevronLeft,
@@ -19,15 +19,18 @@ import {
   resetShopItems,
 } from "@/lib/shopStorage";
 
+import { getShopImage } from "@/lib/shopItemImages";
+
 import ShopAddSheet from "./ShopAddSheet";
 import ShopSendSheet from "./ShopSendSheet";
 
 type Props = {
   onBack: () => void;
-  /** 由 ChatApp 传入——用于下单时发礼物消息 */
+  /** 下单回调（由父层处理，含 threadId） */
   onSendGift?: (
     item: ShopItem,
     receiver: "Levi" | "Erwin",
+    threadId: import("@/data/chat").ThreadId,
     note: string
   ) => void;
 };
@@ -38,6 +41,9 @@ export default function ShopApp({
 }: Props) {
   const [tab, setTab] = useState<ShopCategory>("goods");
   const [items, setItems] = useState<ShopItem[]>([]);
+  const [imageUrls, setImageUrls] = useState<
+    Record<string, string>
+  >({});
   const [showAdd, setShowAdd] = useState(false);
   const [sendTarget, setSendTarget] =
     useState<ShopItem | null>(null);
@@ -46,6 +52,35 @@ export default function ShopApp({
   useEffect(() => {
     setItems(loadShopItems());
   }, []);
+
+  /* 加载图片预览 */
+  useEffect(() => {
+    let cancelled = false;
+    const created: string[] = [];
+
+    async function load() {
+      const next: Record<string, string> = {};
+      for (const it of items) {
+        if (!it.imageId) continue;
+        try {
+          const blob = await getShopImage(it.imageId);
+          if (!blob || cancelled) continue;
+          const url = URL.createObjectURL(blob);
+          created.push(url);
+          next[it.id] = url;
+        } catch (e) {
+          console.error("加载商品图失败:", it.imageId, e);
+        }
+      }
+      if (!cancelled) setImageUrls(next);
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+      created.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [items]);
 
   function refresh() {
     setItems(loadShopItems());
@@ -72,9 +107,19 @@ export default function ShopApp({
     setItems(d);
   }
 
-  const visible = items.filter(
-    (i) => i.category === tab && i.enabled
-  );
+  /* 按 group 分组 */
+  const visibleGrouped = useMemo(() => {
+    const visible = items.filter(
+      (i) => i.category === tab && i.enabled
+    );
+    const map = new Map<string, ShopItem[]>();
+    for (const it of visible) {
+      const g = it.group || "其他";
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(it);
+    }
+    return Array.from(map.entries());
+  }, [items, tab]);
 
   return (
     <main className="phone-screen shop-app">
@@ -136,7 +181,7 @@ export default function ShopApp({
           </div>
         )}
 
-        {visible.length === 0 ? (
+        {visibleGrouped.length === 0 ? (
           <div className="shop-empty">
             <div className="shop-empty-title">
               还没有商品
@@ -146,32 +191,48 @@ export default function ShopApp({
             </div>
           </div>
         ) : (
-          <div className="shop-grid">
-            {visible.map((it) => (
-              <button
-                key={it.id}
-                type="button"
-                className="shop-item"
-                onClick={() => {
-                  if (manage) {
-                    handleDelete(it.id);
-                  } else {
-                    setSendTarget(it);
-                  }
-                }}
-              >
-                <div className="shop-item-emoji">
-                  {it.emoji}
-                </div>
-                <div className="shop-item-name">
-                  {it.name}
-                </div>
-                <div className="shop-item-price">
-                  ¥{it.price}
-                </div>
-              </button>
-            ))}
-          </div>
+          visibleGrouped.map(([group, list]) => (
+            <div key={group} className="shop-group">
+              <div className="shop-group-title">
+                {group}
+              </div>
+              <div className="shop-grid">
+                {list.map((it) => {
+                  const url = imageUrls[it.id];
+                  return (
+                    <button
+                      key={it.id}
+                      type="button"
+                      className="shop-item"
+                      onClick={() => {
+                        if (manage) {
+                          handleDelete(it.id);
+                        } else {
+                          setSendTarget(it);
+                        }
+                      }}
+                    >
+                      <div className="shop-item-image">
+                        {url ? (
+                          <img src={url} alt="" />
+                        ) : (
+                          <span className="shop-item-emoji">
+                            {it.emoji}
+                          </span>
+                        )}
+                      </div>
+                      <div className="shop-item-name">
+                        {it.name}
+                      </div>
+                      <div className="shop-item-price">
+                        ¥{it.price}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))
         )}
       </div>
 
@@ -186,16 +247,19 @@ export default function ShopApp({
       {sendTarget && (
         <ShopSendSheet
           item={sendTarget}
-          lockedReceiver={null}
           names={{ levi: "Levi", erwin: "Erwin" }}
+          imageUrl={imageUrls[sendTarget.id] ?? null}
           onClose={() => setSendTarget(null)}
-          onConfirm={({ receiver, note }) => {
+          onConfirm={({ receiver, threadId, note }) => {
             if (onSendGift) {
-              onSendGift(sendTarget, receiver, note);
-            } else {
-              window.alert(
-                "当前不支持下单（需要通过 Chat 打开购物 App）"
+              onSendGift(
+                sendTarget,
+                receiver,
+                threadId,
+                note
               );
+            } else {
+              window.alert("当前不支持下单");
             }
             setSendTarget(null);
             refresh();

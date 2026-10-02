@@ -2,6 +2,7 @@
 
 import {
   DEFAULT_SHOP_ITEMS,
+  defaultGroupFor,
   type ShopItem,
   type ShopCategory,
 } from "@/data/shop";
@@ -20,6 +21,17 @@ function isValidItem(v: unknown): v is ShopItem {
   );
 }
 
+/** 归一化：老数据没有 group 的补一个 */
+function normalize(item: ShopItem): ShopItem {
+  return {
+    ...item,
+    group:
+      typeof item.group === "string" && item.group.length > 0
+        ? item.group
+        : defaultGroupFor(item.category),
+  };
+}
+
 export function loadShopItems(): ShopItem[] {
   if (typeof window === "undefined") {
     return [...DEFAULT_SHOP_ITEMS];
@@ -29,7 +41,7 @@ export function loadShopItems(): ShopItem[] {
     if (!raw) return [...DEFAULT_SHOP_ITEMS];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [...DEFAULT_SHOP_ITEMS];
-    const list = parsed.filter(isValidItem);
+    const list = parsed.filter(isValidItem).map(normalize);
     return list.length > 0 ? list : [...DEFAULT_SHOP_ITEMS];
   } catch {
     return [...DEFAULT_SHOP_ITEMS];
