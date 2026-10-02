@@ -161,18 +161,54 @@ export type ShopDeliverySettings = {
 
 export type RoleShoppingSettings = {
   enabled: boolean;
-  /** 后台间隔（分钟） */
   intervalMin: number;
   intervalMax: number;
-  /** 每次掷骰子概率 0~1 */
   chance: number;
-  /** 谁买：随机 / 指定 */
   targetMode: "random" | "levi" | "erwin";
-  /** 用 AI 生成概率（0~1），其余从商品池挑 */
   aiChance: number;
-  /** 金额范围 */
   amountMin: number;
   amountMax: number;
+};
+
+/* ---------- AI 提示词 ---------- */
+
+export type AiPromptsSettings = {
+  productSystem: string;
+  roleLevi: string;
+  roleErwin: string;
+};
+
+export const DEFAULT_AI_PROMPTS: AiPromptsSettings = {
+  productSystem: `你是一个虚构电商系统的店铺与商品生成器。
+输出严格的 JSON，不要任何解释或 Markdown 代码块。
+格式：
+{
+  "shop": {
+    "name": "店铺名",
+    "description": "一句话简介",
+    "emoji": "单个 emoji",
+    "category": "主分类",
+    "tags": ["标签1", "标签2"]
+  },
+  "products": [
+    {
+      "name": "商品名",
+      "description": "一句话描述",
+      "emoji": "单个 emoji",
+      "price": 数字,
+      "category": "分类（中文 2-4 字）",
+      "tags": ["标签1", "标签2"]
+    }
+  ]
+}
+
+要求：
+- 所有内容虚构，不要出现真实品牌 / 真实公司 / 真实地址
+- 商品价格在 {priceMin} ～ {priceMax} 之间
+- 每个商品必须有一个 emoji
+- 分类优先从：服饰,家居,食品,数码,文具,美妆,宠物,杂货,礼物；外卖时用：奶茶,咖啡,汉堡,日料,甜品,火锅,小吃`,
+  roleLevi: "实用的、耐用的、克制的生活用品。不要花哨。",
+  roleErwin: "能让人感觉被照顾的小礼物。温和、有品味。",
 };
 
 /* ---------- 角色显示名 ---------- */
@@ -224,6 +260,7 @@ export type SystemSettings = {
   userRemarks: UserRemarks;
   shopDelivery: ShopDeliverySettings;
   roleShopping: RoleShoppingSettings;
+  aiPrompts: AiPromptsSettings;
 
   chatCustomCSS: string;
 };
@@ -379,6 +416,7 @@ const defaultSettings: SystemSettings = {
     amountMin: 50,
     amountMax: 300,
   },
+  aiPrompts: { ...DEFAULT_AI_PROMPTS },
   chatCustomCSS: "",
 };
 
@@ -757,6 +795,25 @@ export function loadSystemSettings(): SystemSettings {
           ),
         };
       })(),
+      aiPrompts: (() => {
+        const p = parsed.aiPrompts ?? {};
+        const d = DEFAULT_AI_PROMPTS;
+        return {
+          productSystem:
+            typeof p.productSystem === "string" &&
+            p.productSystem.length > 0
+              ? p.productSystem
+              : d.productSystem,
+          roleLevi:
+            typeof p.roleLevi === "string"
+              ? p.roleLevi
+              : d.roleLevi,
+          roleErwin:
+            typeof p.roleErwin === "string"
+              ? p.roleErwin
+              : d.roleErwin,
+        };
+      })(),
       chatCustomCSS:
         typeof parsed.chatCustomCSS === "string"
           ? parsed.chatCustomCSS
@@ -847,6 +904,10 @@ export function updateSystemSettings(
     roleShopping: {
       ...current.roleShopping,
       ...(updates.roleShopping ?? {}),
+    },
+    aiPrompts: {
+      ...current.aiPrompts,
+      ...(updates.aiPrompts ?? {}),
     },
   };
 

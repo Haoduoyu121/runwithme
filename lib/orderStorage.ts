@@ -175,6 +175,19 @@ export function deleteOrder(orderId: string): void {
   saveOrders(list.filter((o) => o.id !== orderId));
 }
 
+export function updateOrderAddress(
+  orderId: string,
+  addressId: string
+): void {
+  const list = loadOrders();
+  const next = list.map((o) =>
+    o.id === orderId
+      ? { ...o, addressId, updatedAt: Date.now() }
+      : o
+  );
+  saveOrders(next);
+}
+
 /* =========================================================
    礼物订单状态
    ========================================================= */
@@ -182,7 +195,10 @@ export function deleteOrder(orderId: string): void {
 /**
  * 角色接受礼物 → 启动物流
  */
-export function acceptOrderGift(orderId: string): void {
+export function acceptOrderGift(
+  orderId: string,
+  addressId?: string
+): void {
   const list = loadOrders();
   const next = list.map((o) => {
     if (o.id !== orderId) return o;
@@ -191,6 +207,7 @@ export function acceptOrderGift(orderId: string): void {
     return {
       ...o,
       giftStatus: "accepted" as const,
+      addressId: addressId ?? o.addressId,
       createdAt: now,
       updatedAt: now,
       logistics: [{ stage: "placed" as const, at: now }],

@@ -577,19 +577,6 @@ export default function ShopV2App({ onBack }: Props) {
             }
           />
         </>
-      ) : ownerId !== "you" ? (
-        <div className="shopv2-scroll">
-          <div className="shopv2-empty">
-            <div className="shopv2-empty-title">
-              {ownerId === "levi" ? "Levi" : "Erwin"} 的
-              {topTab === "food" ? "外卖" : "商城"}
-            </div>
-            <div className="shopv2-empty-desc">
-              这个视角会展示角色浏览 / 购买过的商品。
-              将在 AI 商品生成 + 角色意图那一批实现。
-            </div>
-          </div>
-        </div>
       ) : (
         <ShopHome
           kind={currentKind}

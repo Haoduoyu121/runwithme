@@ -50,7 +50,7 @@ export default function ManagePage({ kind, onBack }: Props) {
     null
   );
   const [showNewShop, setShowNewShop] = useState(false);
-  const [showAi, setShowAi] = useState<string | null>(null);
+  const [showAi, setShowAi] = useState(false);
 
   useEffect(() => {
     const reload = () => {
@@ -129,13 +129,7 @@ export default function ManagePage({ kind, onBack }: Props) {
               <button
                 type="button"
                 className="shopv2-manage-btn primary"
-                onClick={() => {
-                  if (shops.length === 0) {
-                    window.alert("先去店铺 tab 建一个店铺");
-                    return;
-                  }
-                  setShowAi(shops[0].id);
-                }}
+                onClick={() => setShowAi(true)}
               >
                 <Sparkles size={14} strokeWidth={2.6} />
                 <span>AI 生成</span>
@@ -285,11 +279,9 @@ export default function ManagePage({ kind, onBack }: Props) {
       {showAi && (
         <AiGenerateSheet
           kind={kind}
-          shopId={showAi}
-          onClose={() => setShowAi(null)}
-          onConfirm={(list) => {
-            for (const p of list) upsertProduct(p);
-          }}
+          ownerId="you"
+          onClose={() => setShowAi(false)}
+          onConfirm={() => {}}
         />
       )}
     </div>

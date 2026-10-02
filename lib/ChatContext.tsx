@@ -257,7 +257,8 @@ type ChatContextValue = {
   /* ★ 用户响应角色礼物 */
   resolveRoleGift: (
     messageId: string,
-    accepted: boolean
+    accepted: boolean,
+    addressId?: string
   ) => void;
 };
 
@@ -1824,7 +1825,11 @@ export function ChatProvider({
      ========================================================= */
 
   const resolveRoleGift = useCallback(
-    (messageId: string, accepted: boolean) => {
+    (
+      messageId: string,
+      accepted: boolean,
+      addressId?: string
+    ) => {
       const tid = activeThreadIdRef.current;
       const list = threadsRef.current[tid];
       const msg = list.find((m) => m.id === messageId);
@@ -1832,11 +1837,9 @@ export function ChatProvider({
       if (msg.gift.status !== "pending") return;
 
       const orderId = msg.gift.orderId;
-      const receiver =
-        (msg.gift.buyer as "Levi" | "Erwin") ?? "Levi";
 
       if (accepted) {
-        acceptOrderGift(orderId);
+        acceptOrderGift(orderId, addressId);
 
         updateThreadMessages(tid, (prev) =>
           prev.map((m) => {
@@ -1893,7 +1896,6 @@ export function ChatProvider({
           { threadId: tid }
         );
       }
-      void receiver;
     },
     [addMessage, updateThreadMessages]
   );

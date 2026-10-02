@@ -57,6 +57,8 @@ import {
   resetRemarkPool,
 } from "@/lib/remarkStorage";
 
+import { DEFAULT_AI_PROMPTS } from "@/lib/systemStorage";
+
 import { roleRemarkUser } from "@/lib/remarkScheduler";
 
 type Props = { onBack: () => void };
@@ -2517,6 +2519,96 @@ export default function PotatoApp({ onBack }: Props) {
                 <span className="potato-num-suffix">%</span>
               </label>
             </div>
+
+            {/* ---------- AI 提示词 ---------- */}
+            <div
+              className="potato-section-title"
+              style={{ marginTop: 18 }}
+            >
+              AI 提示词
+            </div>
+            <div className="potato-hint">
+              用于购物 AI 生成店铺 / 商品，以及角色主动购物时的需求。
+              {`{priceMin}`} / {`{priceMax}`} 会替换成实际范围。
+            </div>
+
+            <div className="potato-sentence-col">
+              <span className="potato-sentence-label">
+                商品生成 · 系统提示词
+              </span>
+              <textarea
+                className="potato-sentence-textarea"
+                value={settings.aiPrompts.productSystem}
+                onChange={(e) =>
+                  updateSettings({
+                    aiPrompts: {
+                      ...settings.aiPrompts,
+                      productSystem: e.target.value,
+                    },
+                  })
+                }
+                rows={12}
+                spellCheck={false}
+              />
+            </div>
+
+            <div className="potato-sentence-col">
+              <span className="potato-sentence-label">
+                {settings.characterNames.levi} 采购需求
+              </span>
+              <textarea
+                className="potato-sentence-textarea"
+                value={settings.aiPrompts.roleLevi}
+                onChange={(e) =>
+                  updateSettings({
+                    aiPrompts: {
+                      ...settings.aiPrompts,
+                      roleLevi: e.target.value,
+                    },
+                  })
+                }
+                rows={3}
+                spellCheck={false}
+              />
+            </div>
+
+            <div className="potato-sentence-col">
+              <span className="potato-sentence-label">
+                {settings.characterNames.erwin} 采购需求
+              </span>
+              <textarea
+                className="potato-sentence-textarea"
+                value={settings.aiPrompts.roleErwin}
+                onChange={(e) =>
+                  updateSettings({
+                    aiPrompts: {
+                      ...settings.aiPrompts,
+                      roleErwin: e.target.value,
+                    },
+                  })
+                }
+                rows={3}
+                spellCheck={false}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="potato-sentence-reset"
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    "恢复默认 AI 提示词？（当前内容会丢失）"
+                  )
+                )
+                  return;
+                updateSettings({
+                  aiPrompts: { ...DEFAULT_AI_PROMPTS },
+                });
+              }}
+            >
+              恢复默认提示词
+            </button>
 
             {(settings.userRemarks.Levi ||
               settings.userRemarks.Erwin) && (

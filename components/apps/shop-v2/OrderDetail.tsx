@@ -247,6 +247,52 @@ export default function OrderDetail({
           </div>
         </div>
 
+        {/* 订单信息 */}
+        <div className="shopv2-order-detail-block">
+          <div className="shopv2-order-detail-block-title">
+            订单信息
+          </div>
+          <div className="shopv2-order-detail-info-row">
+            <span className="shopv2-order-detail-info-label">
+              买家
+            </span>
+            <span className="shopv2-order-detail-info-value">
+              {order.buyerId === "you"
+                ? "你"
+                : order.buyerId === "levi"
+                  ? "Levi"
+                  : "Erwin"}
+            </span>
+          </div>
+          <div className="shopv2-order-detail-info-row">
+            <span className="shopv2-order-detail-info-label">
+              收件人
+            </span>
+            <span className="shopv2-order-detail-info-value">
+              {order.receiverId === "you"
+                ? "你"
+                : order.receiverId === "levi"
+                  ? "Levi"
+                  : "Erwin"}
+            </span>
+          </div>
+          {order.isGift && (
+            <div className="shopv2-order-detail-info-row">
+              <span className="shopv2-order-detail-info-label">
+                类型
+              </span>
+              <span className="shopv2-order-detail-info-value">
+                礼物
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* 收货信息 */}
+        {order.addressId && (
+          <AddressBlock addressId={order.addressId} />
+        )}
+
         {/* 物流时间线 */}
         {order.logistics.length > 0 && (
         <div className="shopv2-order-detail-block">
@@ -392,6 +438,45 @@ export default function OrderDetail({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AddressBlock({ addressId }: { addressId: string }) {
+  const [addr, setAddr] = useState<import("@/data/address").Address | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { loadAddresses } = await import("@/lib/addressStorage");
+      if (cancelled) return;
+      setAddr(loadAddresses().find((a) => a.id === addressId) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [addressId]);
+
+  if (!addr) return null;
+
+  return (
+    <div className="shopv2-order-detail-block">
+      <div className="shopv2-order-detail-block-title">
+        收货信息
+      </div>
+      <div className="shopv2-addr-item-name">
+        {addr.name}
+        {addr.phone && (
+          <span className="shopv2-addr-item-phone">
+            {addr.phone}
+          </span>
+        )}
+        {addr.isDefault && (
+          <span className="shopv2-addr-item-default">默认</span>
+        )}
+      </div>
+      <div className="shopv2-addr-item-detail">
+        {addr.city}
+        {addr.district ? " · " + addr.district : ""}
+        {addr.detail ? " " + addr.detail : ""}
+      </div>
     </div>
   );
 }

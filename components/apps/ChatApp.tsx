@@ -66,6 +66,12 @@ import GiftCard from "@/components/apps/chat/GiftCard";
 import { sendRedPacketToRoles } from "@/lib/redPacket";
 import { sendGiftToRole } from "@/lib/shopDelivery";
 import ShopApp from "@/components/apps/shop/ShopApp";
+import AddressPickerSheet from "@/components/apps/shop-v2/AddressPickerSheet";
+import {
+  loadAddressesByOwner,
+  ADDRESS_EVENT,
+} from "@/lib/addressStorage";
+import type { Address } from "@/data/address";
 
 import type { CharacterNames } from "@/lib/systemStorage";
 
@@ -993,6 +999,47 @@ function ChatThreadView({
 
   /* ★ 购物 App */
   const [showShop, setShowShop] = useState(false);
+
+  /* ★ 接受角色礼物 → 弹地址选择 */
+  const [roleGiftAddress, setRoleGiftAddress] = useState<{
+    messageId: string;
+    orderId: string;
+  } | null>(null);
+  const [myAddresses, setMyAddresses] = useState<Address[]>([]);
+
+  useEffect(() => {
+    function reload() {
+      setMyAddresses(loadAddressesByOwner("you"));
+    }
+    reload();
+    window.addEventListener(ADDRESS_EVENT, reload);
+    return () => {
+      window.removeEventListener(ADDRESS_EVENT, reload);
+    };
+  }, []);
+
+  useEffect(() => {
+    function onNeed(e: Event) {
+      const d = (
+        e as CustomEvent<{
+          messageId: string;
+          orderId: string;
+        }>
+      ).detail;
+      if (!d?.messageId || !d.orderId) return;
+      setRoleGiftAddress(d);
+    }
+    window.addEventListener(
+      "runwithme:need-role-gift-address",
+      onNeed
+    );
+    return () => {
+      window.removeEventListener(
+        "runwithme:need-role-gift-address",
+        onNeed
+      );
+    };
+  }, []);
   const [expandedForwardIds, setExpandedForwardIds] =
     useState<Set<string>>(new Set());
 
@@ -2021,8 +2068,22 @@ function ChatThreadView({
                 onAccept={
                   message.gift?.receiver === "You" &&
                   message.gift?.status === "pending"
-                    ? () =>
-                        resolveRoleGift(message.id, true)
+                    ? () => {
+                        try {
+                          window.dispatchEvent(
+                            new CustomEvent(
+                              "runwithme:need-role-gift-address",
+                              {
+                                detail: {
+                                  messageId: message.id,
+                                  orderId:
+                                    message.gift?.orderId ?? "",
+                                },
+                              }
+                            )
+                          );
+                        } catch {}
+                      }
                     : undefined
                 }
                 onReject={
@@ -2827,6 +2888,27 @@ function ChatThreadView({
                 }
               }
             })();
+          }}
+        />
+      )}
+
+      {roleGiftAddress && (
+        <AddressPickerSheet
+          ownerId="you"
+          addresses={myAddresses}
+          selectedId={null}
+          onClose={() => {
+            /* 用户取消 → 直接用默认地址（或无地址） */
+            resolveRoleGift(roleGiftAddress.messageId, true);
+            setRoleGiftAddress(null);
+          }}
+          onPick={(id) => {
+            resolveRoleGift(
+              roleGiftAddress.messageId,
+              true,
+              id
+            );
+            setRoleGiftAddress(null);
           }}
         />
       )}

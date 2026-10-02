@@ -73271,3 +73271,93 @@ html[data-runwithme-theme="dark"] .gift-card-btn.reject {
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.7);
 }
+/* =========================================================
+   Shop v2 · 第 6.5 批
+   ========================================================= */
+
+.shopv2-order-detail-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+html[data-runwithme-theme="dark"] .shopv2-order-detail-info-row {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+.shopv2-order-detail-info-row:last-child {
+  border-bottom: none;
+}
+.shopv2-order-detail-info-label {
+  color: #8e8e93;
+}
+.shopv2-order-detail-info-value {
+  color: #111;
+  font-weight: 600;
+}
+html[data-runwithme-theme="dark"] .shopv2-order-detail-info-value {
+  color: #fff;
+}
+
+/* AI 生成 sheet 里的店铺预览 */
+.shopv2-ai-shop {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(167, 139, 250, 0.12) 0%,
+    rgba(244, 114, 182, 0.12) 100%
+  );
+  margin-bottom: 8px;
+}
+html[data-runwithme-theme="dark"] .shopv2-ai-shop {
+  background: linear-gradient(
+    135deg,
+    rgba(167, 139, 250, 0.18) 0%,
+    rgba(244, 114, 182, 0.18) 100%
+  );
+}
+.shopv2-ai-shop-emoji {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+html[data-runwithme-theme="dark"] .shopv2-ai-shop-emoji {
+  background: rgba(255, 255, 255, 0.1);
+}
+.shopv2-ai-shop-info {
+  flex: 1;
+  min-width: 0;
+}
+.shopv2-ai-shop-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 2px;
+}
+html[data-runwithme-theme="dark"] .shopv2-ai-shop-name {
+  color: #fff;
+}
+.shopv2-ai-shop-desc {
+  font-size: 12px;
+  color: #6b6b70;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+html[data-runwithme-theme="dark"] .shopv2-ai-shop-desc {
+  color: rgba(255, 255, 255, 0.6);
+}
+.shopv2-ai-shop-meta {
+  font-size: 11px;
+  color: #8e8e93;
+}

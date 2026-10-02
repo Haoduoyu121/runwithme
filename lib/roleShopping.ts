@@ -13,28 +13,29 @@ import {
   type WalletEntry,
 } from "@/data/wallet";
 
-import {
-  loadWallet,
-  saveWallet,
-} from "@/lib/walletStorage";
-
-import {
-  createOrderId,
-  type Order,
-} from "@/data/order";
-
+import { loadWallet, saveWallet } from "@/lib/walletStorage";
+import { createOrderId, type Order } from "@/data/order";
 import { upsertOrder } from "@/lib/orderStorage";
 import { loadSystemSettings } from "@/lib/systemStorage";
-import { loadProducts } from "@/lib/shopV2Storage";
+
+import type {
+  Shop,
+  ShopOwnerId,
+  ShopProduct,
+} from "@/data/shopV2";
 
 import {
-  generateProducts,
-  type GeneratedProductDraft,
-} from "@/lib/aiProductGenerator";
+  loadProducts,
+  loadShops,
+  upsertProduct,
+  upsertShop,
+} from "@/lib/shopV2Storage";
 
-/* =========================================================
-   角色主动送礼
-   ========================================================= */
+import {
+  draftToProduct,
+  draftToShop,
+  generateShopBundle,
+} from "@/lib/aiProductGenerator";
 
 const ROLE_GIFT_NOTES = [
   "看到这个，觉得你会喜欢。",
@@ -50,12 +51,6 @@ function pickNote(): string {
   ];
 }
 
-function randomInt(min: number, max: number): number {
-  const lo = Math.min(min, max);
-  const hi = Math.max(min, max);
-  return lo + Math.floor(Math.random() * (hi - lo + 1));
-}
-
 type Deps = {
   addMessage: (
     msg: ChatMessage,
@@ -65,11 +60,8 @@ type Deps = {
 
 type RoleOwner = "Levi" | "Erwin";
 
-/**
- * 生成一个商品快照（不落库），用于角色订单。
- * - AI 生成：使用 generateProducts 返回第一条
- * - 现有池挑：从 loadProducts 中随机挑一个
- */
+/* ------------------------------------------------------- */
+
 async function buildRoleGiftItem(
   owner: RoleOwner,
   kind: "goods" | "food",
@@ -82,36 +74,70 @@ async function buildRoleGiftItem(
   productEmoji: string;
   price: number;
 } | null> {
-  const cfg = loadSystemSettings().roleShopping;
-
   /* AI 分支 */
   if (Math.random() < aiChance) {
     try {
-      const promptMap: Record<RoleOwner, string> = {
-        Levi: "实用的、耐用的、克制的生活用品。不要花哨。",
-        Erwin: "能让人感觉被照顾的小礼物。温和、有品味。",
-      };
-      const drafts = await generateProducts({
+      const prompts = loadSystemSettings().aiPrompts;
+      const rolePrompt =
+        owner === "Levi"
+          ? prompts.roleLevi
+          : prompts.roleErwin;
+
+      const bundle = await generateShopBundle({
         kind,
-        prompt: promptMap[owner],
-        count: 1,
+        prompt: rolePrompt,
+        productCount: 3,
         priceMin: Math.max(1, Math.floor(amountMin)),
         priceMax: Math.max(
           Math.floor(amountMin) + 1,
           Math.floor(amountMax)
         ),
       });
-      if (drafts.length > 0) {
-        const d = drafts[0];
-        return {
-          productId: `role-ai-${Date.now()}`,
-          productName: d.name,
-          productEmoji: d.emoji,
-          price: Math.round(d.price),
-        };
+
+      const ownerKey: ShopOwnerId =
+        owner === "Levi" ? "levi" : "erwin";
+      const shopId = `shop-${ownerKey}-ai`;
+
+      /* 首次 → 建角色 AI 店铺 */
+      let shop: Shop | undefined = loadShops().find(
+        (s) => s.id === shopId
+      );
+      if (!shop) {
+        const generated = draftToShop(
+          bundle.shop,
+          kind,
+          ownerKey
+        );
+        shop = { ...generated, id: shopId };
+        upsertShop(shop);
       }
+
+      /* 商品全部落库 */
+      const created: ShopProduct[] = [];
+      for (const p of bundle.products) {
+        const sp = draftToProduct(p, kind, shopId);
+        upsertProduct(sp);
+        created.push(sp);
+      }
+
+      if (created.length === 0) {
+        throw new Error("AI 未返回商品");
+      }
+
+      const pick =
+        created[Math.floor(Math.random() * created.length)];
+
+      return {
+        productId: pick.id,
+        productName: pick.name,
+        productEmoji: pick.emoji,
+        price: pick.price,
+      };
     } catch (e) {
-      console.warn("角色 AI 生成商品失败，回退到池子:", e);
+      console.warn(
+        "角色 AI 生成失败，回退到池子:",
+        e
+      );
     }
   }
 
@@ -135,10 +161,8 @@ async function buildRoleGiftItem(
   };
 }
 
-/**
- * 尝试让角色给用户送礼。
- * 返回 true = 发出了；false = 跳过。
- */
+/* ------------------------------------------------------- */
+
 export async function tryRoleSendGift(
   owner: RoleOwner,
   threadId: ThreadId,
@@ -152,17 +176,11 @@ export async function tryRoleSendGift(
     if (owner !== wanted) return false;
   }
 
-  /* 角色钱包检查 */
   const roleWallet = loadWallet(owner);
   const balance = computeBalance(roleWallet);
   if (balance < cfg.amountMin) return false;
 
-  const amountMax = Math.min(
-    balance,
-    cfg.amountMax
-  );
-
-  /* 随机选 kind */
+  const amountMax = Math.min(balance, cfg.amountMax);
   const kind: "goods" | "food" =
     Math.random() < 0.6 ? "goods" : "food";
 
@@ -191,7 +209,7 @@ export async function tryRoleSendGift(
     owner
   );
 
-  /* 创建订单（buyer=角色，receiver=user，等用户接受） */
+  /* 建订单 */
   const order: Order = {
     id: createOrderId(),
     kind,
@@ -212,22 +230,20 @@ export async function tryRoleSendGift(
       },
     ],
     totalPrice: item.price,
-    addressId: null, /* 用户接受时才绑地址 */
+    addressId: null,
     status: "active",
-    logistics: [], /* 用户接受后才启动物流 */
+    logistics: [],
     review: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     giftStatus: "pending",
   };
-
   upsertOrder(order);
 
-  /* 发 Chat 消息 */
-  const messageId = createMessageId();
+  /* 发消息 */
   deps.addMessage(
     {
-      id: messageId,
+      id: createMessageId(),
       sender: owner as ChatSender,
       type: "gift",
       timestamp: Date.now(),

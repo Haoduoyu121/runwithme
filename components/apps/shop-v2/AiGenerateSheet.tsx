@@ -3,26 +3,28 @@
 import { useState } from "react";
 import { Sparkles, X } from "lucide-react";
 
-import type {
-  ShopKind,
-  ShopProduct,
-} from "@/data/shopV2";
-import type { GeneratedProductDraft } from "@/lib/aiProductGenerator";
+import type { ShopKind } from "@/data/shopV2";
 import {
-  generateProducts,
   draftToProduct,
+  draftToShop,
+  generateShopBundle,
+  type GeneratedShopBundle,
 } from "@/lib/aiProductGenerator";
+import {
+  upsertProduct,
+  upsertShop,
+} from "@/lib/shopV2Storage";
 
 type Props = {
   kind: ShopKind;
-  shopId: string;
+  ownerId: "you" | "levi" | "erwin";
   onClose: () => void;
-  onConfirm: (products: ShopProduct[]) => void;
+  onConfirm: () => void;
 };
 
 export default function AiGenerateSheet({
   kind,
-  shopId,
+  ownerId,
   onClose,
   onConfirm,
 }: Props) {
@@ -32,9 +34,8 @@ export default function AiGenerateSheet({
   const [priceMax, setPriceMax] = useState(200);
 
   const [loading, setLoading] = useState(false);
-  const [drafts, setDrafts] = useState<
-    GeneratedProductDraft[]
-  >([]);
+  const [bundle, setBundle] =
+    useState<GeneratedShopBundle | null>(null);
   const [err, setErr] = useState("");
 
   async function handleGenerate() {
@@ -44,40 +45,44 @@ export default function AiGenerateSheet({
     }
     setLoading(true);
     setErr("");
-    setDrafts([]);
-
+    setBundle(null);
     try {
-      const list = await generateProducts({
+      const b = await generateShopBundle({
         kind,
         prompt: prompt.trim(),
-        count,
+        productCount: count,
         priceMin,
         priceMax,
       });
-      if (list.length === 0) {
-        setErr("AI 没有返回有效商品，请重试");
+      if (b.products.length === 0) {
+        setErr("AI 没返回有效商品，请重试");
       } else {
-        setDrafts(list);
+        setBundle(b);
       }
     } catch (e) {
-      setErr(
-        e instanceof Error ? e.message : String(e)
-      );
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
   }
 
   function handleConfirm() {
-    const products = drafts.map((d) =>
-      draftToProduct(d, kind, shopId)
-    );
-    onConfirm(products);
+    if (!bundle) return;
+    const shop = draftToShop(bundle.shop, kind, ownerId);
+    upsertShop(shop);
+    for (const p of bundle.products) {
+      upsertProduct(draftToProduct(p, kind, shop.id));
+    }
+    onConfirm();
     onClose();
   }
 
   function removeDraft(idx: number) {
-    setDrafts((prev) => prev.filter((_, i) => i !== idx));
+    if (!bundle) return;
+    setBundle({
+      ...bundle,
+      products: bundle.products.filter((_, i) => i !== idx),
+    });
   }
 
   return (
@@ -88,10 +93,10 @@ export default function AiGenerateSheet({
       <div
         className="shopv2-sheet"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxHeight: "90vh" }}
+        style={{ maxHeight: "92vh" }}
       >
         <header className="shopv2-sheet-header">
-          <span>✦ AI 生成商品</span>
+          <span>✦ AI 生成店铺 + 商品</span>
           <button
             type="button"
             onClick={onClose}
@@ -101,7 +106,7 @@ export default function AiGenerateSheet({
           </button>
         </header>
 
-        {drafts.length === 0 ? (
+        {!bundle ? (
           <>
             <div className="shopv2-addr-field">
               <div className="shopv2-addr-label">
@@ -121,6 +126,10 @@ export default function AiGenerateSheet({
                 rows={3}
                 maxLength={200}
               />
+              <div className="potato-hint">
+                提示词可在 生姜土豆 → 通用 → AI 提示词
+                里修改
+              </div>
             </div>
 
             <div className="shopv2-addr-row">
@@ -128,7 +137,7 @@ export default function AiGenerateSheet({
                 className="shopv2-addr-field"
                 style={{ flex: 1 }}
               >
-                <div className="shopv2-addr-label">数量</div>
+                <div className="shopv2-addr-label">商品数</div>
                 <input
                   type="number"
                   className="shopv2-addr-input"
@@ -152,7 +161,9 @@ export default function AiGenerateSheet({
                 className="shopv2-addr-field"
                 style={{ flex: 1 }}
               >
-                <div className="shopv2-addr-label">价格下限</div>
+                <div className="shopv2-addr-label">
+                  价格下限
+                </div>
                 <input
                   type="number"
                   className="shopv2-addr-input"
@@ -168,7 +179,9 @@ export default function AiGenerateSheet({
                 className="shopv2-addr-field"
                 style={{ flex: 1 }}
               >
-                <div className="shopv2-addr-label">价格上限</div>
+                <div className="shopv2-addr-label">
+                  价格上限
+                </div>
                 <input
                   type="number"
                   className="shopv2-addr-input"
@@ -220,11 +233,32 @@ export default function AiGenerateSheet({
           </>
         ) : (
           <>
-            <div className="shopv2-addr-label">
-              生成结果（可逐条删除）
+            {/* 店铺 */}
+            <div className="shopv2-ai-shop">
+              <div className="shopv2-ai-shop-emoji">
+                {bundle.shop.emoji}
+              </div>
+              <div className="shopv2-ai-shop-info">
+                <div className="shopv2-ai-shop-name">
+                  {bundle.shop.name}
+                </div>
+                <div className="shopv2-ai-shop-desc">
+                  {bundle.shop.description}
+                </div>
+                <div className="shopv2-ai-shop-meta">
+                  {bundle.shop.category}
+                  {bundle.shop.tags.length > 0 && " · "}
+                  {bundle.shop.tags.join(" · ")}
+                </div>
+              </div>
             </div>
+
+            <div className="shopv2-addr-label">
+              商品（{bundle.products.length}，可逐条删除）
+            </div>
+
             <div className="shopv2-ai-list">
-              {drafts.map((d, i) => (
+              {bundle.products.map((d, i) => (
                 <div key={i} className="shopv2-ai-item">
                   <div className="shopv2-ai-item-emoji">
                     {d.emoji}
@@ -267,15 +301,15 @@ export default function AiGenerateSheet({
               <button
                 type="button"
                 className="shopv2-addr-btn primary"
-                disabled={drafts.length === 0}
+                disabled={bundle.products.length === 0}
                 onClick={handleConfirm}
                 style={
-                  drafts.length === 0
+                  bundle.products.length === 0
                     ? { opacity: 0.4 }
                     : undefined
                 }
               >
-                加入店铺（{drafts.length}）
+                加入商城
               </button>
             </div>
           </>
