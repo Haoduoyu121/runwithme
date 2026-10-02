@@ -906,6 +906,28 @@ export default function Home() {
     };
   }, []);
 
+    /* ★ 字卡更新后延迟上传 */
+  useEffect(() => {
+    let timer: number | null = null;
+    function onCardsUpdated() {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void syncCardsFromLocal();
+      }, 1500);
+    }
+    window.addEventListener(
+      "runwithme:cards-updated",
+      onCardsUpdated
+    );
+    return () => {
+      window.removeEventListener(
+        "runwithme:cards-updated",
+        onCardsUpdated
+      );
+      if (timer) window.clearTimeout(timer);
+    };
+  }, []);
+
 
     /* ★ Step 9a：世界在转 —— 启动 + 从后台切回前台时触发补偿 */
   useEffect(() => {

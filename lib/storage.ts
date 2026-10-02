@@ -148,7 +148,24 @@ export function saveCards(
     }
 
     return false;
+  } finally {
+    /* ★ 无论成功失败都广播（成功才是主要的） */
+    try {
+      window.dispatchEvent(
+        new Event("runwithme:cards-updated")
+      );
+    } catch {
+      /* ignore */
+    }
   }
+}
+
+if (typeof window !== "undefined") {
+  try {
+    window.dispatchEvent(
+      new Event("runwithme:cards-updated")
+    );
+  } catch {}
 }
 
 export function clearSavedCards(): void {
