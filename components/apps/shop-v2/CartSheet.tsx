@@ -15,6 +15,7 @@ type Props = {
   onToggleSelect: (itemId: string) => void;
   onChangeQty: (itemId: string, delta: number) => void;
   onDelete: (itemId: string) => void;
+  onCheckout: () => void;
 };
 
 export default function CartSheet({
@@ -25,6 +26,7 @@ export default function CartSheet({
   onToggleSelect,
   onChangeQty,
   onDelete,
+  onCheckout,
 }: Props) {
   const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -178,11 +180,7 @@ export default function CartSheet({
             type="button"
             className="shopv2-cart-checkout"
             disabled={cart.items.length === 0}
-            onClick={() =>
-              window.alert(
-                "结算将在下一批完成（订单 / 地址 / 送礼）"
-              )
-            }
+            onClick={onCheckout}
           >
             结算
           </button>

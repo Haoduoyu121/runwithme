@@ -18,6 +18,7 @@ import type {
 } from "@/data/shopV2";
 
 import { createCartItemId } from "@/data/shopV2";
+import { createOrderId } from "@/data/order";
 
 import {
   loadShops,
@@ -30,11 +31,18 @@ import {
 } from "@/lib/shopV2Storage";
 
 import { getShopV2Image } from "@/lib/shopV2Images";
+import { loadSystemSettings } from "@/lib/systemStorage";
+
+import type { Order } from "@/data/order";
+import { upsertOrder } from "@/lib/orderStorage";
 
 import ShopHome from "./ShopHome";
 import ShopDetail from "./ShopDetail";
 import ProductDetail from "./ProductDetail";
 import CartSheet from "./CartSheet";
+import CheckoutPage from "./CheckoutPage";
+import OrdersTab from "./OrdersTab";
+import OrderDetail from "./OrderDetail";
 
 type Props = { onBack: () => void };
 
@@ -42,7 +50,9 @@ type TopTab = "shopping" | "food" | "orders";
 type View =
   | { kind: "home" }
   | { kind: "shop"; shopId: string }
-  | { kind: "product"; productId: string };
+  | { kind: "product"; productId: string }
+  | { kind: "checkout" }
+  | { kind: "order"; orderId: string };
 
 export default function ShopV2App({ onBack }: Props) {
   const [topTab, setTopTab] = useState<TopTab>("shopping");
@@ -64,7 +74,6 @@ export default function ShopV2App({ onBack }: Props) {
     Record<string, string>
   >({});
 
-  /* 加载数据 */
   useEffect(() => {
     const reload = () => {
       setShops(loadShops());
@@ -77,12 +86,10 @@ export default function ShopV2App({ onBack }: Props) {
     };
   }, []);
 
-  /* 购物车 */
   useEffect(() => {
     setCartState(getCart(ownerId));
   }, [ownerId]);
 
-  /* 图片预览 */
   useEffect(() => {
     let cancelled = false;
     const created: string[] = [];
@@ -117,7 +124,6 @@ export default function ShopV2App({ onBack }: Props) {
     };
   }, [shops, products]);
 
-  /* 当前视图下的列表 */
   const currentKind: ShopKind =
     topTab === "food" ? "food" : "goods";
 
@@ -133,7 +139,6 @@ export default function ShopV2App({ onBack }: Props) {
     [ownerId, currentKind, products]
   );
 
-  /* 购物车操作 */
   function handleAddToCart(
     productId: string,
     specSelections: Record<string, string>,
@@ -183,12 +188,119 @@ export default function ShopV2App({ onBack }: Props) {
     setCartState(next);
   }
 
-  /* 加载商品所属店铺名 */
   function shopNameOf(shopId: string): string {
     return shops.find((s) => s.id === shopId)?.name ?? "";
   }
 
+  /* 提交订单 */
+  function handleCheckoutConfirm(params: {
+    addressId: string;
+    buyerId: ShopOwnerId;
+    receiverId: ShopOwnerId;
+    isGift: boolean;
+  }) {
+    if (cart.items.length === 0) return;
+
+    const productMap = new Map(
+      products.map((p) => [p.id, p])
+    );
+
+    /* 找主店铺（取第一个商品的 shopId） */
+    const firstProduct = productMap.get(
+      cart.items[0].productId
+    );
+    const shopId = firstProduct?.shopId ?? "";
+    const shopName = shopNameOf(shopId);
+
+    const items = cart.items
+      .map((it) => {
+        const p = productMap.get(it.productId);
+        if (!p) return null;
+        return {
+          productId: p.id,
+          productName: p.name,
+          productEmoji: p.emoji,
+          productImageId: p.imageId,
+          specSelections: it.specSelections,
+          quantity: it.quantity,
+          price: p.price,
+        };
+      })
+      .filter(
+        (x): x is NonNullable<typeof x> => x !== null
+      );
+
+    const totalPrice = items.reduce(
+      (s, it) => s + it.price * it.quantity,
+      0
+    );
+
+    const order: Order = {
+      id: createOrderId(),
+      kind: currentKind,
+      buyerId: params.buyerId,
+      receiverId: params.receiverId,
+      isGift: params.isGift,
+      shopId,
+      shopName,
+      items,
+      totalPrice,
+      addressId: params.addressId,
+      status: "active",
+      logistics: [
+        { stage: "placed", at: Date.now() },
+      ],
+      review: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    upsertOrder(order);
+
+    /* 清空购物车 */
+    const nextCart: Cart = { ...cart, items: [] };
+    setCart(nextCart);
+    setCartState(nextCart);
+
+    /* 跳订单详情 */
+    setView({ kind: "order", orderId: order.id });
+  }
+
   /* ---------- 二级视图 ---------- */
+
+  if (view.kind === "order") {
+    return (
+      <main className="phone-screen shopv2-app">
+        <OrderDetail
+          orderId={view.orderId}
+          products={products}
+          imageUrls={imageUrls}
+          onBack={() => setView({ kind: "home" })}
+          onReviewed={() => {
+            /* 保持不变，OrderDetail 会自己刷新 */
+          }}
+        />
+      </main>
+    );
+  }
+
+  if (view.kind === "checkout") {
+    const shopsMap: Record<string, string> = {};
+    for (const s of shops) shopsMap[s.id] = s.name;
+
+    return (
+      <main className="phone-screen shopv2-app">
+        <CheckoutPage
+          cart={cart}
+          products={products}
+          shopsMap={shopsMap}
+          imageUrls={imageUrls}
+          onBack={() => setView({ kind: "home" })}
+          onConfirm={handleCheckoutConfirm}
+        />
+      </main>
+    );
+  }
 
   if (view.kind === "product") {
     const p = products.find((x) => x.id === view.productId);
@@ -213,11 +325,13 @@ export default function ShopV2App({ onBack }: Props) {
               products={products}
               imageUrls={imageUrls}
               onClose={() => setShowCart(false)}
-              onToggleSelect={() => {
-                /* 占位：第一批不做选择逻辑 */
-              }}
+              onToggleSelect={() => {}}
               onChangeQty={handleChangeQty}
               onDelete={handleDelete}
+              onCheckout={() => {
+                setShowCart(false);
+                setView({ kind: "checkout" });
+              }}
             />
           )}
         </main>
@@ -251,6 +365,10 @@ export default function ShopV2App({ onBack }: Props) {
               onToggleSelect={() => {}}
               onChangeQty={handleChangeQty}
               onDelete={handleDelete}
+              onCheckout={() => {
+                setShowCart(false);
+                setView({ kind: "checkout" });
+              }}
             />
           )}
         </main>
@@ -267,7 +385,6 @@ export default function ShopV2App({ onBack }: Props) {
 
   return (
     <main className="phone-screen shopv2-app">
-      {/* 顶栏 */}
       <header className="shopv2-topbar">
         <button
           type="button"
@@ -293,7 +410,6 @@ export default function ShopV2App({ onBack }: Props) {
         </button>
       </header>
 
-      {/* 顶层 tab */}
       <div className="shopv2-top-tabs">
         <button
           type="button"
@@ -340,7 +456,6 @@ export default function ShopV2App({ onBack }: Props) {
         </button>
       </div>
 
-      {/* 二级 tab：我 / Levi / Erwin */}
       {topTab !== "orders" && (
         <div className="shopv2-owner-tabs">
           {(["you", "levi", "erwin"] as ShopOwnerId[]).map(
@@ -372,18 +487,42 @@ export default function ShopV2App({ onBack }: Props) {
         </div>
       )}
 
-      {/* 内容 */}
       {topTab === "orders" ? (
-        <div className="shopv2-scroll">
-          <div className="shopv2-empty">
-            <div className="shopv2-empty-title">
-              订单系统
-            </div>
-            <div className="shopv2-empty-desc">
-              将在第 2 批实现（结算 / 地址 / 订单 / 物流）
-            </div>
+        <>
+          <div className="shopv2-owner-tabs">
+            {(["you", "levi", "erwin"] as ShopOwnerId[]).map(
+              (o) => {
+                const label =
+                  o === "you"
+                    ? "我"
+                    : o === "levi"
+                      ? "Levi"
+                      : "Erwin";
+                return (
+                  <button
+                    key={o}
+                    type="button"
+                    className={
+                      "shopv2-owner-tab" +
+                      (ownerId === o ? " active" : "")
+                    }
+                    onClick={() => setOwnerId(o)}
+                  >
+                    {label}
+                  </button>
+                );
+              }
+            )}
           </div>
-        </div>
+          <OrdersTab
+            ownerId={ownerId}
+            products={products}
+            imageUrls={imageUrls}
+            onOpenOrder={(oid) =>
+              setView({ kind: "order", orderId: oid })
+            }
+          />
+        </>
       ) : ownerId !== "you" ? (
         <div className="shopv2-scroll">
           <div className="shopv2-empty">
@@ -424,6 +563,10 @@ export default function ShopV2App({ onBack }: Props) {
           onToggleSelect={() => {}}
           onChangeQty={handleChangeQty}
           onDelete={handleDelete}
+          onCheckout={() => {
+            setShowCart(false);
+            setView({ kind: "checkout" });
+          }}
         />
       )}
     </main>
