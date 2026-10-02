@@ -300,12 +300,12 @@ export default function PotatoApp({ onBack }: Props) {
 
     const owner = key === "levi" ? "Levi" : "Erwin";
     const delay = 5000 + Math.random() * 15000;
-    window.setTimeout(async () => {
-      const result = await roleRemarkUser(owner);
+    window.setTimeout(() => {
+      const result = roleRemarkUser(owner);
       if (!result) return;
       try {
         window.dispatchEvent(
-          new CustomEvent("runwithme:remark-changed", {
+          new CustomEvent("runwithme:role-remark-user", {
             detail: result,
           })
         );
@@ -1963,6 +1963,42 @@ export default function PotatoApp({ onBack }: Props) {
               </label>
             </div>
 
+            <div className="potato-sentence-row">
+              <div className="potato-sentence-label">
+                <strong>回礼概率</strong>
+                <small>
+                  用户给角色换头像后，角色反过来给你换的概率
+                </small>
+              </div>
+              <label className="potato-num">
+                <input
+                  type="number"
+                  value={Math.round(
+                    (settings.avatarSwitch.giftBackChance ??
+                      0.2) * 100
+                  )}
+                  min={0}
+                  max={100}
+                  onChange={(e) =>
+                    updateSettings({
+                      avatarSwitch: {
+                        ...settings.avatarSwitch,
+                        giftBackChance:
+                          Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              Number(e.target.value) || 0
+                            )
+                          ) / 100,
+                      },
+                    })
+                  }
+                />
+                <span className="potato-num-suffix">%</span>
+              </label>
+            </div>
+
             {/* ---------- 改备注 ---------- */}
             <div
               className="potato-section-title"
@@ -1978,7 +2014,9 @@ export default function PotatoApp({ onBack }: Props) {
             <div className="potato-sentence-row">
               <div className="potato-sentence-label">
                 <strong>启用</strong>
-                <small>关掉后角色不会改你备注</small>
+                <small>
+                  ⚠️ 默认关闭，必须打开才会生效。关掉后角色不会改你备注
+                </small>
               </div>
               <button
                 type="button"

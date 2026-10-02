@@ -80,6 +80,9 @@ export type AvatarSwitchSettings = {
   /* —— 角色给用户换头像 —— */
   userAvatarEnabled: boolean;
   userAvatarChance: number;
+
+  /* —— 用户请求角色换头像成功后，角色"回礼"给用户换的概率 —— */
+  giftBackChance: number;
 };
 
 /* ---------- 钱包评价 ---------- */
@@ -295,6 +298,8 @@ const defaultSettings: SystemSettings = {
 
     userAvatarEnabled: false,
     userAvatarChance: 0.15,
+
+    giftBackChance: 0.2,
   },
   walletEval: {
     enabled: true,
@@ -504,6 +509,10 @@ export function loadSystemSettings(): SystemSettings {
           userAvatarChance: clamp01(
             a.userAvatarChance,
             d.userAvatarChance
+          ),
+          giftBackChance: clamp01(
+            a.giftBackChance,
+            d.giftBackChance
           ),
         };
       })(),

@@ -271,7 +271,12 @@ export function ChatProvider({
     registerCallEndListener,
   } = useCall();
 
-  const { settings } = useSystem();
+  const { settings, updateSettings } = useSystem();
+
+  const updateSettingsRef = useRef(updateSettings);
+  useEffect(() => {
+    updateSettingsRef.current = updateSettings;
+  }, [updateSettings]);
 
   const [threads, setThreads] = useState<
     Record<ThreadId, ChatMessage[]>
@@ -1094,23 +1099,9 @@ export function ChatProvider({
             const { roleRemarkUser } = await import(
               "@/lib/remarkScheduler"
             );
-            const result = await roleRemarkUser(owner);
+            const result = roleRemarkUser(owner);
             if (result) {
-              const ownerName =
-                result.owner === "Levi"
-                  ? settingsRef.current.characterNames.levi
-                  : settingsRef.current.characterNames
-                      .erwin;
-              addMessage(
-                {
-                  id: createMessageId(),
-                  sender: "You",
-                  type: "system",
-                  text: `${ownerName} 把你的备注改成了「${result.text}」`,
-                  timestamp: Date.now(),
-                },
-                { threadId: "group" }
-              );
+              applyRemarkResult(result);
             }
           } catch (e) {
             console.error("角色改备注失败:", e);
@@ -1429,6 +1420,70 @@ export function ChatProvider({
     settings.avatarSwitch.backgroundIntervalMax,
   ]);
 
+
+  /* =========================================================
+     ★ 角色改备注：统一写入 + 系统消息
+     ========================================================= */
+
+  const applyRemarkResult = useCallback(
+    (result: {
+      owner: "Levi" | "Erwin";
+      text: string;
+    }) => {
+      const settingsNow = settingsRef.current;
+
+      /* 写入 userRemarks（走 React state） */
+      updateSettingsRef.current({
+        userRemarks: {
+          ...settingsNow.userRemarks,
+          [result.owner]: result.text,
+        },
+      });
+
+      const ownerName =
+        result.owner === "Levi"
+          ? settingsNow.characterNames.levi
+          : settingsNow.characterNames.erwin;
+
+      addMessage(
+        {
+          id: createMessageId(),
+          sender: "You",
+          type: "system",
+          text: `${ownerName} 把你的备注改成了「${result.text}」`,
+          timestamp: Date.now(),
+        },
+        { threadId: "group" }
+      );
+    },
+    [addMessage]
+  );
+
+  /* 监听外部（PotatoApp）派发的改备注事件 */
+  useEffect(() => {
+    function onRemark(e: Event) {
+      const detail = (
+        e as CustomEvent<{
+          owner: "Levi" | "Erwin";
+          text: string;
+        }>
+      ).detail;
+      if (!detail?.owner || !detail.text) return;
+      applyRemarkResult(detail);
+    }
+
+    window.addEventListener(
+      "runwithme:role-remark-user",
+      onRemark
+    );
+    return () => {
+      window.removeEventListener(
+        "runwithme:role-remark-user",
+        onRemark
+      );
+    };
+  }, [applyRemarkResult]);
+
   /* =========================================================
      ★ 用户请求角色换头像
      ========================================================= */
@@ -1479,10 +1534,13 @@ export function ChatProvider({
                 { threadId: tid }
               );
 
-              /* ★ 回礼：20% 概率角色反过来给用户换头像 */
+              /* ★ 回礼：角色反过来给用户换头像 */
+              const giftBackChance =
+                settingsRef.current.avatarSwitch
+                  .giftBackChance ?? 0.2;
               if (
                 req.owner !== "You" &&
-                Math.random() < 0.2
+                Math.random() < giftBackChance
               ) {
                 const giftDelay =
                   randomInteger(3000, 12000);
